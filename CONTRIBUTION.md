@@ -1,5 +1,8 @@
 
 
+- notebook dependency is not included in the pyproject.toml, please install it manually if you want to run the notebook examples.
+
+
 ## Testing
 
 
