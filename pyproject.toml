@@ -5,7 +5,14 @@ description = "A portfolio management tool with built-in state-of-the-art portfo
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "alpaca-py>=0.43.2",
+    "diskcache>=5.6.3",
+    "joblib>=1.5.2",
     "notebook>=7.4.7",
+    "numpy>=2.2.6",
+    "pandas>=2.3.3",
+    "progressbar>=2.5",
+    "yfinance>=0.2.66",
 ]
 
 [project.scripts]
