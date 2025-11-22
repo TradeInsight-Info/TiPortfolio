@@ -1,8 +1,23 @@
 # TiPortfolio
 A portfolio management tool with built-in state-of-the-art portfolio optimization algorithms, with extensibility for different use cases for both institutes and retail traders.
 
-
+## About
 This project is built and tested with Python 3.12, however, it should be compatible with Python 3.10 and above.
+
+**What is a real alpha?**, I often ask myself this question,
+
+- Is a positive return alpha?
+- Is it a return above risk free rate?
+
+
+A simple long hold strategy can easily achieve positvie return and beat risk free rate in history.
+
+**Sharpe Ratio, Max Drawdown, Annualized Return**, in these 3 metrics, the real alpha 
+should have at least 1 out of 3 metrics better than the simple long hold Index ETF, 
+and the other two not worse than the Index ETF. Otherwise, we really don't need to 
+make a complex strategy to beat a simple long hold.
+
+
 
 
 ## Why we need TiPortfolio?
