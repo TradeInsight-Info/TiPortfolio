@@ -27,13 +27,17 @@ def test_backtester_simple_increasing_prices():
     # pairs: list of (symbol, dataset, algorithm)
     pairs = [("TEST", df, always_long)]
 
-    # Weight adjust function: equal weights across assets, ignoring positions
-    def weight_fn(positions: pd.DataFrame) -> pd.DataFrame:
-        n = positions.shape[1]
-        return pd.DataFrame(1.0 / n, index=positions.index, columns=positions.columns)
+    # Weight adjust function: equal weights across assets using new signature
+    # Receives a list of tuples: (symbol, prices_df, positions_df)
+    def weight_fn_equal_weight(pairs):
+        symbols = [sym for sym, _prices, _positions in pairs]
+        # Use index from the first positions_df (all are aligned by backtester)
+        idx = pairs[0][2].index
+        n = len(symbols)
+        return pd.DataFrame(1.0 / n, index=idx, columns=symbols)
 
     # Call with explicit weight function to validate new API and symbol-based alignment
-    res = backtest(pairs=pairs, weight_adjust_fn=weight_fn, timeframe="1d", risk_free_annual=0.0)
+    res = backtest(pairs=pairs, weight_adjust_fn=weight_fn_equal_weight, timeframe="1d", risk_free_annual=0.0)
 
     # Expected total return: product of (1 + returns) minus 1
     # With position shift by 1 bar, we start capturing from the second row (day 2)
