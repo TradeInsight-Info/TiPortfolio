@@ -3,31 +3,81 @@ name = "tiportfolio"
 version = "0.1.0"
 description = "A portfolio management tool with built-in state-of-the-art portfolio optimization algorithms, with extensibility for different use cases for both institutes and retail traders."
 readme = "README.md"
-requires-python = ">=3.10"
+authors = [{ name = "tim-hub" }]
+requires-python = ">=3.10, <=3.14"
+license = { text = "Apache" }
+keywords = [
+    'Algorithm Trading',
+    'Backtesting'
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+urls = { homepage = "https://github.com/TradeInsight-Info/TiPortfolio" }
 dependencies = [
     "alpaca-py>=0.43.2",
     "diskcache>=5.6.3",
     "joblib>=1.5.2",
-    "notebook>=7.4.7",
     "numpy>=2.2.6",
     "pandas>=2.3.3",
     "progressbar>=2.5",
     "yfinance>=0.2.66",
 ]
 
+[dependency-groups]
+dev = [
+    "notebook>=7.5.0",
+    "python-dotenv>=1.2.1",
+    "pytest>=9.0.1",
+    "pandas-stubs==2.3.2.250926",
+]
+
 [project.scripts]
 tiportfolio = "tiportfolio.main:main"
 
 
-dependencies = []
 
-[dependency-groups]
-dev = [
-    "pytest>=9.0.1",
-    "pandas-stubs==2.3.2.250926",
-]
 
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.mypy]
+# Python version target
+python_version = "3.12"
+ignore_missing_imports = true
+# Equivalent to setting PYTHONPATH=src
+mypy_path = "src"
+
+# Paths to ignore (mypy uses 'exclude' as a regex string, not a list)
+exclude = '''
+(
+    \.bzr|
+    \.direnv|
+    \.eggs|
+    \.git|
+    \.git-rewrite|
+    \.hg|
+    \.ipynb_checkpoints|
+    \.mypy_cache|
+    \.nox|
+    \.pants\.d|
+    \.pyenv|
+    \.pytest_cache|
+    \.pytype|
+    \.ruff_cache|
+    \.svn|
+    \.tox|
+    \.venv|
+    \.vscode|
+    __pypackages__|
+    _build|
+    buck-out|
+    build|
+    dist|
+    node_modules|
+    site-packages|
+    venv
+)
+'''
