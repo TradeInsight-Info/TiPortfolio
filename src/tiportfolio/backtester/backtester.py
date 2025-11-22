@@ -102,11 +102,12 @@ def backtest(
               series of the same index with exposure values (e.g., -1..+1). -1 means short,
               +1 means long, 0 means cash/flat.
         weight_adjust_fn: Optional callable to compute per-timestamp portfolio
-            weights from positions. It will receive at least the positions DataFrame where
-            columns are symbols; it may also accept a second argument with the list of symbols.
-            It must return either a DataFrame of the same shape (weights per asset per
-            timestamp) or a Series of uniform weights per timestamp that will
-            be broadcast to all assets.
+            weights from positions.
+            It will receive a list of tuples: (symbol, prices_df, positions_df),
+            where prices_df and positions_df are single-column DataFrames aligned by
+            time index for that symbol. It must return either a DataFrame of the same
+            shape (weights per asset per timestamp, columns as symbols) or a Series of
+            uniform weights per timestamp that will be broadcast to all assets.
             If None, defaults to equal weights among active (non-zero) positions each timestamp;
             if all positions are 0, it falls back to equal weights across all assets.
         timeframe: Bar timeframe string (e.g., '1d', '1h', '15m'). Used for annualizing metrics.
@@ -123,6 +124,7 @@ def backtest(
     symbols: List[str] = []
     asset_returns: List[pd.Series] = []
     asset_positions: List[pd.Series] = []
+    asset_prices: List[pd.Series] = []
 
     seen = set()
 
@@ -163,7 +165,7 @@ def backtest(
                     ) from e
 
         close_col = _infer_close_col(df)
-        px = df[close_col].astype(float)
+        px = df[close_col].astype(float).rename(symbol)
         ret = px.pct_change().rename(symbol)
 
         pos = algo(df)
@@ -177,10 +179,12 @@ def backtest(
 
         asset_returns.append(ret)
         asset_positions.append(pos)
+        asset_prices.append(px)
 
     # Align all assets on a common timeline
     returns_df = pd.concat(asset_returns, axis=1).fillna(0.0)
     positions_df = pd.concat(asset_positions, axis=1).fillna(0.0)
+    prices_df = pd.concat(asset_prices, axis=1).reindex_like(returns_df)
 
     # Strategy per-asset returns (pre-weights)
     strat_asset_rets = positions_df.values * returns_df.values
@@ -193,20 +197,17 @@ def backtest(
 
     # Compute weights
     if weight_adjust_fn is not None:
-        import inspect
-
-        sig = inspect.signature(weight_adjust_fn)
-        try:
-            if len(sig.parameters) >= 2:
-                weights = weight_adjust_fn(positions_df, symbols)
-            else:
-                weights = weight_adjust_fn(positions_df)
-        except TypeError:
-            # Fallback in case introspection failed or function is flexible
-            try:
-                weights = weight_adjust_fn(positions_df)
-            except TypeError:
-                weights = weight_adjust_fn(positions_df, symbols)
+        # Build the list of tuples (symbol, prices_df_single, positions_df_single)
+        tuples_for_weights: list[tuple[str, pd.DataFrame, pd.DataFrame]] = []
+        for sym in symbols:
+            tuples_for_weights.append(
+                (
+                    sym,
+                    prices_df[[sym]].copy(),
+                    positions_df[[sym]].copy(),
+                )
+            )
+        weights = weight_adjust_fn(tuples_for_weights)
 
         if isinstance(weights, pd.Series):
             # Broadcast series to all assets
@@ -215,6 +216,12 @@ def backtest(
         elif isinstance(weights, pd.DataFrame):
             # Reindex to align
             weights = weights.reindex_like(strat_asset_rets)
+            # If columns are not correctly labeled, set to symbols in order
+            if list(weights.columns) != symbols:
+                try:
+                    weights = weights[symbols]
+                except Exception:
+                    weights.columns = symbols
         else:
             raise TypeError("weight_adjust_fn must return a pandas DataFrame or Series.")
     else:
