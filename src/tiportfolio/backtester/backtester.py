@@ -101,6 +101,7 @@ def backtest(
             - algorithm: callable that accepts the asset DataFrame and returns a position
               series of the same index with exposure values (e.g., -1..+1). -1 means short,
               +1 means long, 0 means cash/flat.
+        #       todo for option, add history of IV for the asset
         weight_adjust_fn: Optional callable to compute per-timestamp portfolio
             weights from positions.
             It will receive a list of tuples: (symbol, prices_df, positions_df),
