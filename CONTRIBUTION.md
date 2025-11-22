@@ -18,4 +18,12 @@ pytest tests/
 
 
 ## FAQ
-- Vibe coding is accessible, however, to maintain quality and consistency, we have established some guidelines for contributions.
+
+### About AI and Vibe Coding
+Vibe coding is accessible, however, to maintain quality and consistency, 
+we have established some guidelines for contributions,
+
+- Use AI tools as assistants, not primary authors.
+- Know what you want to achieve before using AI tools.
+- Always test and review AI-generated code thoroughly.
+- Follow existing coding styles and project conventions.
