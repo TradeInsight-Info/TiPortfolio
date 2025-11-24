@@ -36,6 +36,18 @@ class Allocation(ABC):
         pass
 
 
+
+    @abstractmethod
+    def trigger_allocation(self, market_data, **kwargs):
+        """
+        Trigger Portfolio Allocation based on Market Data
+        :param market_data: dict of {symbol: data frame}
+        :param kwargs: other key word arguments
+        :return: dict of {symbol: weight}
+        """
+        pass
+
+
     def walk_forward(self, portfolio_history):
         """
         Walk Forward Simulation for Portfolio Allocation
