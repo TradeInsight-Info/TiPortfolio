@@ -2,7 +2,18 @@
 
 
 from abc import ABC, abstractmethod
-from typing import TypedDict, Tuple
+from typing import TypedDict, Generic, Union, Tuple
+
+from typing import TypeVar, TypedDict, Optional, List, Union, Callable, TypeAlias
+
+from pandas import DataFrame
+from datetime import datetime
+
+
+
+class StrategyData(TypedDict):
+    prices: DataFrame  # DataFrame with price data, with columns['open', 'high', 'low', 'close', 'volume']
+    other_datas: Optional[List[DataFrame]]  # DataFrame with other data, e.g. indicators
 
 
 class TradingConfig(TypedDict):
@@ -17,12 +28,21 @@ class PortfolioConfig(TypedDict):
     initial_capital: float
 
 
+StrategyDataType = Union[DataFrame, List[DataFrame]]
+
+StrategyFunction: TypeAlias = Callable[
+    [StrategyDataType], Union[1, -1, 0]]  # A strategy function that returns 1 (long), -1 (short), or 0 (hold)
 
 
 class Allocation(ABC):
 
-    def __init__(self, config:PortfolioConfig, **kwargs) -> None:
+    def __init__(self, config:PortfolioConfig, strategies: List[Tuple[StrategyData, StrategyFunction]]) -> None:
         self.config = config
+        self.strategies = strategies
+
+
+    def walk_forward(self, current_step:datetime):
+        pass
 
 
     @abstractmethod
@@ -48,14 +68,3 @@ class Allocation(ABC):
         pass
 
 
-    def walk_forward(self, portfolio_history):
-        """
-        Walk Forward Simulation for Portfolio Allocation
-        1. Based on portfolio history from the earliest date to the latest one
-        2. At each step, use optimize_portfolio method to decide how to allocate it
-        3. Record the allocation history of each step.
-
-        :param portfolio_history: list of dict of {symbol: weight}
-        :return: list of dict of {symbol: optimized_weight}
-        """
-        pass
