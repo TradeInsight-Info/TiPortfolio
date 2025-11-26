@@ -5,7 +5,7 @@ from typing import Generic, Union
 from .types import HistoryDataExtension
 
 
-class Strategy(ABC, Generic[HistoryDataExtension]):
+class TradingAlgorithm(ABC, Generic[HistoryDataExtension]):
 
     def __init__(self, name) -> None:
         self.name = name

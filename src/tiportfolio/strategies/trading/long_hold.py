@@ -1,7 +1,7 @@
-from ...portfolio.strategy import Strategy
+from ...portfolio.trading_algorithm import TradingAlgorithm
 
 
-class LongHold(Strategy):
+class LongHold(TradingAlgorithm):
 
     def __init__(self) -> None:
         super().__init__("LongHold")
