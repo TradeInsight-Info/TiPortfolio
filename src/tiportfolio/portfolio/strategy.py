@@ -17,7 +17,7 @@ class Strategy(ABC, Generic[HistoryDataExtension]):
         return hash(self.name)
 
     @abstractmethod
-    def analyse_next_signal(self, history_data: HistoryDataExtension | dict) -> Union[1, 0, -1]:
+    def _analyse_next_signal(self, history_data: HistoryDataExtension | dict) -> Union[1, 0, -1]:
         """
         Analyse History Data and Predict Next Signal (Current Time)
         :param history_data: HistoryDataExtension
@@ -34,4 +34,4 @@ class Strategy(ABC, Generic[HistoryDataExtension]):
         """
 
         history_data = {key: value.loc[:step] for key, value in all_data.items()}
-        return self.analyse_next_signal(history_data)
+        return self._analyse_next_signal(history_data)
