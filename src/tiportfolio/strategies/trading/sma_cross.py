@@ -4,10 +4,10 @@ from typing import Union
 
 import pandas as pd
 
-from ...portfolio.strategy import Strategy
+from ...portfolio.trading_algorithm import TradingAlgorithm
 
 
-class SMACross(Strategy):
+class SMACross(TradingAlgorithm):
     """
     Simple Moving Average (SMA) Crossover strategy.
 

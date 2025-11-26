@@ -3,11 +3,11 @@ from unittest import TestCase
 
 import pandas as pd
 
-from tiportfolio.portfolio.allocation import FixedAllocation50_50
-from tiportfolio.portfolio.strategy import Strategy
+from tiportfolio.strategies.allocation.half import FixedAllocation50_50
+from tiportfolio.portfolio.trading_algorithm import TradingAlgorithm
 
 
-class DummyStrategy(Strategy[dict]):
+class DummyTradingAlgorithm(TradingAlgorithm[dict]):
     """Simple strategy that always returns a fixed signal.
 
     Signals are not used by FixedAllocation50_50 but are required to
@@ -67,7 +67,7 @@ class TestFixedAllocation50_50(TestCase):
         history_a = {"prices": prices_a}
 
         config = self._build_config()
-        strategy = DummyStrategy()
+        strategy = DummyTradingAlgorithm()
 
         # Only one asset -> should raise ValueError
         with self.assertRaises(ValueError):
@@ -79,8 +79,8 @@ class TestFixedAllocation50_50(TestCase):
         history_b = {"prices": prices_b}
 
         config = self._build_config()
-        strat_a = DummyStrategy()
-        strat_b = DummyStrategy()
+        strat_a = DummyTradingAlgorithm()
+        strat_b = DummyTradingAlgorithm()
 
         alloc = FixedAllocation50_50(
             config,
@@ -109,8 +109,8 @@ class TestFixedAllocation50_50(TestCase):
         history_b = {"prices": prices_b}
 
         config = self._build_config()
-        strat_a = DummyStrategy()
-        strat_b = DummyStrategy()
+        strat_a = DummyTradingAlgorithm()
+        strat_b = DummyTradingAlgorithm()
 
         alloc = FixedAllocation50_50(
             config,
