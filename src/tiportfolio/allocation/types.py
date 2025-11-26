@@ -1,16 +1,14 @@
-from typing import TypeVar, TypedDict, Optional, List, Union, Callable, TypeAlias
+from typing import TypeVar, TypedDict
 
 from pandas import DataFrame
 
 
-
-class StrategyData(TypedDict):
+class BaseHistoryData(TypedDict):
     prices: DataFrame  # DataFrame with price data, with columns['open', 'high', 'low', 'close', 'volume']
-    other_datas: Optional[List[DataFrame]]  # DataFrame with other data, e.g. indicators
 
 
-StrategyDataTypeVar = TypeVar('StrategyDataTypeVar', DataFrame, List[DataFrame])
-
-
-StrategyType: TypeAlias = Callable[
-    [StrategyData], Union[1, -1, 0]]  # A strategy function that returns 1 (long), -1 (short), or 0 (hold)
+HistoryDataExtension = TypeVar('HistoryDataExtension', bound=BaseHistoryData)
+"""
+ Data for strategy and allocation has to extend BaseHistoryData
+ We used TypeVar with bound to enforce that it has at least prices: DataFrame
+"""
