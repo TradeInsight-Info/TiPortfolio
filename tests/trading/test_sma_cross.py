@@ -1,8 +1,13 @@
 from unittest import TestCase
 from datetime import datetime
+from pathlib import Path
 import pandas as pd
 
 from tiportfolio.strategies.trading.sma_cross import SMACross
+
+
+HERE = Path(__file__).resolve().parent
+DATA_DIR = HERE.parent / "data"
 
 
 class TestSMACross(TestCase):
@@ -127,3 +132,45 @@ class TestSMACrossLargeDataset(TestCase):
             self.assertIn(1, unique, f"No long signals detected for windows ({sw},{lw})")
             self.assertIn(-1, unique, f"No short signals detected for windows ({sw},{lw})")
             self.assertIn(0, unique, f"No exit/neutral signals detected for windows ({sw},{lw})")
+
+
+class TestSMACrossWithQQQCSV(TestCase):
+
+    def test_sma_cross_with_qqq_csv_history(self):
+        """Ensure SMACross works with the real-world QQQ OHLCV dataset.
+
+        This uses tests/data/qqq.csv, converts it to the canonical history
+        format expected by strategies (DateTimeIndex, OHLCV columns), and
+        verifies that:
+
+        * execute() returns only valid signals from {-1, 0, 1}; and
+        * the strategy can process multiple realistic timestamps using only
+          the public execute() API.
+        """
+
+        csv_path = DATA_DIR / "qqq.csv"
+        df_raw = pd.read_csv(csv_path)
+
+        # Normalise into the standard prices DataFrame shape used by
+        # strategies: DateTimeIndex and OHLCV columns.
+        df = df_raw.copy()
+        df["date"] = pd.to_datetime(df["date"])
+        df.set_index("date", inplace=True)
+
+        prices = df[["open", "high", "low", "close", "volume"]]
+
+        data = {"prices": prices}
+
+        # Use a reasonably small pair of windows to ensure we get both
+        # sufficient warm-up and a variety of signals in a realistic series.
+        strat = SMACross(short_window=5, long_window=20)
+
+        # Pick three representative timestamps: first, mid-sample, and last.
+        first_ts = prices.index[0]
+        mid_ts = prices.index[len(prices) // 2]
+        last_ts = prices.index[-1]
+
+        for ts in (first_ts, mid_ts, last_ts):
+            step = ts.to_pydatetime()
+            sig = strat.execute(data, step)
+            self.assertIn(sig, (-1, 0, 1))
