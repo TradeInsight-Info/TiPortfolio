@@ -161,16 +161,29 @@ class TestSMACrossWithQQQCSV(TestCase):
 
         data = {"prices": prices}
 
-        # Use a reasonably small pair of windows to ensure we get both
-        # sufficient warm-up and a variety of signals in a realistic series.
-        strat = SMACross(short_window=5, long_window=20)
+        # Use a fixed short/long SMA window pair, matching the main
+        # large-dataset tests. The expected values below were generated
+        # once using the same rolling-SMA logic as
+        # ``TestSMACrossLargeDataset._expected_signals`` and then frozen
+        # so this test no longer calls that helper at runtime.
+        short_window = 5
+        long_window = 20
+        strat = SMACross(short_window=short_window, long_window=long_window)
 
-        # Pick three representative timestamps: first, mid-sample, and last.
-        first_ts = prices.index[0]
-        mid_ts = prices.index[len(prices) // 2]
-        last_ts = prices.index[-1]
+        # Expected signals for QQQ with (5, 20) SMA windows,
+        # precomputed once using the same logic as SMACross and frozen
+        # here to avoid generating expectations at runtime.
+        expected = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
-        for ts in (first_ts, mid_ts, last_ts):
+
+        actual: list[int] = []
+        for ts in prices.index:
             step = ts.to_pydatetime()
             sig = strat.execute(data, step)
-            self.assertIn(sig, (-1, 0, 1))
+            actual.append(sig)
+
+
+        # Ensure we check every step exactly, not just that signals are in
+        # a valid set. This guarantees the strategy behaves as expected on
+        # the real QQQ series.
+        self.assertEqual(actual, expected, "Signals mismatch for QQQ dataset (5,20) window pair")
