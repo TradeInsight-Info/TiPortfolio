@@ -1,0 +1,1 @@
+BASIC_REQUIRED_COLUMNS = ['open', 'high', 'low', 'close']  # OHLC

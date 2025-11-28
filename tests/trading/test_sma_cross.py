@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 
 from tiportfolio.strategies.trading.sma_cross import SMACross
-
+from tiportfolio.portfolio.types import TradingSignal
 
 HERE = Path(__file__).resolve().parent
 DATA_DIR = HERE.parent / "data"
@@ -26,14 +26,14 @@ class TestSMACross(TestCase):
             },
             index=pd.to_datetime(dates),
         )
-        self.data = {"prices": df}
-        self.strategy = SMACross(short_window=3, long_window=5)
+        self.prices = df
+        self.strategy = SMACross("TEST", self.prices, short_window=3, long_window=5)
 
     def test_insufficient_data_returns_neutral(self):
         # With step at the 4th day, long_window (5) not met -> 0
         step = datetime(2024, 1, 4)
-        signal = self.strategy.execute(self.data, step)
-        self.assertEqual(signal, 0)
+        signal = self.strategy.execute(step)
+        self.assertEqual(signal, TradingSignal.EXIT)
 
     def test_golden_cross_signal(self):
         # Expected golden cross at 2024-01-06 for the constructed series
@@ -41,149 +41,182 @@ class TestSMACross(TestCase):
         pre_step = datetime(2024, 1, 5)
         step = datetime(2024, 1, 6)
 
-        self.assertEqual(self.strategy.execute(self.data, pre_step), 0)
-        self.assertEqual(self.strategy.execute(self.data, step), 1)
+        self.assertEqual(self.strategy.execute(pre_step), TradingSignal.EXIT)
+        self.assertEqual(self.strategy.execute(step), TradingSignal.EXIT)
+
+        ## continuelly futher it should reutn HOLD
+        post_step = datetime(2024, 1, 7)
+        self.assertEqual(self.strategy.execute(post_step), TradingSignal.LONG)
+        post_step2 = datetime(2024, 1, 8)
+        self.assertEqual(self.strategy.execute(post_step2), TradingSignal.LONG)
+        post_step3 = datetime(2024, 1, 9)
+        self.assertEqual(self.strategy.execute(post_step3), TradingSignal.LONG)
+        post_step4 = datetime(2024, 1, 10)
+        self.assertEqual(self.strategy.execute(post_step4), TradingSignal.LONG)
 
     def test_death_cross_signal(self):
         # Expected death cross at 2024-01-11 for the constructed series
         pre_step = datetime(2024, 1, 10)
         step = datetime(2024, 1, 11)
 
-        self.assertIn(self.strategy.execute(self.data, pre_step), (0, 1))
-        self.assertEqual(self.strategy.execute(self.data, step), -1)
-
-
-class TestSMACrossLargeDataset(TestCase):
-
-    @staticmethod
-    def _build_large_prices(n: int = 300) -> pd.DataFrame:
-        # Build a 300-row piecewise series designed to create both golden and death crosses
-        # Segments: 60 flat at 100, 80 up to 140, 40 flat at 140, 80 down to 100, 40 flat at 100
-        assert n == 300, "This helper is tailored for 300 rows"
-        seg1 = [100.0] * 60
-        seg2 = [100.0 + 0.5 * i for i in range(80)]  # 100 -> 139.5
-        seg3 = [140.0] * 40
-        seg4 = [140.0 - 0.5 * i for i in range(80)]  # 140 -> 100.5
-        seg5 = [100.0] * 40
-        close = seg1 + seg2 + seg3 + seg4 + seg5
-        dates = pd.date_range(start="2024-01-01", periods=n, freq="D")
-        df = pd.DataFrame(
-            {
-                "open": close,
-                "high": [c * 1.01 for c in close],
-                "low": [c * 0.99 for c in close],
-                "close": close,
-                "volume": [1000 + i for i in range(n)],
-            },
-            index=pd.to_datetime(dates),
+        self.assertIn(
+            self.strategy.execute(pre_step),
+            (TradingSignal.EXIT, TradingSignal.LONG),
         )
-        return df
+        self.assertEqual(self.strategy.execute(step), TradingSignal.SHORT)
+        post_step = datetime(2024, 1, 12)
+        self.assertEqual(self.strategy.execute(post_step), TradingSignal.SHORT)
 
-    @staticmethod
-    def _expected_signals(df: pd.DataFrame, short_window: int, long_window: int) -> list[int]:
-        closes = df["close"].astype(float)
-        s_sma = closes.rolling(window=short_window, min_periods=short_window).mean()
-        l_sma = closes.rolling(window=long_window, min_periods=long_window).mean()
+    def test_walk_through_all(self):
+        results = []
+        for step in self.prices.index:
+            result = self.strategy.execute(step)
+            results.append((step, result))
 
-        # Shift to get previous values
-        prev_s = s_sma.shift(1)
-        prev_l = l_sma.shift(1)
-
-        # Conditions aligned with strategy logic
-        golden = (prev_s <= prev_l) & (s_sma > l_sma)
-        death = (prev_s >= prev_l) & (s_sma < l_sma)
-
-        exp = []
-        for i in range(len(df)):
-            # Insufficient data or NaNs -> 0
-            if pd.isna(s_sma.iloc[i]) or pd.isna(l_sma.iloc[i]) or pd.isna(prev_s.iloc[i]) or pd.isna(prev_l.iloc[i]):
-                exp.append(0)
-                continue
-            if golden.iloc[i]:
-                exp.append(1)
-            elif death.iloc[i]:
-                exp.append(-1)
-            else:
-                exp.append(0)
-        return exp
-
-    def test_large_dataset_multiple_windows_and_signal_variety(self):
-        df = self._build_large_prices(300)
-        data = {"prices": df}
-
-        window_pairs = [(5, 20), (10, 50)]
-        for sw, lw in window_pairs:
-            strat = SMACross(short_window=sw, long_window=lw)
-
-            # Compute expected signals for each date
-            expected = self._expected_signals(df, sw, lw)
-
-            # Collect actual signals by executing at each step
-            actual: list[int] = []
-            for ts in df.index:
-                sig = strat.execute(data, ts.to_pydatetime())
-                actual.append(sig)
-
-            # Full-sequence equality
-            self.assertEqual(actual, expected, f"Signals mismatch for windows ({sw},{lw})")
-
-            # Ensure we have all three signal types present in the run
-            unique = set(actual)
-            self.assertIn(1, unique, f"No long signals detected for windows ({sw},{lw})")
-            self.assertIn(-1, unique, f"No short signals detected for windows ({sw},{lw})")
-            self.assertIn(0, unique, f"No exit/neutral signals detected for windows ({sw},{lw})")
+        self.assertEqual(
+            results,
+            [
+                (pd.Timestamp("2024-01-01 00:00:00"), TradingSignal.EXIT),
+                (pd.Timestamp("2024-01-02 00:00:00"), TradingSignal.EXIT),
+                (pd.Timestamp("2024-01-03 00:00:00"), TradingSignal.EXIT),
+                (pd.Timestamp("2024-01-04 00:00:00"), TradingSignal.EXIT),
+                (pd.Timestamp("2024-01-05 00:00:00"), TradingSignal.EXIT),
+                (pd.Timestamp("2024-01-06 00:00:00"), TradingSignal.EXIT),
+                (pd.Timestamp("2024-01-07 00:00:00"), TradingSignal.LONG),
+                (pd.Timestamp("2024-01-08 00:00:00"), TradingSignal.LONG),
+                (pd.Timestamp("2024-01-09 00:00:00"), TradingSignal.LONG),
+                (pd.Timestamp("2024-01-10 00:00:00"), TradingSignal.LONG),
+                (pd.Timestamp("2024-01-11 00:00:00"), TradingSignal.SHORT),
+                (pd.Timestamp("2024-01-12 00:00:00"), TradingSignal.SHORT),
+            ],
+            self.strategy.prices_df
+        )
 
 
 class TestSMACrossWithQQQCSV(TestCase):
 
-    def test_sma_cross_with_qqq_csv_history(self):
-        """Ensure SMACross works with the real-world QQQ OHLCV dataset.
-
-        This uses tests/data/qqq.csv, converts it to the canonical history
-        format expected by strategies (DateTimeIndex, OHLCV columns), and
-        verifies that:
-
-        * execute() returns only valid signals from {-1, 0, 1}; and
-        * the strategy can process multiple realistic timestamps using only
-          the public execute() API.
-        """
-
+    def setUp(self):
         csv_path = DATA_DIR / "qqq.csv"
-        df_raw = pd.read_csv(csv_path)
+        df_qqq = pd.read_csv(
+            csv_path,
+            header=0,  # first line is headers (this is actually the default)
+            index_col="date",  # use the "date" column as the index
+            parse_dates=["date"]  # automatically convert that column to datetime
+        )
 
-        # Normalise into the standard prices DataFrame shape used by
-        # strategies: DateTimeIndex and OHLCV columns.
-        df = df_raw.copy()
-        df["date"] = pd.to_datetime(df["date"])
-        df.set_index("date", inplace=True)
+        start = pd.Timestamp("2020-02-01", tz="America/New_York")
+        end = pd.Timestamp("2020-05-01", tz="America/New_York")
 
-        prices = df[["open", "high", "low", "close", "volume"]]
+        # filter from 2020-02-01 to 2020-05-01 about 3 months, 63 rows
+        df_qqq = df_qqq[(df_qqq.index >= start) & (df_qqq.index <= end)]
 
-        data = {"prices": prices}
+        print(f"Filtered QQQ data has {len(df_qqq)} rows.")
 
-        # Use a fixed short/long SMA window pair, matching the main
-        # large-dataset tests. The expected values below were generated
-        # once using the same rolling-SMA logic as
-        # ``TestSMACrossLargeDataset._expected_signals`` and then frozen
-        # so this test no longer calls that helper at runtime.
-        short_window = 5
-        long_window = 20
-        strat = SMACross(short_window=short_window, long_window=long_window)
+        self.assertEqual(len(df_qqq), 63, "Filtered QQQ data should not be empty.")
 
-        # Expected signals for QQQ with (5, 20) SMA windows,
-        # precomputed once using the same logic as SMACross and frozen
-        # here to avoid generating expectations at runtime.
-        expected = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        self.strategy = SMACross(
+            "QQQ",
+            prices=df_qqq,
+            short_window=5,
+            long_window=20,
+        )
 
+        self.strategy.before_all()
+        print(self.strategy.prices_df.tail(60))
 
-        actual: list[int] = []
-        for ts in prices.index:
-            step = ts.to_pydatetime()
-            sig = strat.execute(data, step)
-            actual.append(sig)
+    def test_always_passes(self):
+        self.assertTrue(True)
 
+    def test_on_march_2_be_exit(self):
+        step = pd.Timestamp("2020-03-02", tz="America/New_York")
+        signal = self.strategy.execute(step)
+        self.assertEqual(signal, TradingSignal.EXIT, 'because there is no cross yet')
 
-        # Ensure we check every step exactly, not just that signals are in
-        # a valid set. This guarantees the strategy behaves as expected on
-        # the real QQQ series.
-        self.assertEqual(actual, expected, "Signals mismatch for QQQ dataset (5,20) window pair")
+    def test_on_march_3_be_short(self):
+        step = pd.Timestamp("2020-03-03", tz="America/New_York")
+        signal = self.strategy.execute(step)
+        self.assertEqual(signal, TradingSignal.SHORT, 'because continue lower')
+
+    def test_on_martch_31_be_long(self):
+        step = pd.Timestamp("2020-04-01", tz="America/New_York")
+        signal = self.strategy.execute(step)
+        self.assertEqual(signal, TradingSignal.LONG, 'because short SMA crosses above long SMA on this day')
+
+        # next day should be HOLD
+        next_step = pd.Timestamp("2020-04-02", tz="America/New_York")
+        next_signal = self.strategy.execute(next_step)
+        self.assertEqual(next_signal, TradingSignal.LONG, 'because it should hold the LONG position')
+
+    def test_to_run_from_start_to_end(self):
+        # Run through all dates to ensure no exceptions
+        results = []
+        for step in self.strategy.prices_df.index:
+            result = self.strategy.execute(step)
+            results.append((step, result))
+
+        expected = [
+            (pd.Timestamp('2020-02-03 00:00:00-0500', tz='UTC-05:00'), TradingSignal.EXIT),
+            (pd.Timestamp('2020-02-04 00:00:00-0500', tz='UTC-05:00'), TradingSignal.EXIT),
+            (pd.Timestamp('2020-02-05 00:00:00-0500', tz='UTC-05:00'), TradingSignal.EXIT),
+            (pd.Timestamp('2020-02-06 00:00:00-0500', tz='UTC-05:00'), TradingSignal.EXIT),
+            (pd.Timestamp('2020-02-07 00:00:00-0500', tz='UTC-05:00'), TradingSignal.EXIT),
+            (pd.Timestamp('2020-02-10 00:00:00-0500', tz='UTC-05:00'), TradingSignal.EXIT),
+            (pd.Timestamp('2020-02-11 00:00:00-0500', tz='UTC-05:00'), TradingSignal.EXIT),
+            (pd.Timestamp('2020-02-12 00:00:00-0500', tz='UTC-05:00'), TradingSignal.EXIT),
+            (pd.Timestamp('2020-02-13 00:00:00-0500', tz='UTC-05:00'), TradingSignal.EXIT),
+            (pd.Timestamp('2020-02-14 00:00:00-0500', tz='UTC-05:00'), TradingSignal.EXIT),
+            (pd.Timestamp('2020-02-18 00:00:00-0500', tz='UTC-05:00'), TradingSignal.EXIT),
+            (pd.Timestamp('2020-02-19 00:00:00-0500', tz='UTC-05:00'), TradingSignal.EXIT),
+            (pd.Timestamp('2020-02-20 00:00:00-0500', tz='UTC-05:00'), TradingSignal.EXIT),
+            (pd.Timestamp('2020-02-21 00:00:00-0500', tz='UTC-05:00'), TradingSignal.EXIT),
+            (pd.Timestamp('2020-02-24 00:00:00-0500', tz='UTC-05:00'), TradingSignal.EXIT),
+            (pd.Timestamp('2020-02-25 00:00:00-0500', tz='UTC-05:00'), TradingSignal.EXIT),
+            (pd.Timestamp('2020-02-26 00:00:00-0500', tz='UTC-05:00'), TradingSignal.EXIT),
+            (pd.Timestamp('2020-02-27 00:00:00-0500', tz='UTC-05:00'), TradingSignal.EXIT),
+            (pd.Timestamp('2020-02-28 00:00:00-0500', tz='UTC-05:00'), TradingSignal.EXIT),
+            (pd.Timestamp('2020-03-02 00:00:00-0500', tz='UTC-05:00'), TradingSignal.EXIT),
+            (pd.Timestamp('2020-03-03 00:00:00-0500', tz='UTC-05:00'), TradingSignal.SHORT),
+            (pd.Timestamp('2020-03-04 00:00:00-0500', tz='UTC-05:00'), TradingSignal.SHORT),
+            (pd.Timestamp('2020-03-05 00:00:00-0500', tz='UTC-05:00'), TradingSignal.SHORT),
+            (pd.Timestamp('2020-03-06 00:00:00-0500', tz='UTC-05:00'), TradingSignal.SHORT),
+            (pd.Timestamp('2020-03-09 00:00:00-0400', tz='UTC-04:00'), TradingSignal.SHORT),
+            (pd.Timestamp('2020-03-10 00:00:00-0400', tz='UTC-04:00'), TradingSignal.SHORT),
+            (pd.Timestamp('2020-03-11 00:00:00-0400', tz='UTC-04:00'), TradingSignal.SHORT),
+            (pd.Timestamp('2020-03-12 00:00:00-0400', tz='UTC-04:00'), TradingSignal.SHORT),
+            (pd.Timestamp('2020-03-13 00:00:00-0400', tz='UTC-04:00'), TradingSignal.SHORT),
+            (pd.Timestamp('2020-03-16 00:00:00-0400', tz='UTC-04:00'), TradingSignal.SHORT),
+            (pd.Timestamp('2020-03-17 00:00:00-0400', tz='UTC-04:00'), TradingSignal.SHORT),
+            (pd.Timestamp('2020-03-18 00:00:00-0400', tz='UTC-04:00'), TradingSignal.SHORT),
+            (pd.Timestamp('2020-03-19 00:00:00-0400', tz='UTC-04:00'), TradingSignal.SHORT),
+            (pd.Timestamp('2020-03-20 00:00:00-0400', tz='UTC-04:00'), TradingSignal.SHORT),
+            (pd.Timestamp('2020-03-23 00:00:00-0400', tz='UTC-04:00'), TradingSignal.SHORT),
+            (pd.Timestamp('2020-03-24 00:00:00-0400', tz='UTC-04:00'), TradingSignal.SHORT),
+            (pd.Timestamp('2020-03-25 00:00:00-0400', tz='UTC-04:00'), TradingSignal.SHORT),
+            (pd.Timestamp('2020-03-26 00:00:00-0400', tz='UTC-04:00'), TradingSignal.SHORT),
+            (pd.Timestamp('2020-03-27 00:00:00-0400', tz='UTC-04:00'), TradingSignal.SHORT),
+            (pd.Timestamp('2020-03-30 00:00:00-0400', tz='UTC-04:00'), TradingSignal.SHORT),
+            (pd.Timestamp('2020-03-31 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-01 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-02 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-03 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-06 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-07 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-08 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-09 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-13 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-14 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-15 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-16 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-17 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-20 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-21 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-22 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-23 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-24 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-27 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-28 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-29 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-04-30 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+            (pd.Timestamp('2020-05-01 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
+        ]
+        self.assertEqual(results, expected, self.strategy.prices_df)

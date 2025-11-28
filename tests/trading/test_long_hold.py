@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 from tiportfolio.strategies.trading.long_hold import LongHold
-
+from tiportfolio.portfolio.types import TradingSignal
 
 HERE = Path(__file__).resolve().parent
 DATA_DIR = HERE.parent / "data"
@@ -13,15 +13,18 @@ DATA_DIR = HERE.parent / "data"
 class TestLongHold(TestCase):
 
     def test_long_hold_execute_always_long(self):
-        # Prepare minimal history data with an empty prices DataFrame
-        history_data = {"prices": pd.DataFrame()}
+        # Prepare minimal prices DataFrame – we only need the required OHLC
+        # columns, and can keep it empty for this smoke test.
+        prices = pd.DataFrame(columns=["open", "high", "low", "close"])
 
-        strategy = LongHold()
-        # Use execute to generate the signal (testing public API)
+        strategy = LongHold("AAPL", prices)
+        # Use execute to generate the signal (testing public API).
         step = datetime(2024, 1, 1)
-        signal = strategy.execute(history_data, step)
+        signal = strategy.execute(step)
 
-        self.assertEqual(signal, 1)
+        self.assertEqual(signal, TradingSignal.LONG)
+
+        strategy.after_all()
 
     def test_long_hold_execute_returns_long_and_slices_history(self):
         # Create a simple prices DataFrame with a DateTimeIndex
@@ -37,18 +40,16 @@ class TestLongHold(TestCase):
             index=dates,
         )
 
-        strategy = LongHold()
-
-        all_data = {"prices": df}
+        strategy = LongHold("AAPL", df)
         # Call execute at each available step to confirm stability of the
         # public API across the time index. We do not reach into the
-        # protected _analyse_next_signal hook; we only assert on the
-        # externally observable behaviour (always-long signal).
+        # protected hook; we only assert on the externally observable
+        # behaviour (always-long signal).
 
         for ts in dates:
             step = ts.to_pydatetime()
-            signal = strategy.execute(all_data, step)
-            self.assertEqual(signal, 1)
+            signal = strategy.execute(step)
+            self.assertEqual(signal, TradingSignal.LONG)
 
     def test_long_hold_with_aapl_csv_history(self):
         """Ensure LongHold works with the real-world AAPL OHLCV dataset.
@@ -72,9 +73,7 @@ class TestLongHold(TestCase):
 
         prices = df[["open", "high", "low", "close", "volume"]]
 
-        strategy = LongHold()
-
-        all_data = {"prices": prices}
+        strategy = LongHold("AAPL", prices)
 
         # Use a mid-sample date to ensure slicing behaviour works on a
         # realistic dataset. We pick the 10th row for determinism.
@@ -87,5 +86,5 @@ class TestLongHold(TestCase):
         last_step = prices.index[-1].to_pydatetime()
 
         for step in (first_step, step_mid, last_step):
-            signal = strategy.execute(all_data, step)
-            self.assertEqual(signal, 1)
+            signal = strategy.execute(step)
+            self.assertEqual(signal, TradingSignal.LONG)

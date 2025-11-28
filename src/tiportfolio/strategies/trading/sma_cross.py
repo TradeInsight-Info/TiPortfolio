@@ -1,71 +1,128 @@
 from __future__ import annotations
 
-from typing import Union
+from datetime import datetime
 
 import pandas as pd
+from pandas import DataFrame
 
-from ...portfolio.trading_algorithm import TradingAlgorithm
+from ...portfolio.trading_algorithm import TradingAlgorithm, TradingAlgorithmConfig
+from ...portfolio.types import TradingSignal
 
 
 class SMACross(TradingAlgorithm):
     """
     Simple Moving Average (SMA) Crossover strategy.
 
-    Signals:
-    - 1 when short SMA crosses above long SMA (golden cross)
-    - -1 when short SMA crosses below long SMA (death cross)
-    - 0 otherwise (including when insufficient data)
+        Long Short Hold Signal Only
     """
 
-    def __init__(self, short_window: int = 10, long_window: int = 20) -> None:
+    def __init__(
+            self,
+            symbol: str,
+            prices: DataFrame,
+            short_window: int = 10,
+            long_window: int = 20,
+    ) -> None:
         if short_window <= 0 or long_window <= 0:
             raise ValueError("short_window and long_window must be positive integers")
         if short_window >= long_window:
             raise ValueError("short_window must be smaller than long_window")
 
-        super().__init__(f"SMACross({short_window},{long_window})")
+        # Store window configuration before calling the base class so that
+        # :meth:`before_all` (invoked from ``TradingAlgorithm.__init__``)
+        # can rely on these attributes being present.
         self.short_window = short_window
         self.long_window = long_window
 
-    # Implement the dunder hook using base class name-mangled identifier
-    # so it properly overrides Strategy.__analyse_next_signal
-    def _analyse_next_signal(self, history_data) -> Union[1, 0, -1]:  # type: ignore[override]
-        prices: pd.DataFrame = history_data.get("prices")
-        if prices is None or prices.empty:
-            return 0
+        config: TradingAlgorithmConfig = {"set_signal_back": True}
 
-        # Ensure we have a 'close' column to compute SMAs
-        if "close" not in prices.columns:
-            return 0
+        super().__init__(
+            f"SMACross({short_window},{long_window})",
+            symbol,
+            config=config,
+            prices=prices,
+        )
 
-        # Need at least long_window periods and 2 data points to check a cross
-        if len(prices) < self.long_window or len(prices) < 2:
-            return 0
+    def before_all(self) -> None:  # type: ignore[override]
+        """Pre-compute rolling SMAs on the prices DataFrame.
 
-        closes = prices["close"].astype(float)
-        short_sma = closes.rolling(window=self.short_window, min_periods=self.short_window).mean()
-        long_sma = closes.rolling(window=self.long_window, min_periods=self.long_window).mean()
+        The rolling windows are applied in-place on ``self.prices_df`` so that
+        the per-step signal evaluation only needs to read a tiny slice of the
+        data. This keeps :meth:`_get_signal` simple and avoids look-ahead
+        because :meth:`TradingAlgorithm.execute` always passes a slice limited
+        to the current ``step``.
+        """
 
-        # If the latest long SMA is NaN, insufficient data
+        closes = self.prices_df["close"].astype(float)
+        self.prices_df["sma_short"] = closes.rolling(
+            window=self.short_window,
+            min_periods=self.short_window,
+        ).mean()
+        self.prices_df["sma_long"] = closes.rolling(
+            window=self.long_window,
+            min_periods=self.long_window,
+        ).mean()
+
+    def _run(self, history_prices: DataFrame, step: datetime) -> TradingSignal:  # type: ignore[override]
+        """Return the SMA crossover signal at ``step``.
+
+        ``history_prices`` is a slice of :attr:`prices_df` up to ``step``.
+        We only inspect the final two rows (when available) to determine
+        whether a golden or death cross has just occurred at the edge.
+        """
+
+        short_sma = history_prices["sma_short"]
+        long_sma = history_prices["sma_long"]
+
+        # if size smaller than 2, we cannot determine previous signal
+        if len(history_prices) < 2:
+            return TradingSignal.EXIT
+
+        # If the latest long/short SMA is NaN, insufficient data, do not enter
         if pd.isna(long_sma.iloc[-1]) or pd.isna(short_sma.iloc[-1]):
-            return 0
+            return TradingSignal.EXIT
 
-        # Look at the last two observations to detect a cross at the edge
-        prev_short = short_sma.iloc[-2]
-        prev_long = long_sma.iloc[-2]
-        curr_short = short_sma.iloc[-1]
-        curr_long = long_sma.iloc[-1]
+        # Current SMA relationship defines bullish / bearish regime
+        curr_short_sma = short_sma.iloc[-1]
+        curr_long_sma = long_sma.iloc[-1]
 
-        # If previous values are NaN (can happen exactly when the first full long SMA appears)
-        if pd.isna(prev_short) or pd.isna(prev_long):
-            return 0
+        previous_short_sma = short_sma.iloc[-2]
+        previous_long_sma = long_sma.iloc[-2]
 
-        # Golden cross
-        if prev_short <= prev_long and curr_short > curr_long:
-            return 1
+        if pd.isna(previous_short_sma) or pd.isna(previous_long_sma) or pd.isna(curr_short_sma) or pd.isna(
+                curr_long_sma):
+            return TradingSignal.EXIT
 
-        # Death cross
-        if prev_short >= prev_long and curr_short < curr_long:
-            return -1
+        # Bullish regime: short SMA above long SMA
+        if curr_short_sma > curr_long_sma and previous_short_sma < previous_long_sma:
+            return TradingSignal.LONG
+        elif curr_short_sma > curr_long_sma and previous_short_sma > previous_long_sma:
+            return TradingSignal.LONG
+        elif curr_short_sma < curr_long_sma and previous_short_sma > previous_long_sma:
+            return TradingSignal.SHORT
+        elif curr_short_sma < curr_long_sma and previous_short_sma < previous_long_sma:
+            return TradingSignal.SHORT
+        else:
+            return TradingSignal.EXIT
 
-        return 0
+    def after_all(self) -> None:  # type: ignore[override]
+        """Optional post-run summary of generated signals.
+
+        This mirrors the behaviour of :class:`LongHold` by counting how many
+        LONG/HOLD/EXIT/SHORT signals were produced and printing a small
+        summary. The method primarily exists to satisfy the
+        :class:`TradingAlgorithm` abstract interface; tests do not rely on
+        the printed output.
+        """
+
+        if "signal" not in self.prices_df.columns:
+            return
+
+        long_count = (self.prices_df["signal"] == TradingSignal.LONG.value).sum()
+        exit_count = (self.prices_df["signal"] == TradingSignal.EXIT.value).sum()
+        short_count = (self.prices_df["signal"] == TradingSignal.SHORT.value).sum()
+
+        print(f"SMACross Strategy Summary for {self._symbol} ({self.short_window},{self.long_window}):")
+        print(f"  LONG signals: {long_count}")
+        print(f"  EXIT signals: {exit_count}")
+        print(f"  SHORT signals: {short_count}")
