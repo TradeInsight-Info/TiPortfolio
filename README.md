@@ -20,7 +20,23 @@ make a complex strategy to beat a simple long hold.
 
 
 
-## Why we need TiPortfolio?
+## Why we need TiPortfolio? What is the philosophy behind it?
+
+You may have noticed that this library is probably different with any other backtesting libraries you can find in the market.
+
+- It does not focus on high performance backtesting
+- It does not force you to use specific way or library to write your strategies
+- It does not even provide many built-in technical indicators or fundamental analysis indicators
+
+Because we are trying to a bridge library between academic research and backtesting to seek real alpha.
+
+This is not a real backtesting engine, because we didn't focus on backtesting speed, having more technology analysis or fundamental analysis  indicators, 
+we give all these flexibility to end users, so yes, it is better to have more python experience.
+Instead,
+we are focusing on low frequent portfolio optimization and rebalancing to reduce cost and long term risk management, 
+because no one can predict the market tomorrow, but everyone can know what is the cost and what are the volatility of his/her portfolio,
+in another word, TiProtfolio is focusing on managing what you can manage, not what you cannot manage.
+
 
 > “More than 90% of the variability of a portfolio’s returns comes from asset allocation.”
 > 
