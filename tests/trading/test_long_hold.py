@@ -88,3 +88,5 @@ class TestLongHold(TestCase):
         for step in (first_step, step_mid, last_step):
             signal = strategy.execute(step)
             self.assertEqual(signal, TradingSignal.LONG)
+
+        print(strategy.after_all()[0].tail(100))
