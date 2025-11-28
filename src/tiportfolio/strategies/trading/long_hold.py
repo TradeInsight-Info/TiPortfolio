@@ -9,7 +9,7 @@ from ...portfolio.types import TradingSignal
 class LongHold(TradingAlgorithm):
 
     def __init__(self, symbol: str, prices: DataFrame) -> None:
-        config:TradingAlgorithmConfig = {"set_signal_back": False}
+        config:TradingAlgorithmConfig = {"set_signal_back": True}
         super().__init__("LongHold", symbol, config=config, prices=prices,)
 
     def before_all(self) -> None:  # type: ignore[override]
@@ -36,27 +36,3 @@ class LongHold(TradingAlgorithm):
 
         signal = TradingSignal.LONG
         return signal
-
-    def after_all(self) -> None:
-        """No-op post-run actions.
-
-        The long-hold strategy does not require any post-run processing, so we
-        simply honour the abstract hook from :class:`TradingAlgorithm`.
-        """
-
-        # fromt prices find how many long, hold, exit, short signals there were
-
-        if 'signal' not in self.prices_df.columns:
-            print(f"No signals were recorded in prices DataFrame for {self._symbol}.")
-            return
-
-        long_count = (self.prices_df['signal'] == TradingSignal.LONG.value).sum()
-        hold_count = (self.prices_df['signal'] == TradingSignal.HOLD.value).sum()
-        exit_count = (self.prices_df['signal'] == TradingSignal.EXIT.value).sum()
-        short_count = (self.prices_df['signal'] == TradingSignal.SHORT.value).sum()
-
-        print(f"LongHold Strategy Summary for {self._symbol}:")
-        print(f"  LONG signals: {long_count}")
-        print(f"  HOLD signals: {hold_count}")
-        print(f"  EXIT signals: {exit_count}")
-        print(f"  SHORT signals: {short_count}")
