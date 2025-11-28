@@ -2,9 +2,30 @@ from datetime import datetime, timedelta
 from typing import TypeVar, TypedDict, Optional, List
 
 from pandas import DataFrame
+from enum import Enum
 
 
-class BaseHistoryData(TypedDict):
+class TradingSignal(Enum):
+    """Canonical trading signal used by all strategies.
+
+    The enum encodes *intent* (long/short/flat/hold) rather than a concrete
+    position size.  Strategy implementations and allocation logic should work
+    with this enum directly instead of raw integers such as ``1``, ``0`` or
+    ``-1``.
+    """
+
+    LONG = 1
+    """Open or maintain a long position."""
+
+
+    EXIT = 0
+    """Exit to a flat position (no exposure)."""
+
+    SHORT = -1
+    """Open or maintain a short position."""
+
+
+class BaseHistoryData(TypedDict, total=False):
     prices: DataFrame  # DataFrame with price data, with columns['date'. 'open', 'high', 'low', 'close', 'volume', 'vmap']
 
 
