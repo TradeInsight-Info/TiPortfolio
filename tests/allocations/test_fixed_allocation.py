@@ -5,6 +5,7 @@ import pandas as pd
 
 from tiportfolio.strategies.allocation.half import FixedAllocation50_50
 from tiportfolio.portfolio.trading_algorithm import TradingAlgorithm
+from tiportfolio.portfolio.types import TradingSignal
 
 
 class DummyTradingAlgorithm(TradingAlgorithm[dict]):
@@ -14,12 +15,12 @@ class DummyTradingAlgorithm(TradingAlgorithm[dict]):
     exercise the public allocation API (walk_forward).
     """
 
-    def __init__(self, signal: int = 1) -> None:
+    def __init__(self, signal: TradingSignal = TradingSignal.LONG) -> None:
         super().__init__(name="dummy")
         self._signal = signal
 
-    def _analyse_next_signal(self, history_data: dict) -> int:  # type: ignore[override]
-        return int(self._signal)
+    def _run(self, history_data: dict) -> TradingSignal:  # type: ignore[override]
+        return self._signal
 
 
 class TestFixedAllocation50_50(TestCase):
@@ -90,18 +91,42 @@ class TestFixedAllocation50_50(TestCase):
             ],
         )
 
-        history = alloc.walk_forward()
+        portfolio_history = alloc.walk_forward()
 
         # Basic structure checks
-        self.assertFalse(history.empty)
-        self.assertIn("datetime", history.columns)
-        self.assertIn("signals", history.columns)
-        self.assertIn("target_weights", history.columns)
+        self.assertIsInstance(portfolio_history, list)
+        self.assertGreater(len(portfolio_history), 0)
 
-        # Every step should have 50/50 target weights
-        for weights in history["target_weights"]:
-            self.assertAlmostEqual(weights["A"], 0.5, places=6)
-            self.assertAlmostEqual(weights["B"], 0.5, places=6)
+        required_keys = {
+            "datetime",
+            "symbol",
+            "signal",
+            "price",
+            "value",
+            "quantity",
+            "fee_amount",
+            "avg_cost",
+            "unrealised_pnl",
+        }
+
+        for record in portfolio_history:
+            self.assertTrue(required_keys.issubset(record.keys()))
+
+        # Every step should have 50/50 target weights when aggregated per datetime
+        # using the notional values implied by the allocation engine.
+        by_datetime: dict = {}
+        for record in portfolio_history:
+            dt = record["datetime"]
+            by_datetime.setdefault(dt, {})[record["symbol"]] = record["value"]
+
+        for values in by_datetime.values():
+            total = sum(values.values())
+            if total == 0:
+                continue
+            weight_a = values["A"] / total
+            weight_b = values["B"] / total
+            self.assertAlmostEqual(weight_a, 0.5, places=6)
+            self.assertAlmostEqual(weight_b, 0.5, places=6)
 
     def test_monthly_rebalance_when_overweight(self) -> None:
         prices_a, prices_b = self._build_prices()

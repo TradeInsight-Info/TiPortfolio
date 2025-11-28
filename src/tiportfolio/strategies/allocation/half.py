@@ -3,7 +3,7 @@ from typing import List, Tuple, Dict
 
 from tiportfolio.portfolio.allocation import Allocation
 from tiportfolio.portfolio.trading_algorithm import TradingAlgorithm
-from tiportfolio.portfolio.types import HistoryDataExtension, PortfolioConfig
+from tiportfolio.portfolio.types import HistoryDataExtension, PortfolioConfig, TradingSignal
 
 
 class FixedAllocation50_50(Allocation[HistoryDataExtension]):
@@ -32,9 +32,9 @@ class FixedAllocation50_50(Allocation[HistoryDataExtension]):
     def __init__(
         self,
         config: PortfolioConfig,
-        data_and_strategies: List[Tuple[str, HistoryDataExtension, TradingAlgorithm[HistoryDataExtension]]],
+        strategies: List[Tuple[str, HistoryDataExtension, TradingAlgorithm[HistoryDataExtension]]],
     ) -> None:
-        super().__init__(config, data_and_strategies)
+        super().__init__(config, strategies)
 
         if len(self.data_and_strategies) != 2:
             raise ValueError(
@@ -95,7 +95,7 @@ class FixedAllocation50_50(Allocation[HistoryDataExtension]):
             return {symbol: 0.5 for symbol in self.symbols}
         return {symbol: self._current_values[symbol] / total for symbol in self.symbols}
 
-    def optimize_portfolio(self, current_step: datetime, signals: Dict[str, int]) -> Dict[str, float]:
+    def optimize_portfolio(self, current_step: datetime, signals: Dict[str, TradingSignal]) -> Dict[str, float]:
         """Return target 50/50 allocation with monthly rebalancing.
 
         ``signals`` are currently ignored; this allocator is purely
