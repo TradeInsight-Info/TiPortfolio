@@ -130,15 +130,14 @@ class TradingAlgorithm(ABC):
         self.prices_df["cumulative_pnl"] = self.prices_df["value"] - 1
 
         # Drawdown series and running maximum drawdown.
-        self.prices_df["drawdown"] = self.prices_df["value"] / self.prices_df["value"].cummax() - 1
+        self.prices_df["cummax"] = self.prices_df["value"].cummax()
+        self.prices_df["drawdown"] = self.prices_df["value"] / self.prices_df["cummax"] - 1
         self.prices_df["max_drawdown"] = self.prices_df["drawdown"].cummin()
 
         # MAR ratio: total return divided by absolute maximum drawdown. Use a
         # tiny epsilon to avoid division by zero.
         max_dd_abs = self.prices_df["max_drawdown"].abs().replace(0, 1e-10)
         self.prices_df["mar_ratio"] = self.prices_df["cumulative_pnl"] / max_dd_abs
-
-        # We don't calculate sharpe ratio here, because it requires risk-free rate and timeframe to calculate excess returns and annualization sharpe ratio, same to other annualized metrics
 
         summary = {
             "final_value": self.prices_df["value"].iloc[-1],
