@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import TypedDict, List, Optional, Tuple
+from typing import TypedDict, Optional, Tuple
 
 from pandas import DataFrame
 
@@ -9,25 +9,23 @@ from ..utils.constants import BASIC_REQUIRED_COLUMNS
 
 
 class TradingAlgorithmConfig(TypedDict, total=False):
-    set_signal_back: bool
+    set_signal_back: bool  # True by default
+
+
+class TradingAlgorithmStrategyResult(TypedDict):
+    final_value: float
+    total_return: float
+    max_drawdown: float
+    mar_ratio: float
 
 
 class TradingAlgorithm(ABC):
 
     def __init__(self, name: str, symbol: str, *, prices: DataFrame, config: TradingAlgorithmConfig = None,
                  **other_data: DataFrame, ) -> None:
-        """
-        Initialize Trading Strategy
-            Pass your extra data as keyword arguments
-        :param name:
-        :param symbol:
-        :param **kwargs: HistoryDataExtension | TradingAlgorithmConfig,
-                It must have 'prices' key with DataFrame containing at least ['open', 'high', 'low', 'close'] columns
-                We pass data frame in a mutable way to avoid copying large data frames for performance reasons
-        """
         self._name = name
         self._symbol = symbol
-        self._set_signal_back = config.get('set_signal_back', False)
+        self._set_signal_back = config.get('set_signal_back', True)
         for col in BASIC_REQUIRED_COLUMNS:
             if col not in prices.columns:
                 raise ValueError(f"Data['prices'] must have '{col}' column")
@@ -89,7 +87,7 @@ class TradingAlgorithm(ABC):
         """
         raise NotImplementedError("_analyse_next_signal method must be implemented by subclass")
 
-    def after_all(self) -> Optional[Tuple[DataFrame, dict]]:
+    def after_all(self) -> Optional[Tuple[DataFrame, TradingAlgorithmStrategyResult]]:
         """Compute basic performance statistics after a backtest run.
 
         The implementation assumes that ``execute`` has been called for
@@ -139,11 +137,11 @@ class TradingAlgorithm(ABC):
         max_dd_abs = self.prices_df["max_drawdown"].abs().replace(0, 1e-10)
         self.prices_df["mar_ratio"] = self.prices_df["cumulative_pnl"] / max_dd_abs
 
-        summary = {
-            "final_value": self.prices_df["value"].iloc[-1],
-            "total_return": self.prices_df["cumulative_pnl"].iloc[-1],
-            "max_drawdown": self.prices_df["max_drawdown"].min(),
-            "mar_ratio": self.prices_df["mar_ratio"].iloc[-1],
+        summary: TradingAlgorithmStrategyResult = {
+            "final_value": float(self.prices_df["value"].iloc[-1]),
+            "total_return": float(self.prices_df["cumulative_pnl"].iloc[-1]),
+            "max_drawdown": float(self.prices_df["max_drawdown"].min()),
+            "mar_ratio": float(self.prices_df["mar_ratio"].iloc[-1]),
         }
 
         return self.prices_df, summary
