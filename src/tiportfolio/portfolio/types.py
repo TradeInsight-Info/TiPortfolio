@@ -47,9 +47,4 @@ class FeesConfig(TypedDict):
     risk_free_rate: float
 
 
-class PortfolioConfig(TypedDict):
-    fees_config: FeesConfig
-    initial_capital: float
-    time_start: datetime
-    time_end: datetime
-    timeframe: timedelta
+
