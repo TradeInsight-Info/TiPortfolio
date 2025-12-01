@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pandas import DataFrame
 
-from ...portfolio.trading_algorithm import TradingAlgorithm, TradingAlgorithmConfig
+from tiportfolio.portfolio.trading_algorithm import TradingAlgorithm, TradingAlgorithmConfig
 from ...portfolio.types import TradingSignal
 
 

@@ -5,7 +5,7 @@ from datetime import datetime
 import pandas as pd
 from pandas import DataFrame
 
-from ...portfolio.trading_algorithm import TradingAlgorithm, TradingAlgorithmConfig
+from tiportfolio.portfolio.trading_algorithm import TradingAlgorithm, TradingAlgorithmConfig
 from ...portfolio.types import TradingSignal
 
 
