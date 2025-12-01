@@ -1,10 +1,31 @@
 from abc import ABC
 from datetime import datetime, timedelta
+from enum import Enum
 from typing import List
 
-from tiportfolio.portfolio.allocation import Allocation, PortfolioConfig, RebalanceFrequency
+from .allocation import Allocation, PortfolioConfig
 from tiportfolio.portfolio.trading_algorithm import TradingAlgorithm
 from tiportfolio.utils.get_next_market_datetime import get_next_market_open_day
+
+
+class RebalanceFrequency(Enum):
+    minutely = 'minutely'
+    hourly = 'hourly'
+    daily = 'daily'
+    every_monday = 'every_monday'
+    every_tuesday = 'every_tuesday'
+    every_wednesday = 'every_wednesday'
+    every_thursday = 'every_thursday'
+    every_friday = 'every_friday'
+    start_of_month = 'start_of_month'
+    mid_of_month = 'mid_of_month'
+    end_of_month = 'end_of_month'
+    start_of_quarter = 'start_of_quarter'
+    mid_of_quarter = 'mid_of_quarter'
+    end_of_quarter = 'end_of_quarter'
+    start_of_year = 'start_of_year'
+    mid_of_year = 'mid_of_year'
+    end_of_year = 'end_of_year'
 
 
 class FrequencyBasedAllocation(Allocation, ABC):
@@ -73,7 +94,6 @@ class FrequencyBasedAllocation(Allocation, ABC):
                 closest_open = get_next_market_open_day(day_in_middle, self.market_name)
                 return current_step.date() == closest_open.date() and matches_time(current_step)
             return False
-
 
             return current_step.month in (2, 5, 8, 11) and current_step.day == 15 and matches_time(current_step)
         elif self.rebalance_frequency == RebalanceFrequency.end_of_quarter:
