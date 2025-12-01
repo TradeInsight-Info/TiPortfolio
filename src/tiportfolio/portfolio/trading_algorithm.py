@@ -4,8 +4,8 @@ from typing import TypedDict, Optional, Tuple
 
 from pandas import DataFrame
 
-from .types import TradingSignal
-from ..utils.constants import BASIC_REQUIRED_COLUMNS
+from tiportfolio.portfolio.types import TradingSignal
+from tiportfolio.utils.constants import BASIC_REQUIRED_COLUMNS
 
 
 class TradingAlgorithmConfig(TypedDict, total=False):
