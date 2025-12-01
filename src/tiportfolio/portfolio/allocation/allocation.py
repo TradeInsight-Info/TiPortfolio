@@ -1,6 +1,5 @@
 import logging
 from abc import ABC, abstractmethod
-from enum import Enum
 from typing import Any, Dict, List, TypedDict, Optional
 
 from datetime import datetime
@@ -10,26 +9,6 @@ from tiportfolio.portfolio.types import FeesConfig
 from tiportfolio.utils.init_tz import init_tz
 
 init_tz()  # todo move to main entry point
-
-
-class RebalanceFrequency(Enum):
-    minutely = 'minutely'
-    hourly = 'hourly'
-    daily = 'daily'
-    every_monday = 'every_monday'
-    every_tuesday = 'every_tuesday'
-    every_wednesday = 'every_wednesday'
-    every_thursday = 'every_thursday'
-    every_friday = 'every_friday'
-    start_of_month = 'start_of_month'
-    mid_of_month = 'mid_of_month'
-    end_of_month = 'end_of_month'
-    start_of_quarter = 'start_of_quarter'
-    mid_of_quarter = 'mid_of_quarter'
-    end_of_quarter = 'end_of_quarter'
-    start_of_year = 'start_of_year'
-    mid_of_year = 'mid_of_year'
-    end_of_year = 'end_of_year'
 
 
 class PortfolioConfig(TypedDict):

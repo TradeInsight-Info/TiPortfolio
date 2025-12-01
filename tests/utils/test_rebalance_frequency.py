@@ -4,11 +4,11 @@ from unittest import TestCase
 
 import pandas as pd
 
-from tiportfolio.portfolio.allocation import (
-    RebalanceFrequency,
-    FrequencyBasedAllocation,
+from tiportfolio.portfolio.allocation.allocation import (
     PortfolioConfig,
 )
+from tiportfolio.portfolio.allocation.frequency_based_allocation import FrequencyBasedAllocation, RebalanceFrequency
+
 from tiportfolio.portfolio.trading_algorithm import TradingAlgorithm
 from tiportfolio.portfolio.types import TradingSignal
 

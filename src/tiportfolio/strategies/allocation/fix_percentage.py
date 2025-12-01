@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import List
 
-from tiportfolio.portfolio.allocation import Allocation
+from tiportfolio.portfolio.allocation.allocation import Allocation
 
 
 class FixPercentageAllocation(Allocation):
