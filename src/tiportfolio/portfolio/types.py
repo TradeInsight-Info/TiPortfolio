@@ -6,7 +6,7 @@ from enum import Enum
 
 
 class TradingSignal(Enum):
-    """Canonical trading signal used by all strategies.
+    """Canonical trading signal used by all strategy_library.
 
     The enum encodes *intent* (long/short/flat/hold) rather than a concrete
     position size.  Strategy implementations and allocation logic should work
@@ -44,7 +44,7 @@ class StrategyData(TypedDict):
 class FeesConfig(TypedDict):
     commission: float
     slippage: float
-    risk_free_rate: float
+
 
 
 

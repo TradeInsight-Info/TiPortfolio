@@ -122,7 +122,7 @@ class SMACross(TradingAlgorithm):
         exit_count = (self.prices_df["signal"] == TradingSignal.EXIT.value).sum()
         short_count = (self.prices_df["signal"] == TradingSignal.SHORT.value).sum()
 
-        print(f"SMACross Strategy Summary for {self._symbol} ({self.short_window},{self.long_window}):")
+        print(f"SMACross Strategy Summary for {self.symbol} ({self.short_window},{self.long_window}):")
         print(f"  LONG signals: {long_count}")
         print(f"  EXIT signals: {exit_count}")
         print(f"  SHORT signals: {short_count}")

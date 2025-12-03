@@ -31,7 +31,7 @@ class LongHold(TradingAlgorithm):
             this strategy since it is unconditional.
         step:
             Current timestamp of the backtest/run. Present for API
-            consistency with other strategies and ignored here.
+            consistency with other strategy_library and ignored here.
         """
 
         signal = TradingSignal.LONG

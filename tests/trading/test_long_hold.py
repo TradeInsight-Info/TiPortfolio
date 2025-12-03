@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 from pathlib import Path
 
-from tiportfolio.strategies.trading.long_hold import LongHold
+from tiportfolio.strategy_library.trading.long_hold import LongHold
 from tiportfolio.portfolio.types import TradingSignal
 
 HERE = Path(__file__).resolve().parent
@@ -55,7 +55,7 @@ class TestLongHold(TestCase):
         """Ensure LongHold works with the real-world AAPL OHLCV dataset.
 
         This uses tests/data/aapl.csv, converts it to the canonical history
-        format expected by strategies (DateTimeIndex, OHLCV columns), and
+        format expected by strategy_library (DateTimeIndex, OHLCV columns), and
         verifies that:
 
         * execute() always returns a long (1) signal; and

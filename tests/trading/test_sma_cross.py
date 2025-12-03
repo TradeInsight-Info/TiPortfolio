@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 import pandas as pd
 
-from tiportfolio.strategies.trading.sma_cross import SMACross
+from tiportfolio.strategy_library.trading.sma_cross import SMACross
 from tiportfolio.portfolio.types import TradingSignal
 
 HERE = Path(__file__).resolve().parent

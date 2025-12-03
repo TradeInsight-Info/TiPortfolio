@@ -34,7 +34,7 @@ class Allocation(ABC):
         self.strategies: List[TradingAlgorithm] = list(
             strategies
         )
-        self.time_index = self.strategies[0].prices_df.index  # we assume all strategies have the same time index
+        self.all_steps = self.strategies[0].all_steps  # we assume all strategies have the same time index
         self.portfolio_df: DataFrame = DataFrame(
             columns=[
                 "signal",
@@ -53,10 +53,10 @@ class Allocation(ABC):
 
 
     def is_first_step(self, current_step: Timestamp) -> bool:
-        return current_step == self.time_index[0]
+        return current_step == self.all_steps[0]
 
     def is_last_step(self, current_step: Timestamp) -> bool:
-        return current_step == self.time_index[-1]
+        return current_step == self.all_steps[-1]
 
 
     def get_portfolio_snapshot(self, step: Timestamp) -> DataFrame:
@@ -82,13 +82,20 @@ class Allocation(ABC):
         return quantity
 
 
+    def get_metrics(self):
+        # user self.portfolio_df to calculate metrics like total return, max drawdown, etc.
+        pass
+
+
+
+
 
 
     def walk_forward(self) -> None:
-        if not self.time_index:
+        if self.all_steps.empty:
             raise ValueError("No price data available in the specified time window")
 
-        for current_step in self.time_index:
+        for current_step in self.all_steps:
 
             for strategy in self.strategies:
                 signal_for_current_step = strategy.execute(current_step)
