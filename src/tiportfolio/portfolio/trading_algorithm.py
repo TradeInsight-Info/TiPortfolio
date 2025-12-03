@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
-from datetime import datetime
 from typing import TypedDict, Optional, Tuple
 
-from pandas import DataFrame
+from pandas import DataFrame, Timestamp, DatetimeIndex
 
 from tiportfolio.portfolio.types import TradingSignal
 from tiportfolio.utils.constants import BASIC_REQUIRED_COLUMNS
@@ -21,51 +20,75 @@ class TradingAlgorithmStrategyResult(TypedDict):
 
 class TradingAlgorithm(ABC):
 
-    def __init__(self, name: str, symbol: str, *, prices: DataFrame, config: TradingAlgorithmConfig = None,
-                 **other_data: DataFrame, ) -> None:
-        self._name = name
-        self._symbol = symbol
-        self._set_signal_back = config.get('set_signal_back', True)
+    def __init__(self,
+                 name: str,
+                 symbol: str, *,
+                 prices: DataFrame,
+                 config: TradingAlgorithmConfig = None,
+                 **other_data: DataFrame,
+                 ) -> None:
+        self.name = name
+        self.symbol = symbol
+        self.set_signal_back = config.get('set_signal_back', True)
         for col in BASIC_REQUIRED_COLUMNS:
             if col not in prices.columns:
                 raise ValueError(f"Data['prices'] must have '{col}' column")
 
-        self._prices: DataFrame = prices
+        self.prices: DataFrame = prices
+
+        if self.prices.empty:
+            raise ValueError("Data['prices'] is empty")
+
+        if 'date' not in self.prices.columns and 'datetime' in self.prices.columns:
+            self.prices.rename(columns={'datetime': 'date'}, inplace=True)
+
+        if self.prices.index.name != 'date' and 'date' in self.prices.columns:
+            self.prices.set_index('date', inplace=True)
+
+
+
+        if self.prices.index.name != 'date' or not isinstance(self.prices.index, DatetimeIndex):
+            raise ValueError("Data['prices'] index must be named 'date' and be of type DatetimeIndex")
+
         self.before_all()
 
     def __str__(self) -> str:
-        return f"Strategy({self._name} - {self._symbol})"
+        return f"{self.name} - {self.symbol}"
 
     def __hash__(self) -> int:
-        return hash(self._name + self._symbol)
+        return hash(self.name + self.symbol)
 
     @property
-    def strategy_name(self) -> str:
+    def unique_name(self) -> str:
         return self.__str__()
 
     @property
     def prices_df(self) -> DataFrame:
-        return self._prices
+        return self.prices
 
-    def _set_signal_back_to_prices_df(self, step: datetime, signal: TradingSignal) -> None:
+    @property
+    def all_steps(self) -> DatetimeIndex:
+        return self.prices.index
+
+    def _set_signal_back_to_prices_df(self, step: Timestamp, signal: TradingSignal) -> None:
         """
         Post run actions after each _get_signal step is complete
         We can update the column 'signal' in the prices DataFrame here
         :return: None
         """
-        self._prices.loc[step, 'signal'] = signal.value
+        self.prices.loc[step, 'signal'] = signal.value
 
-    def execute(self, step: datetime) -> TradingSignal:
+    def execute(self, step: Timestamp) -> TradingSignal:
         """
         Generate trading signals using the strategy function
         :param step: datetime
         :return: TradingSignal
         """
         signal = self._run(
-            self._prices.loc[:step],  # we use the loc to avoid look-ahead bias
+            self.prices.loc[:step],  # we use the loc to avoid look-ahead bias
             step,
         )
-        if self._set_signal_back:
+        if self.set_signal_back:
             self._set_signal_back_to_prices_df(step, signal)
         return signal
 
@@ -79,7 +102,7 @@ class TradingAlgorithm(ABC):
         pass
 
     @abstractmethod
-    def _run(self, history_prices: DataFrame, step: datetime, ) -> TradingSignal:
+    def _run(self, history_prices: DataFrame, step: Timestamp) -> TradingSignal:
         """
         Analyse History Data and Predict Next Signal (Current Time)
         :param history_data: HistoryDataExtension
@@ -104,7 +127,7 @@ class TradingAlgorithm(ABC):
 
         if "signal" not in self.prices_df.columns:
             # Nothing to evaluate – the strategy never populated signals.
-            print(f"No signals were recorded in prices DataFrame for {self._symbol}.")
+            print(f"No signals were recorded in prices DataFrame for {self.symbol}.")
             return None
 
         # --- Per-period PnL and equity curve ---------------------------------
