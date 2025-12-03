@@ -2,8 +2,10 @@ import pandas as pd
 import pandas_market_calendars as mcal
 from datetime import datetime
 
+from pandas import Timestamp
 
-def get_previous_market_open_day(dt: datetime, market_name: str = 'NYSE') -> pd.Timestamp:
+
+def get_previous_market_open_day(dt: datetime, market_name: str = 'NYSE') -> Timestamp:
     """Return the most recent market open strictly before ``dt`` for the given market."""
     ts = pd.Timestamp(dt)
     calendar = mcal.get_calendar(market_name)
