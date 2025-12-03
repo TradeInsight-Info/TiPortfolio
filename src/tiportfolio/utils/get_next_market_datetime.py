@@ -2,8 +2,10 @@ import pandas as pd
 import pandas_market_calendars as mcal
 from datetime import datetime, timedelta
 
+from pandas import Timestamp
 
-def get_next_market_open_day(dt: datetime, market_name: str = 'NYSE') -> pd.Timestamp:
+
+def get_next_market_open_day(dt: datetime, market_name: str = 'NYSE') -> Timestamp:
     ts = pd.Timestamp(dt)  # convert to pandas Timestamp for consistent ops
     nyse = mcal.get_calendar(market_name)
 
