@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import List, TypedDict, Optional
+from typing import List, TypedDict, Optional, Mapping
 
 from datetime import datetime
 
@@ -49,6 +49,7 @@ class Allocation(ABC):
             ],
             index=MultiIndex.from_arrays([[], []], names=["datetime", "strategy_unique_name"]),
         )
+        self.strategy_quantity_map: Mapping[Timestamp, dict] = {}
 
     def is_first_step(self, current_step: Timestamp) -> bool:
         return current_step == self.all_steps[0]
@@ -89,16 +90,6 @@ class Allocation(ABC):
                 signal_for_current_step = strategy.execute(current_step)
                 logging.debug(
                     f"At {current_step}, Strategy {strategy.unique_name} generated signal: {signal_for_current_step}")
-
-                price_row = strategy.prices_df.loc[current_step]
-                idx = (current_step, strategy.unique_name)
-                self.portfolio_df.loc[idx, ['open', 'high', 'low', 'close', 'signal']] = [
-                    price_row['open'],
-                    price_row['high'],
-                    price_row['low'],
-                    price_row['close'],
-                    signal_for_current_step.value,
-                ]
             if self.is_time_to_rebalance(current_step):
                 self.rebalance(current_step)
 

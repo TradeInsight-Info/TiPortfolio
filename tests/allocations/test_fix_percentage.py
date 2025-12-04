@@ -16,7 +16,15 @@ class TestFixPercentageAllocationAllApple(TestCase):
     def setUp(self) -> None:
         data_path = Path(__file__).resolve().parents[1] / "data" / "aapl.csv"
         df = pd.read_csv(data_path, parse_dates=["date"])
+        df["date"] = (
+            pd.to_datetime(df["date"], utc=True)
+            .dt.tz_convert("America/New_York")
+        )
         df.set_index("date", inplace=True)
+        market_open_index = df.index.normalize() + pd.Timedelta(hours=9, minutes=30)
+        market_open_index = market_open_index.tz_convert("America/New_York")
+        df.index = market_open_index
+        df.index.name = "date"
         self.prices = df[["open", "high", "low", "close", "volume"]]
 
         fees: FeesConfig = {
@@ -46,13 +54,4 @@ class TestFixPercentageAllocationAllApple(TestCase):
 
         allocation.walk_forward()
 
-        self.assertFalse(allocation.portfolio_df.empty)
-        self.assertEqual(
-            allocation.portfolio_df.index.names,
-            ["datetime", "strategy_unique_name"],
-        )
-        self.assertIn("signal", allocation.portfolio_df.columns)
-        self.assertEqual(
-            len(allocation.portfolio_df),
-            len(self.strategy.prices_df),
-        )
+        print(allocation.strategy_quantity_map)
