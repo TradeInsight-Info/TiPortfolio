@@ -40,65 +40,12 @@ class FixPercentageFrequencyBasedAllocation(FrequencyBasedAllocation):
         return super().is_time_to_rebalance(current_step)
 
     def rebalance(self, current_step: Timestamp) -> None:
+        for i in range(len(self.strategies)):
+            strategy = self.strategies[i]
+            target_allocation = self.allocation_percentages[i]
+            target_value = self.config.get('initial_capital') * target_allocation
 
-        if self.is_first_step(current_step):
-            # On the first step, we set initial allocations directly
-            for i in range(len(self.strategies)):
-                strategy = self.strategies[i]
-                target_allocation = self.allocation_percentages[i]
+            close_price = strategy.prices_df.loc[current_step, 'close']
+            target_quantity = target_value / close_price
 
-                idx = (current_step, strategy.unique_name)
-
-                value = self.config.get('initial_capital') * target_allocation
-                cost = float(strategy.prices_df.loc[current_step, 'close'])
-                quantity = value / cost
-                fees = value * self.config.get('fees_config', {}).get('commission', 0.0001)
-                cost_basis = value + fees
-
-                self.portfolio_df.loc[idx, 'value'] = value
-                self.portfolio_df.loc[idx, 'quantity'] = quantity
-                self.portfolio_df.loc[idx, 'fees'] = fees
-                self.portfolio_df.loc[idx, 'cost_basis'] = cost_basis
-
-        else:
-            for i in range(len(self.strategies)):
-                strategy = self.strategies[i]
-                target_allocation = self.allocation_percentages[i]
-
-                idx = (current_step, strategy.unique_name)
-
-                previous_step = get_previous_market_open_day(current_step)
-
-                # get previous snapshot
-                previous_snapshot = self.get_portfolio_snapshot(previous_step)
-                total_portfolio_value = self.get_total_portfolio_value(previous_step)
-                new_target_value = total_portfolio_value * target_allocation
-
-                value_diff = new_target_value - previous_snapshot.loc[strategy.unique_name, 'value']
-
-                if abs(value_diff) < 1e-6 or value_diff == 0:
-                    continue  # No change needed
-
-                elif value_diff > 0:
-                    # Need to buy more
-                    cost = float(strategy.prices_df.loc[current_step, 'close'])
-                    quantity_to_buy = value_diff / cost
-                    fees = value_diff * self.config.get('fees_config', {}).get('commission', 0.0001)
-
-                    new_quantity = previous_snapshot.loc[strategy.unique_name, 'quantity'] + quantity_to_buy
-                    new_value = previous_snapshot.loc[strategy.unique_name, 'value'] + value_diff
-                    new_cost_basis = previous_snapshot.loc[strategy.unique_name, 'cost_basis'] + value_diff + fees
-                else:
-                    # Need to sell
-                    cost = float(strategy.prices_df.loc[current_step, 'close'])
-                    quantity_to_sell = -value_diff / cost
-                    fees = -value_diff * self.config.get('fees_config', {}).get('commission', 0.0001)
-
-                    new_quantity = previous_snapshot.loc[strategy.unique_name, 'quantity'] - quantity_to_sell
-                    new_value = previous_snapshot.loc[strategy.unique_name, 'value'] + value_diff
-                    new_cost_basis = previous_snapshot.loc[strategy.unique_name, 'cost_basis'] + value_diff + fees
-
-                self.portfolio_df.loc[idx, 'value'] = new_value
-                self.portfolio_df.loc[idx, 'quantity'] = new_quantity
-                self.portfolio_df.loc[idx, 'fees'] = fees
-                self.portfolio_df.loc[idx, 'cost_basis'] = new_cost_basis
+            self.strategy_quantity_map.setdefault(current_step, {})[strategy.unique_name] = target_quantity
