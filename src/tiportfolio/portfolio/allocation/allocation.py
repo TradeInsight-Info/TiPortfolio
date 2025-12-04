@@ -50,14 +50,11 @@ class Allocation(ABC):
             index=MultiIndex.from_arrays([[], []], names=["datetime", "strategy_unique_name"]),
         )
 
-
-
     def is_first_step(self, current_step: Timestamp) -> bool:
         return current_step == self.all_steps[0]
 
     def is_last_step(self, current_step: Timestamp) -> bool:
         return current_step == self.all_steps[-1]
-
 
     def get_portfolio_snapshot(self, step: Timestamp) -> DataFrame:
         if step not in self.portfolio_df.index.get_level_values(0):
@@ -66,12 +63,10 @@ class Allocation(ABC):
         snapshot = self.portfolio_df.xs(step, level='datetime')
         return snapshot
 
-
     def get_total_portfolio_value(self, step: Timestamp) -> float:
         snapshot = self.get_portfolio_snapshot(step)
         total_value = snapshot['value'].sum()
         return total_value
-
 
     def get_quantity(self, step: Timestamp, strategy_unique_name: str) -> float:
         idx = (step, strategy_unique_name)
@@ -81,22 +76,15 @@ class Allocation(ABC):
         quantity = self.portfolio_df.loc[idx, 'quantity']
         return quantity
 
-
     def get_metrics(self):
         # user self.portfolio_df to calculate metrics like total return, max drawdown, etc.
         pass
-
-
-
-
-
 
     def walk_forward(self) -> None:
         if self.all_steps.empty:
             raise ValueError("No price data available in the specified time window")
 
         for current_step in self.all_steps:
-
             for strategy in self.strategies:
                 signal_for_current_step = strategy.execute(current_step)
                 logging.debug(
@@ -104,13 +92,13 @@ class Allocation(ABC):
 
                 price_row = strategy.prices_df.loc[current_step]
                 idx = (current_step, strategy.unique_name)
-                self.portfolio_df.loc[idx] = {
-                    'open': price_row['open'],
-                    'high': price_row['high'],
-                    'low': price_row['low'],
-                    'close': price_row['close'],
-                    'signal': signal_for_current_step.value,
-                }
+                self.portfolio_df.loc[idx, ['open', 'high', 'low', 'close', 'signal']] = [
+                    price_row['open'],
+                    price_row['high'],
+                    price_row['low'],
+                    price_row['close'],
+                    signal_for_current_step.value,
+                ]
             if self.is_time_to_rebalance(current_step):
                 self.rebalance(current_step)
 

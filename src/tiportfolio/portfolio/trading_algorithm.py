@@ -45,8 +45,6 @@ class TradingAlgorithm(ABC):
         if self.prices.index.name != 'date' and 'date' in self.prices.columns:
             self.prices.set_index('date', inplace=True)
 
-
-
         if self.prices.index.name != 'date' or not isinstance(self.prices.index, DatetimeIndex):
             raise ValueError("Data['prices'] index must be named 'date' and be of type DatetimeIndex")
 
@@ -84,10 +82,11 @@ class TradingAlgorithm(ABC):
         :param step: datetime
         :return: TradingSignal
         """
-        signal = self._run(
-            self.prices.loc[:step],  # we use the loc to avoid look-ahead bias
-            step,
-        )
+        idx = self.prices.index.get_loc(step)
+        if isinstance(idx, slice):
+            idx = idx.stop - 1
+        history = self.prices.iloc[:idx]
+        signal = self._run(history, step)
         if self.set_signal_back:
             self._set_signal_back_to_prices_df(step, signal)
         return signal
