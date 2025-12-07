@@ -40,9 +40,7 @@ class FixRatioFrequencyBasedAllocation(FrequencyBasedAllocation):
 
     def rebalance(self, current_step: Timestamp) -> None:
         for i in range(len(self.strategies)):
-            self.strategy_quantity_map[
-                (current_step, str(self.strategies[i]))
-            ] = self.allocation_percentages[i]
+            self.strategy_ratio_map[(current_step, str(self.strategies[i]))] = self.allocation_percentages[i]
 
 
 

@@ -53,10 +53,7 @@ class TestFixRatioAllocationAllApple(TestCase):
         )
 
         allocation.walk_forward()
-
-        print(allocation.strategy_quantity_map)
-
-        strategy_quantity_map = allocation.strategy_quantity_map
+        strategy_quantity_map = allocation.strategy_ratio_map
 
         # all step should be in middle of month
         """Sample Response
