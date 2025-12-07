@@ -41,6 +41,7 @@ def _build_allocation(freq: RebalanceFrequency) -> DummyFrequencyAllocation:
         },
         index=dates,
     )
+    prices.index.name = "date"
 
     # Pass an empty config dict so that TradingAlgorithm does not attempt to
     # access attributes on ``None``.
