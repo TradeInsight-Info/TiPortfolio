@@ -14,8 +14,18 @@ class TestLongHold(TestCase):
 
     def test_long_hold_execute_always_long(self):
         # Prepare minimal prices DataFrame – we only need the required OHLC
-        # columns, and can keep it empty for this smoke test.
-        prices = pd.DataFrame(columns=["open", "high", "low", "close"])
+        # columns, with at least one row of data.
+        dates = pd.to_datetime(["2024-01-01"])
+        prices = pd.DataFrame(
+            {
+                "open": [1.0],
+                "high": [1.1],
+                "low": [0.9],
+                "close": [1.05],
+            },
+            index=dates,
+        )
+        prices.index.name = "date"
 
         strategy = LongHold("AAPL", prices)
         # Use execute to generate the signal (testing public API).
@@ -28,7 +38,9 @@ class TestLongHold(TestCase):
 
     def test_long_hold_execute_returns_long_and_slices_history(self):
         # Create a simple prices DataFrame with a DateTimeIndex
-        dates = pd.to_datetime(["2024-01-01", "2024-01-02", "2024-01-03"])  # type: ignore[list-item]
+        dates = pd.to_datetime(
+            ["2024-01-01", "2024-01-02", "2024-01-03"]
+        )  # type: ignore[list-item]
         df = pd.DataFrame(
             {
                 "open": [1.0, 2.0, 3.0],
@@ -39,6 +51,7 @@ class TestLongHold(TestCase):
             },
             index=dates,
         )
+        df.index.name = "date"
 
         strategy = LongHold("AAPL", df)
         # Call execute at each available step to confirm stability of the
@@ -68,8 +81,9 @@ class TestLongHold(TestCase):
         # Normalise into the standard prices DataFrame shape used elsewhere
         # in the tests: DateTimeIndex and the OHLCV columns.
         df = df_raw.copy()
-        df["date"] = pd.to_datetime(df["date"])
+        df["date"] = pd.to_datetime(df["date"], utc=True)
         df.set_index("date", inplace=True)
+        df.index.name = "date"
 
         prices = df[["open", "high", "low", "close", "volume"]]
 

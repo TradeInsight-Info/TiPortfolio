@@ -49,7 +49,11 @@ class FrequencyBasedAllocation(Allocation, ABC):
         self.rebalance_second = 0
 
     def is_time_to_rebalance(self, current_step: Timestamp) -> bool:
-        dt = current_step.to_pydatetime()
+        # Handle both pandas Timestamp and plain datetime objects
+        if isinstance(current_step, datetime):
+            dt = current_step
+        else:
+            dt = current_step.to_pydatetime()
 
         def matches_time(ts: datetime) -> bool:
             return ts.hour == self.rebalance_hour and ts.minute == self.rebalance_minute and ts.second == 0
@@ -59,66 +63,64 @@ class FrequencyBasedAllocation(Allocation, ABC):
         elif self.rebalance_frequency == RebalanceFrequency.hourly:
             return dt.minute == 0 and dt.second == 0
         elif self.rebalance_frequency == RebalanceFrequency.daily:
-            return matches_time(current_step)
+            return matches_time(dt)
         elif self.rebalance_frequency == RebalanceFrequency.every_monday:
-            return dt.weekday() == 0 and matches_time(current_step)
+            return dt.weekday() == 0 and matches_time(dt)
         elif self.rebalance_frequency == RebalanceFrequency.every_tuesday:
-            return dt.weekday() == 1 and matches_time(current_step)
+            return dt.weekday() == 1 and matches_time(dt)
         elif self.rebalance_frequency == RebalanceFrequency.every_wednesday:
-            return dt.weekday() == 2 and matches_time(current_step)
+            return dt.weekday() == 2 and matches_time(dt)
         elif self.rebalance_frequency == RebalanceFrequency.every_thursday:
-            return dt.weekday() == 3 and matches_time(current_step)
+            return dt.weekday() == 3 and matches_time(dt)
         elif self.rebalance_frequency == RebalanceFrequency.every_friday:
-            return dt.weekday() == 4 and matches_time(current_step)
+            return dt.weekday() == 4 and matches_time(dt)
         elif self.rebalance_frequency == RebalanceFrequency.start_of_month:
             first_day = dt.replace(day=1)
             closest_open = get_next_market_open_day(first_day, self.market_name)
-            return dt.date() == closest_open.date() and matches_time(current_step)
+            return dt.date() == closest_open.date() and matches_time(dt)
         elif self.rebalance_frequency == RebalanceFrequency.mid_of_month:
             mid_day = dt.replace(day=15)
             closest_open = get_next_market_open_day(mid_day, self.market_name)
-            return dt.date() == closest_open.date() and matches_time(current_step)
+            return dt.date() == closest_open.date() and matches_time(dt)
         elif self.rebalance_frequency == RebalanceFrequency.end_of_month:
             # approximate by calendar month end
             first_next_month = (dt.replace(day=28) + timedelta(days=4)).replace(day=1)
             day_in_end = first_next_month - timedelta(days=1)
             # use calendar month end check (may differ from last trading day)
-            return dt.date() == day_in_end.date() and matches_time(current_step)
+            return dt.date() == day_in_end.date() and matches_time(dt)
         elif self.rebalance_frequency == RebalanceFrequency.start_of_quarter:
             day_in_beginning = dt.replace(day=1)
             if dt.month in (1, 4, 7, 10):
                 closest_open = get_next_market_open_day(day_in_beginning, self.market_name)
-                return dt.date() == closest_open.date() and matches_time(current_step)
+                return dt.date() == closest_open.date() and matches_time(dt)
             return False
         elif self.rebalance_frequency == RebalanceFrequency.mid_of_quarter:
 
             day_in_middle = dt.replace(day=14)
             if dt.month in (2, 5, 8, 11):
                 closest_open = get_next_market_open_day(day_in_middle, self.market_name)
-                return dt.date() == closest_open.date() and matches_time(current_step)
+                return dt.date() == closest_open.date() and matches_time(dt)
             return False
-
-            return dt.month in (2, 5, 8, 11) and dt.day == 15 and matches_time(current_step)
         elif self.rebalance_frequency == RebalanceFrequency.end_of_quarter:
             # end of quarter months: 3, 6, 9, 12
             first_next_month = (dt.replace(day=28) + timedelta(days=4)).replace(day=1)
             day_in_end = first_next_month - timedelta(days=1)
             return dt.month in (3, 6, 9,
                                 12) and dt.date() == day_in_end.date() and matches_time(
-                current_step)
+                dt)
         elif self.rebalance_frequency == RebalanceFrequency.start_of_year:
             first_day = dt.replace(month=1, day=1)
             closest_open = get_next_market_open_day(first_day, self.market_name)
-            return dt.date() == closest_open.date() and matches_time(current_step)
+            return dt.date() == closest_open.date() and matches_time(dt)
         elif self.rebalance_frequency == RebalanceFrequency.mid_of_year:
             # use July 1 as mid-year
             mid_year = dt.replace(month=7, day=1)
             closest_open = get_next_market_open_day(mid_year, self.market_name)
-            return dt.date() == closest_open.date() and matches_time(current_step)
+            return dt.date() == closest_open.date() and matches_time(dt)
         elif self.rebalance_frequency == RebalanceFrequency.end_of_year:
             first_next_year = dt.replace(month=12, day=28) + timedelta(days=4)
             first_of_next_year = first_next_year.replace(month=1, day=1)
             day_in_end = first_of_next_year - timedelta(days=1)
-            return dt.date() == day_in_end.date() and matches_time(current_step)
+            return dt.date() == day_in_end.date() and matches_time(dt)
 
         return False
