@@ -90,7 +90,7 @@ class StaticScope:
 
     def set_indicator(self, indicator):
         """Stores :class:`tibacktester.indicator.Indicator` in static scope."""
-        self._indicators[indicator.name] = indicator
+        self._indicators[indicator.strategy_name] = indicator
 
     def has_indicator(self, name: str) -> bool:
         """Whether :class:`tibacktester.indicator.Indicator` is stored in static
@@ -114,7 +114,7 @@ class StaticScope:
 
     def set_model_source(self, source):
         """Stores :class:`tibacktester.model.ModelSource` in static scope."""
-        self._model_sources[source.name] = source
+        self._model_sources[source.strategy_name] = source
 
     def has_model_source(self, name: str) -> bool:
         """Whether :class:`tibacktester.model.ModelSource` is stored in static

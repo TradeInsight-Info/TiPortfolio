@@ -18,7 +18,7 @@ class SMACross(TradingAlgorithm):
 
     def __init__(
             self,
-            symbol: str,
+            stock_symbol: str,
             prices: DataFrame,
             short_window: int = 10,
             long_window: int = 20,
@@ -38,7 +38,7 @@ class SMACross(TradingAlgorithm):
 
         super().__init__(
             f"SMACross({short_window},{long_window})",
-            symbol,
+            stock_symbol,
             config=config,
             prices=prices,
         )
@@ -53,12 +53,12 @@ class SMACross(TradingAlgorithm):
         to the current ``step``.
         """
 
-        closes = self.prices_df["close"].astype(float)
-        self.prices_df["sma_short"] = closes.rolling(
+        closes = self.dataframe["close"].astype(float)
+        self.dataframe["sma_short"] = closes.rolling(
             window=self.short_window,
             min_periods=self.short_window,
         ).mean()
-        self.prices_df["sma_long"] = closes.rolling(
+        self.dataframe["sma_long"] = closes.rolling(
             window=self.long_window,
             min_periods=self.long_window,
         ).mean()
@@ -115,14 +115,14 @@ class SMACross(TradingAlgorithm):
         the printed output.
         """
 
-        if "signal" not in self.prices_df.columns:
+        if "signal" not in self.dataframe.columns:
             return
 
-        long_count = (self.prices_df["signal"] == TradingSignal.LONG.value).sum()
-        exit_count = (self.prices_df["signal"] == TradingSignal.EXIT.value).sum()
-        short_count = (self.prices_df["signal"] == TradingSignal.SHORT.value).sum()
+        long_count = (self.dataframe["signal"] == TradingSignal.LONG.value).sum()
+        exit_count = (self.dataframe["signal"] == TradingSignal.EXIT.value).sum()
+        short_count = (self.dataframe["signal"] == TradingSignal.SHORT.value).sum()
 
-        print(f"SMACross Strategy Summary for {self.symbol} ({self.short_window},{self.long_window}):")
+        print(f"SMACross Strategy Summary for {self.symbol_stock} ({self.short_window},{self.long_window}):")
         print(f"  LONG signals: {long_count}")
         print(f"  EXIT signals: {exit_count}")
         print(f"  SHORT signals: {short_count}")

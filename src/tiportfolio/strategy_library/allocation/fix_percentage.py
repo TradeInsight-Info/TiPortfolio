@@ -45,7 +45,7 @@ class FixPercentageFrequencyBasedAllocation(FrequencyBasedAllocation):
             target_allocation = self.allocation_percentages[i]
             target_value = self.config.get('initial_capital') * target_allocation
 
-            close_price = strategy.prices_df.loc[current_step, 'close']
+            close_price = strategy.dataframe.loc[current_step, 'close']
             target_quantity = target_value / close_price
 
-            self.strategy_quantity_map.setdefault(current_step, {})[strategy.unique_name] = target_quantity
+            self.strategy_quantity_map.setdefault(current_step, {})[strategy.name] = target_quantity

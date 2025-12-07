@@ -39,7 +39,7 @@ class TestFixPercentageAllocationAllApple(TestCase):
         }
 
         self.strategy = LongHold(
-            symbol="AAPL",
+            stock_symbol="AAPL",
             prices=self.prices.copy(),
         )
 
