@@ -53,8 +53,8 @@ class Trading(ABC):
     def __str__(self) -> str:
         return f"{self.strategy_name} - {self.symbol_stock}"
 
-    def __hash__(self) -> str:
-        return self.__str__()
+    def __hash__(self) -> int:
+        return hash(self.__str__())
 
     @property
     def name(self) -> str:
