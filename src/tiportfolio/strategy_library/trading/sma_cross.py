@@ -5,11 +5,11 @@ from datetime import datetime
 import pandas as pd
 from pandas import DataFrame
 
-from tiportfolio.portfolio.trading_algorithm import TradingAlgorithm, TradingAlgorithmConfig
+from tiportfolio.portfolio.trading import Trading, TradingAlgorithmConfig
 from ...portfolio.types import TradingSignal
 
 
-class SMACross(TradingAlgorithm):
+class SMACross(Trading):
     """
     Simple Moving Average (SMA) Crossover strategy.
 

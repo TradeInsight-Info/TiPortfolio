@@ -6,7 +6,7 @@ from typing import List
 from pandas import Timestamp
 
 from .allocation import Allocation, PortfolioConfig
-from tiportfolio.portfolio.trading_algorithm import TradingAlgorithm
+from tiportfolio.portfolio.trading import Trading
 from tiportfolio.utils.get_next_market_datetime import get_next_market_open_day
 
 
@@ -35,7 +35,7 @@ class FrequencyBasedAllocation(Allocation, ABC):
     def __init__(
             self,
             config: PortfolioConfig,
-            strategies: List[TradingAlgorithm],
+            strategies: List[Trading],
             rebalance_frequency: RebalanceFrequency,
             market_name: str = 'NYSE',
             hour: int = 9,
