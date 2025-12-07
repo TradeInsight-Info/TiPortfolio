@@ -7,7 +7,7 @@ from tiportfolio.portfolio.allocation.frequency_based_allocation import (
     FrequencyBasedAllocation,
     RebalanceFrequency,
 )
-from tiportfolio.portfolio.trading_algorithm import TradingAlgorithm
+from tiportfolio.portfolio.trading import Trading
 from tiportfolio.utils.get_previous_market_datetime import get_previous_market_open_day
 
 
@@ -16,7 +16,7 @@ class FixPercentageFrequencyBasedAllocation(FrequencyBasedAllocation):
     def __init__(
             self,
             config: PortfolioConfig,
-            strategies: List[TradingAlgorithm],
+            strategies: List[Trading],
             allocation_percentages: List[float],
             rebalance_frequency: RebalanceFrequency,
             market_name: str = 'NYSE',

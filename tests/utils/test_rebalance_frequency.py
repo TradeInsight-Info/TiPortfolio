@@ -9,11 +9,11 @@ from tiportfolio.portfolio.allocation.allocation import (
 )
 from tiportfolio.portfolio.allocation.frequency_based_allocation import FrequencyBasedAllocation, RebalanceFrequency
 
-from tiportfolio.portfolio.trading_algorithm import TradingAlgorithm
+from tiportfolio.portfolio.trading import Trading
 from tiportfolio.portfolio.types import TradingSignal
 
 
-class DummyStrategy(TradingAlgorithm):
+class DummyStrategy(Trading):
     """Minimal concrete TradingAlgorithm for allocation tests."""
 
     def _run(self, history_prices, step: datetime) -> TradingSignal:  # type: ignore[override]

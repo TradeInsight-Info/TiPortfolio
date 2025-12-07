@@ -18,7 +18,7 @@ class TradingAlgorithmStrategyResult(TypedDict):
     mar_ratio: float
 
 
-class TradingAlgorithm(ABC):
+class Trading(ABC):
 
     def __init__(self,
                  strategy_name: str,

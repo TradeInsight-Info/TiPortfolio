@@ -2,11 +2,11 @@ from datetime import datetime
 
 from pandas import DataFrame
 
-from tiportfolio.portfolio.trading_algorithm import TradingAlgorithm, TradingAlgorithmConfig
+from tiportfolio.portfolio.trading import Trading, TradingAlgorithmConfig
 from ...portfolio.types import TradingSignal
 
 
-class LongHold(TradingAlgorithm):
+class LongHold(Trading):
 
     def __init__(self, stock_symbol: str, prices: DataFrame) -> None:
         config:TradingAlgorithmConfig = {"set_signal_back": True}

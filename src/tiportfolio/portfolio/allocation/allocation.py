@@ -6,7 +6,7 @@ from datetime import datetime
 
 from pandas import DataFrame, MultiIndex, Timestamp
 
-from tiportfolio.portfolio.trading_algorithm import TradingAlgorithm
+from tiportfolio.portfolio.trading import Trading
 from tiportfolio.portfolio.types import FeesConfig
 from tiportfolio.utils.init_tz import init_tz
 
@@ -25,13 +25,13 @@ class Allocation(ABC):
     def __init__(
             self,
             config: PortfolioConfig,
-            strategies: List[TradingAlgorithm],
+            strategies: List[Trading],
     ) -> None:
         if not strategies:
             raise ValueError("data_and_strategies must contain at least one asset")
 
         self.config: PortfolioConfig = config
-        self.strategies: List[TradingAlgorithm] = list(
+        self.strategies: List[Trading] = list(
             strategies
         )
         self.all_steps = self.strategies[0].all_steps  # we assume all strategies have the same time index
@@ -49,7 +49,7 @@ class Allocation(ABC):
             ],
             index=MultiIndex.from_arrays([[], []], names=["datetime", "strategy_unique_name"]),
         )
-        self.strategy_quantity_map: Mapping[Tuple[Timestamp, TradingAlgorithm], float] = {}
+        self.strategy_quantity_map: Mapping[Tuple[Timestamp, Trading], float] = {}
 
     def is_first_step(self, current_step: Timestamp) -> bool:
         return current_step == self.all_steps[0]
