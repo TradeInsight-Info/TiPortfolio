@@ -49,7 +49,7 @@ class Allocation(ABC):
             ],
             index=MultiIndex.from_arrays([[], []], names=["datetime", "strategy_unique_name"]),
         )
-        self.strategy_quantity_map: Mapping[Tuple[Timestamp, str], float] = {}
+        self.strategy_ratio_map: Mapping[Tuple[Timestamp, str], float] = {}
 
     def is_first_step(self, current_step: Timestamp) -> bool:
         return current_step == self.all_steps[0]
@@ -105,3 +105,13 @@ class Allocation(ABC):
     @abstractmethod
     def is_time_to_rebalance(self, current_step: datetime) -> bool:
         raise NotImplementedError
+
+    def evaluate(self) -> None:
+        """
+        Loop through all steps and strategies to calculate portfolio value,
+        fees, cost basis, etc. to fill self.portfolio_df.
+
+        During the loop, get the allocation ratio from self.strategy_ratio_map
+        (using the most recent rebalance date <= current step).
+        """
+        pass
