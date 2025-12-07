@@ -129,33 +129,18 @@ class Trading(ABC):
             print(f"No signals were recorded in prices DataFrame for {self.symbol_stock}.")
             return None
 
-        # --- Per-period PnL and equity curve ---------------------------------
-        # Use explicit ``fill_method=None`` to avoid deprecated default
-        # behaviour in ``pct_change`` and keep the first return as NaN. We
-        # then replace NaNs with 0 so that the equity curve starts from 1.0
-        # without propagating missing values.
         returns = self.dataframe["close"].pct_change(fill_method=None)
 
-        # Use yesterday's signal for today's return; if there is no prior
-        # signal yet, assume flat (0 exposure).
         shifted_signal = self.dataframe["signal"].shift(1).fillna(0)
 
         self.dataframe["pnl"] = (shifted_signal * returns).fillna(0)
-
-        # Portfolio value, starting from 1.0 and compounding PnL.
         self.dataframe["value"] = (1 + self.dataframe["pnl"]).cumprod()
-
-        # --- Aggregate performance metrics -----------------------------------
-        # Cumulative PnL relative to the starting capital.
         self.dataframe["cumulative_pnl"] = self.dataframe["value"] - 1
 
-        # Drawdown series and running maximum drawdown.
-        self.dataframe["cummax"] = self.dataframe["value"].cummax()
-        self.dataframe["drawdown"] = self.dataframe["value"] / self.dataframe["cummax"] - 1
+        self.dataframe["cumulative_max"] = self.dataframe["value"].cummax()
+        self.dataframe["drawdown"] = self.dataframe["value"] / self.dataframe["cumulative_max"] - 1
         self.dataframe["max_drawdown"] = self.dataframe["drawdown"].cummin()
 
-        # MAR ratio: total return divided by absolute maximum drawdown. Use a
-        # tiny epsilon to avoid division by zero.
         max_dd_abs = self.dataframe["max_drawdown"].abs().replace(0, 1e-10)
         self.dataframe["mar_ratio"] = self.dataframe["cumulative_pnl"] / max_dd_abs
 
