@@ -68,7 +68,7 @@ class Trading(ABC):
     def all_steps(self) -> DatetimeIndex:
         return self.prices.index
 
-    def _set_signal_back_to_prices_df(self, step: Timestamp, signal: TradingSignal) -> None:
+    def set_signal_back_to_prices_df_on_step(self, step: Timestamp, signal: TradingSignal) -> None:
         """
         Post run actions after each _get_signal step is complete
         We can update the column 'signal' in the prices DataFrame here
@@ -86,9 +86,9 @@ class Trading(ABC):
         if isinstance(idx, slice):
             idx = idx.stop - 1
         history = self.prices.iloc[:idx]
-        signal = self._run(history, step)
+        signal = self.run_at_step(history, step)
         if self.set_signal_back:
-            self._set_signal_back_to_prices_df(step, signal)
+            self.set_signal_back_to_prices_df_on_step(step, signal)
         return signal
 
     def before_all(self) -> None:
@@ -101,10 +101,11 @@ class Trading(ABC):
         pass
 
     @abstractmethod
-    def _run(self, history_prices: DataFrame, step: Timestamp) -> TradingSignal:
+    def run_at_step(self, history_prices: DataFrame, step: Timestamp) -> TradingSignal:
         """
         Analyse History Data and Predict Next Signal (Current Time)
-        :param history_data: HistoryDataExtension
+        :param step:
+        :param history_prices:
         :return: TradingSignal
         """
         raise NotImplementedError("_analyse_next_signal method must be implemented by subclass")

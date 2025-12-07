@@ -20,7 +20,7 @@ class LongHold(Trading):
         """
         return None
 
-    def _run(self, history_prices: DataFrame, step: datetime) -> TradingSignal:  # type: ignore[override]
+    def run_at_step(self, history_prices: DataFrame, step: datetime) -> TradingSignal:  # type: ignore[override]
         """Always return :data:`TradingSignal.LONG`.
 
         Parameters
