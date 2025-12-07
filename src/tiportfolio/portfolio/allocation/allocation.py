@@ -49,7 +49,7 @@ class Allocation(ABC):
             ],
             index=MultiIndex.from_arrays([[], []], names=["datetime", "strategy_unique_name"]),
         )
-        self.strategy_quantity_map: Mapping[Tuple[Timestamp, Trading], float] = {}
+        self.strategy_quantity_map: Mapping[Tuple[Timestamp, str], float] = {}
 
     def is_first_step(self, current_step: Timestamp) -> bool:
         return current_step == self.all_steps[0]
@@ -95,6 +95,11 @@ class Allocation(ABC):
 
     @abstractmethod
     def rebalance(self, current_step: datetime, ) -> None:
+        """
+        Record time step to rebalance and the target ratio
+        :param current_step:
+        :return:
+        """
         raise NotImplementedError
 
     @abstractmethod

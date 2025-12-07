@@ -1,7 +1,7 @@
 from abc import ABC
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import List
+from typing import List, Set
 
 from pandas import Timestamp
 
@@ -47,6 +47,136 @@ class FrequencyBasedAllocation(Allocation, ABC):
         self.rebalance_hour = hour
         self.rebalance_minute = minute
         self.rebalance_second = 0
+        # Pre-compute rebalance dates for market-dependent frequencies
+        # to optimize performance
+        self._rebalance_dates: Set[datetime.date] = set()
+        self._precompute_rebalance_dates()
+
+    def _precompute_rebalance_dates(self) -> None:
+        """Pre-compute all rebalance dates for market-dependent frequencies.
+
+        This optimization avoids calling get_next_market_open_day() for
+        every step in walk_forward(), which can be very slow for large
+        datasets.
+        """
+        # Only pre-compute for frequencies that depend on market calendar
+        market_dependent_freqs = {
+            RebalanceFrequency.start_of_month,
+            RebalanceFrequency.mid_of_month,
+            RebalanceFrequency.start_of_quarter,
+            RebalanceFrequency.mid_of_quarter,
+            RebalanceFrequency.start_of_year,
+            RebalanceFrequency.mid_of_year,
+        }
+
+        if self.rebalance_frequency not in market_dependent_freqs:
+            return
+
+        if self.all_steps.empty:
+            return
+
+        # Get date range from all_steps
+        start_date = self.all_steps[0].date()
+        end_date = self.all_steps[-1].date()
+
+        # Generate candidate dates based on frequency
+        candidate_dates = []
+
+        if self.rebalance_frequency == RebalanceFrequency.start_of_month:
+            # First of each month in range
+            current = datetime(start_date.year, start_date.month, 1)
+            while current.date() <= end_date:
+                candidate_dates.append(current)
+                if current.month == 12:
+                    current = current.replace(year=current.year + 1, month=1)
+                else:
+                    current = current.replace(month=current.month + 1)
+
+        elif self.rebalance_frequency == RebalanceFrequency.mid_of_month:
+            # 15th of each month in range
+            current = datetime(start_date.year, start_date.month, 15)
+            while current.date() <= end_date:
+                candidate_dates.append(current)
+                if current.month == 12:
+                    current = current.replace(year=current.year + 1, month=1, day=15)
+                else:
+                    current = current.replace(month=current.month + 1, day=15)
+
+        elif self.rebalance_frequency == RebalanceFrequency.start_of_quarter:
+            # First of quarter months (Jan, Apr, Jul, Oct)
+            quarter_months = [1, 4, 7, 10]
+            current = datetime(start_date.year, start_date.month, 1)
+            # Move to next quarter start
+            while current.month not in quarter_months:
+                if current.month == 12:
+                    current = current.replace(year=current.year + 1, month=1)
+                else:
+                    current = current.replace(month=current.month + 1)
+            while current.date() <= end_date:
+                candidate_dates.append(current)
+                if current.month == 10:
+                    current = current.replace(year=current.year + 1, month=1)
+                else:
+                    current = current.replace(month=current.month + 3)
+
+        elif self.rebalance_frequency == RebalanceFrequency.mid_of_quarter:
+            # 14th of mid-quarter months (Feb, May, Aug, Nov)
+            quarter_mid_months = [2, 5, 8, 11]
+            current = datetime(start_date.year, start_date.month, 14)
+            # Move to next quarter mid
+            while current.month not in quarter_mid_months:
+                if current.month == 12:
+                    current = current.replace(
+                        year=current.year + 1, month=2, day=14
+                    )
+                elif current.month < 2:
+                    current = current.replace(month=2, day=14)
+                elif current.month < 5:
+                    current = current.replace(month=5, day=14)
+                elif current.month < 8:
+                    current = current.replace(month=8, day=14)
+                else:
+                    current = current.replace(month=11, day=14)
+            while current.date() <= end_date:
+                candidate_dates.append(current)
+                if current.month == 11:
+                    current = current.replace(
+                        year=current.year + 1, month=2, day=14
+                    )
+                elif current.month == 2:
+                    current = current.replace(month=5, day=14)
+                elif current.month == 5:
+                    current = current.replace(month=8, day=14)
+                else:  # month == 8
+                    current = current.replace(month=11, day=14)
+
+        elif self.rebalance_frequency == RebalanceFrequency.start_of_year:
+            # January 1st
+            current = datetime(start_date.year, 1, 1)
+            while current.date() <= end_date:
+                candidate_dates.append(current)
+                current = current.replace(year=current.year + 1)
+
+        elif self.rebalance_frequency == RebalanceFrequency.mid_of_year:
+            # July 1st
+            current = datetime(start_date.year, 7, 1)
+            if current.date() < start_date:
+                current = current.replace(year=current.year + 1)
+            while current.date() <= end_date:
+                candidate_dates.append(current)
+                current = current.replace(year=current.year + 1)
+
+        # Convert candidate dates to market open days and store
+        for candidate in candidate_dates:
+            try:
+                market_open = get_next_market_open_day(
+                    candidate, self.market_name
+                )
+                # Store just the date part for fast lookup
+                self._rebalance_dates.add(market_open.date())
+            except ValueError:
+                # Skip if no market open found
+                continue
 
     def is_time_to_rebalance(self, current_step: Timestamp) -> bool:
         # Handle both pandas Timestamp and plain datetime objects
@@ -75,13 +205,11 @@ class FrequencyBasedAllocation(Allocation, ABC):
         elif self.rebalance_frequency == RebalanceFrequency.every_friday:
             return dt.weekday() == 4 and matches_time(dt)
         elif self.rebalance_frequency == RebalanceFrequency.start_of_month:
-            first_day = dt.replace(day=1)
-            closest_open = get_next_market_open_day(first_day, self.market_name)
-            return dt.date() == closest_open.date() and matches_time(dt)
+            # Use pre-computed dates for fast lookup
+            return dt.date() in self._rebalance_dates and matches_time(dt)
         elif self.rebalance_frequency == RebalanceFrequency.mid_of_month:
-            mid_day = dt.replace(day=15)
-            closest_open = get_next_market_open_day(mid_day, self.market_name)
-            return dt.date() == closest_open.date() and matches_time(dt)
+            # Use pre-computed dates for fast lookup
+            return dt.date() in self._rebalance_dates and matches_time(dt)
         elif self.rebalance_frequency == RebalanceFrequency.end_of_month:
             # approximate by calendar month end
             first_next_month = (dt.replace(day=28) + timedelta(days=4)).replace(day=1)
@@ -89,17 +217,14 @@ class FrequencyBasedAllocation(Allocation, ABC):
             # use calendar month end check (may differ from last trading day)
             return dt.date() == day_in_end.date() and matches_time(dt)
         elif self.rebalance_frequency == RebalanceFrequency.start_of_quarter:
-            day_in_beginning = dt.replace(day=1)
+            # Use pre-computed dates for fast lookup
             if dt.month in (1, 4, 7, 10):
-                closest_open = get_next_market_open_day(day_in_beginning, self.market_name)
-                return dt.date() == closest_open.date() and matches_time(dt)
+                return dt.date() in self._rebalance_dates and matches_time(dt)
             return False
         elif self.rebalance_frequency == RebalanceFrequency.mid_of_quarter:
-
-            day_in_middle = dt.replace(day=14)
+            # Use pre-computed dates for fast lookup
             if dt.month in (2, 5, 8, 11):
-                closest_open = get_next_market_open_day(day_in_middle, self.market_name)
-                return dt.date() == closest_open.date() and matches_time(dt)
+                return dt.date() in self._rebalance_dates and matches_time(dt)
             return False
         elif self.rebalance_frequency == RebalanceFrequency.end_of_quarter:
             # end of quarter months: 3, 6, 9, 12
@@ -109,14 +234,11 @@ class FrequencyBasedAllocation(Allocation, ABC):
                                 12) and dt.date() == day_in_end.date() and matches_time(
                 dt)
         elif self.rebalance_frequency == RebalanceFrequency.start_of_year:
-            first_day = dt.replace(month=1, day=1)
-            closest_open = get_next_market_open_day(first_day, self.market_name)
-            return dt.date() == closest_open.date() and matches_time(dt)
+            # Use pre-computed dates for fast lookup
+            return dt.date() in self._rebalance_dates and matches_time(dt)
         elif self.rebalance_frequency == RebalanceFrequency.mid_of_year:
-            # use July 1 as mid-year
-            mid_year = dt.replace(month=7, day=1)
-            closest_open = get_next_market_open_day(mid_year, self.market_name)
-            return dt.date() == closest_open.date() and matches_time(dt)
+            # Use pre-computed dates for fast lookup
+            return dt.date() in self._rebalance_dates and matches_time(dt)
         elif self.rebalance_frequency == RebalanceFrequency.end_of_year:
             first_next_year = dt.replace(month=12, day=28) + timedelta(days=4)
             first_of_next_year = first_next_year.replace(month=1, day=1)
