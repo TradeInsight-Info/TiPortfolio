@@ -63,7 +63,7 @@ class SMACross(Trading):
             min_periods=self.long_window,
         ).mean()
 
-    def _run(self, history_prices: DataFrame, step: datetime) -> TradingSignal:  # type: ignore[override]
+    def run_at_step(self, history_prices: DataFrame, step: datetime) -> TradingSignal:  # type: ignore[override]
         """Return the SMA crossover signal at ``step``.
 
         ``history_prices`` is a slice of :attr:`prices_df` up to ``step``.
