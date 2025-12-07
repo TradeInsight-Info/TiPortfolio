@@ -89,7 +89,7 @@ class TestSMACross(TestCase):
                 (pd.Timestamp("2024-01-11 00:00:00"), TradingSignal.SHORT),
                 (pd.Timestamp("2024-01-12 00:00:00"), TradingSignal.SHORT),
             ],
-            self.strategy.prices_df
+            self.strategy.dataframe
         )
 
 
@@ -122,7 +122,7 @@ class TestSMACrossWithQQQCSV(TestCase):
         )
 
         self.strategy.before_all()
-        print(self.strategy.prices_df.tail(60))
+        print(self.strategy.dataframe.tail(60))
 
     def test_always_passes(self):
         self.assertTrue(True)
@@ -150,7 +150,7 @@ class TestSMACrossWithQQQCSV(TestCase):
     def test_to_run_from_start_to_end(self):
         # Run through all dates to ensure no exceptions
         results = []
-        for step in self.strategy.prices_df.index:
+        for step in self.strategy.dataframe.index:
             result = self.strategy.execute(step)
             results.append((step, result))
 
@@ -219,4 +219,4 @@ class TestSMACrossWithQQQCSV(TestCase):
             (pd.Timestamp('2020-04-30 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
             (pd.Timestamp('2020-05-01 00:00:00-0400', tz='UTC-04:00'), TradingSignal.LONG),
         ]
-        self.assertEqual(results, expected, self.strategy.prices_df)
+        self.assertEqual(results, expected, self.strategy.dataframe)

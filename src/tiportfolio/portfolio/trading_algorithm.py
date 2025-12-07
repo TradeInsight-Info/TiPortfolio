@@ -21,14 +21,14 @@ class TradingAlgorithmStrategyResult(TypedDict):
 class TradingAlgorithm(ABC):
 
     def __init__(self,
-                 name: str,
-                 symbol: str, *,
+                 strategy_name: str,
+                 stock_symbol: str, *,
                  prices: DataFrame,
                  config: TradingAlgorithmConfig = None,
                  **other_data: DataFrame,
                  ) -> None:
-        self.name = name
-        self.symbol = symbol
+        self.strategy_name = strategy_name
+        self.symbol_stock = stock_symbol
         self.set_signal_back = config.get('set_signal_back', True)
         for col in BASIC_REQUIRED_COLUMNS:
             if col not in prices.columns:
@@ -51,17 +51,17 @@ class TradingAlgorithm(ABC):
         self.before_all()
 
     def __str__(self) -> str:
-        return f"{self.name} - {self.symbol}"
+        return f"{self.strategy_name} - {self.symbol_stock}"
 
-    def __hash__(self) -> int:
-        return hash(self.name + self.symbol)
-
-    @property
-    def unique_name(self) -> str:
+    def __hash__(self) -> str:
         return self.__str__()
 
     @property
-    def prices_df(self) -> DataFrame:
+    def name(self) -> str:
+        return self.__str__()
+
+    @property
+    def dataframe(self) -> DataFrame:
         return self.prices
 
     @property
@@ -124,9 +124,9 @@ class TradingAlgorithm(ABC):
         small dictionary of summary statistics.
         """
 
-        if "signal" not in self.prices_df.columns:
+        if "signal" not in self.dataframe.columns:
             # Nothing to evaluate – the strategy never populated signals.
-            print(f"No signals were recorded in prices DataFrame for {self.symbol}.")
+            print(f"No signals were recorded in prices DataFrame for {self.symbol_stock}.")
             return None
 
         # --- Per-period PnL and equity curve ---------------------------------
@@ -134,36 +134,36 @@ class TradingAlgorithm(ABC):
         # behaviour in ``pct_change`` and keep the first return as NaN. We
         # then replace NaNs with 0 so that the equity curve starts from 1.0
         # without propagating missing values.
-        returns = self.prices_df["close"].pct_change(fill_method=None)
+        returns = self.dataframe["close"].pct_change(fill_method=None)
 
         # Use yesterday's signal for today's return; if there is no prior
         # signal yet, assume flat (0 exposure).
-        shifted_signal = self.prices_df["signal"].shift(1).fillna(0)
+        shifted_signal = self.dataframe["signal"].shift(1).fillna(0)
 
-        self.prices_df["pnl"] = (shifted_signal * returns).fillna(0)
+        self.dataframe["pnl"] = (shifted_signal * returns).fillna(0)
 
         # Portfolio value, starting from 1.0 and compounding PnL.
-        self.prices_df["value"] = (1 + self.prices_df["pnl"]).cumprod()
+        self.dataframe["value"] = (1 + self.dataframe["pnl"]).cumprod()
 
         # --- Aggregate performance metrics -----------------------------------
         # Cumulative PnL relative to the starting capital.
-        self.prices_df["cumulative_pnl"] = self.prices_df["value"] - 1
+        self.dataframe["cumulative_pnl"] = self.dataframe["value"] - 1
 
         # Drawdown series and running maximum drawdown.
-        self.prices_df["cummax"] = self.prices_df["value"].cummax()
-        self.prices_df["drawdown"] = self.prices_df["value"] / self.prices_df["cummax"] - 1
-        self.prices_df["max_drawdown"] = self.prices_df["drawdown"].cummin()
+        self.dataframe["cummax"] = self.dataframe["value"].cummax()
+        self.dataframe["drawdown"] = self.dataframe["value"] / self.dataframe["cummax"] - 1
+        self.dataframe["max_drawdown"] = self.dataframe["drawdown"].cummin()
 
         # MAR ratio: total return divided by absolute maximum drawdown. Use a
         # tiny epsilon to avoid division by zero.
-        max_dd_abs = self.prices_df["max_drawdown"].abs().replace(0, 1e-10)
-        self.prices_df["mar_ratio"] = self.prices_df["cumulative_pnl"] / max_dd_abs
+        max_dd_abs = self.dataframe["max_drawdown"].abs().replace(0, 1e-10)
+        self.dataframe["mar_ratio"] = self.dataframe["cumulative_pnl"] / max_dd_abs
 
         summary: TradingAlgorithmStrategyResult = {
-            "final_value": float(self.prices_df["value"].iloc[-1]),
-            "total_return": float(self.prices_df["cumulative_pnl"].iloc[-1]),
-            "max_drawdown": float(self.prices_df["max_drawdown"].min()),
-            "mar_ratio": float(self.prices_df["mar_ratio"].iloc[-1]),
+            "final_value": float(self.dataframe["value"].iloc[-1]),
+            "total_return": float(self.dataframe["cumulative_pnl"].iloc[-1]),
+            "max_drawdown": float(self.dataframe["max_drawdown"].min()),
+            "mar_ratio": float(self.dataframe["mar_ratio"].iloc[-1]),
         }
 
-        return self.prices_df, summary
+        return self.dataframe, summary

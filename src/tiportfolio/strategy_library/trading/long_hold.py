@@ -8,9 +8,9 @@ from ...portfolio.types import TradingSignal
 
 class LongHold(TradingAlgorithm):
 
-    def __init__(self, symbol: str, prices: DataFrame) -> None:
+    def __init__(self, stock_symbol: str, prices: DataFrame) -> None:
         config:TradingAlgorithmConfig = {"set_signal_back": True}
-        super().__init__("LongHold", symbol, config=config, prices=prices,)
+        super().__init__("LongHold", stock_symbol, config=config, prices=prices, )
 
     def before_all(self) -> None:  # type: ignore[override]
         """No-op data preparation.
