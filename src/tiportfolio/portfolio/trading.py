@@ -125,31 +125,30 @@ class Trading(ABC):
         small dictionary of summary statistics.
         """
 
-        if "signal" not in self.dataframe.columns:
-            # Nothing to evaluate – the strategy never populated signals.
+        if "signal" not in self.prices.columns:
             print(f"No signals were recorded in prices DataFrame for {self.symbol_stock}.")
             return None
 
-        returns = self.dataframe["close"].pct_change(fill_method=None)
+        returns = self.prices["close"].pct_change(fill_method=None)
+        shifted_signal = self.prices["signal"].shift(1).fillna(0)
 
-        shifted_signal = self.dataframe["signal"].shift(1).fillna(0)
+        # Use self.prices directly instead of self.dataframe property
+        self.prices["pnl"] = (shifted_signal * returns).fillna(0)
+        self.prices["value"] = (1 + self.prices["pnl"]).cumprod()
+        self.prices["cumulative_pnl"] = self.prices["value"] - 1
 
-        self.dataframe["pnl"] = (shifted_signal * returns).fillna(0)
-        self.dataframe["value"] = (1 + self.dataframe["pnl"]).cumprod()
-        self.dataframe["cumulative_pnl"] = self.dataframe["value"] - 1
+        self.prices["cumulative_max"] = self.prices["value"].cummax()
+        self.prices["drawdown"] = self.prices["value"] / self.prices["cumulative_max"] - 1
+        self.prices["max_drawdown"] = self.prices["drawdown"].cummin()
 
-        self.dataframe["cumulative_max"] = self.dataframe["value"].cummax()
-        self.dataframe["drawdown"] = self.dataframe["value"] / self.dataframe["cumulative_max"] - 1
-        self.dataframe["max_drawdown"] = self.dataframe["drawdown"].cummin()
-
-        max_dd_abs = self.dataframe["max_drawdown"].abs().replace(0, 1e-10)
-        self.dataframe["mar_ratio"] = self.dataframe["cumulative_pnl"] / max_dd_abs
+        max_dd_abs = self.prices["max_drawdown"].abs().replace(0, 1e-10)
+        self.prices["mar_ratio"] = self.prices["cumulative_pnl"] / max_dd_abs
 
         summary: TradingAlgorithmStrategyResult = {
-            "final_value": float(self.dataframe["value"].iloc[-1]),
-            "total_return": float(self.dataframe["cumulative_pnl"].iloc[-1]),
-            "max_drawdown": float(self.dataframe["max_drawdown"].min()),
-            "mar_ratio": float(self.dataframe["mar_ratio"].iloc[-1]),
+            "final_value": float(self.prices["value"].iloc[-1]),
+            "total_return": float(self.prices["cumulative_pnl"].iloc[-1]),
+            "max_drawdown": float(self.prices["max_drawdown"].min()),
+            "mar_ratio": float(self.prices["mar_ratio"].iloc[-1]),
         }
 
-        return self.dataframe, summary
+        return self.prices, summary
