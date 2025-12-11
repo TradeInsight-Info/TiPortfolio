@@ -1,5 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
+from ftplib import all_errors
 from typing import List, TypedDict, Optional, Mapping, Tuple
 
 from datetime import datetime
@@ -77,9 +78,7 @@ class Allocation(ABC):
         quantity = self.portfolio_df.loc[idx, 'quantity']
         return quantity
 
-    def get_metrics(self):
-        # user self.portfolio_df to calculate metrics like total return, max drawdown, etc.
-        pass
+
 
     def walk_forward(self) -> None:
         if self.all_steps.empty:
@@ -114,4 +113,58 @@ class Allocation(ABC):
         During the loop, get the allocation ratio from self.strategy_ratio_map
         (using the most recent rebalance date <= current step).
         """
+        if self.all_steps.empty:
+            raise ValueError("No price data available")
+
+        all_rebalance_dates = set([date for (date, _) in self.strategy_ratio_map.keys()])
+        previous_rebalance_date: Optional[Timestamp] = None
+
+        for step in self.all_steps:
+
+            if step in all_rebalance_dates:
+                logging.debug(f"Rebalance occurred at {step}")
+
+                for strategy in self.strategies:
+                    # get target ratio for this rebalance date
+                    target_ratio = self.strategy_ratio_map.get((step, str(strategy)), None)
+
+                    if target_ratio is None:
+                        logging.warning(f"No target ratio found for strategy {strategy} at rebalance date {step}")
+
+
+                    previous_ratio = self.strategy_ratio_map.get((previous_rebalance_date, str(strategy)), 0.0)
+                    ratio_diff = target_ratio - previous_ratio
+
+
+            else:
+                logging.debug(f"No rebalance at {step}")
+
+                # based on strategy signal, write down data to columns of self.portfolio_df
+                for strategy in self.strategies:
+                    price_row = strategy.dataframe.loc[step]
+                    signal = price_row.get('signal', 0)
+
+                    quantity = (self.config['initial_capital'] * ratio) / price_row['close'] if signal != 0 else 0.0
+                    value = quantity * price_row['close']
+                    fees = value * self.config['fees_config'].get('commission', 0.0)
+                    cost_basis = value + fees
+
+                    self.portfolio_df.loc[(step, strategy_name), :] = [
+                        signal,
+                        price_row['open'],
+                        price_row['high'],
+                        price_row['low'],
+                        price_row['close'],
+                        quantity,
+                        value,
+                        fees,
+                        cost_basis,
+                    ]
+
+
+
+
+
+    def get_metrics(self):
+        # user self.portfolio_df to calculate metrics like total return, max drawdown, etc.
         pass
