@@ -280,6 +280,17 @@ class FrequencyBasedAllocation(Allocation, ABC):
                 return market_open.date() == dt.date() and matches_time(dt)
             except ValueError:
                 return False
+        elif self.rebalance_frequency == RebalanceFrequency.end_of_quarter:
+            # Check if current month is the end of a quarter (Mar, Jun, Sep, Dec)
+            if dt.month not in (3, 6, 9, 12):
+                return False
+            # Calculate last day of current month
+            if dt.month == 12:
+                first_next_month = datetime(dt.year + 1, 1, 1)
+            else:
+                first_next_month = datetime(dt.year, dt.month + 1, 1)
+            day_in_end = first_next_month - timedelta(days=1)
+            return dt.date() == day_in_end.date() and matches_time(dt)
         elif self.rebalance_frequency == RebalanceFrequency.end_of_year:
             first_next_year = dt.replace(month=12, day=28) + timedelta(days=4)
             first_of_next_year = first_next_year.replace(month=1, day=1)
