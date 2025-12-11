@@ -16,7 +16,7 @@ from tiportfolio.portfolio.types import TradingSignal
 class DummyStrategy(Trading):
     """Minimal concrete TradingAlgorithm for allocation tests."""
 
-    def _run(self, history_prices, step: datetime) -> TradingSignal:  # type: ignore[override]
+    def run_at_step(self, history_prices, step: datetime) -> TradingSignal:  # type: ignore[override]
         return TradingSignal.EXIT
 
 
