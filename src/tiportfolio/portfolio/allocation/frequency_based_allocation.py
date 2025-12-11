@@ -205,11 +205,29 @@ class FrequencyBasedAllocation(Allocation, ABC):
         elif self.rebalance_frequency == RebalanceFrequency.every_friday:
             return dt.weekday() == 4 and matches_time(dt)
         elif self.rebalance_frequency == RebalanceFrequency.start_of_month:
-            # Use pre-computed dates for fast lookup
-            return dt.date() in self._rebalance_dates and matches_time(dt)
+            # Use pre-computed dates for fast lookup; if the queried date is
+            # outside the precomputed range (e.g. unit tests), fall back to
+            # computing the next market open day for the 1st of the month.
+            if dt.date() in self._rebalance_dates:
+                return matches_time(dt)
+            # Fallback dynamic check
+            try:
+                candidate = datetime(dt.year, dt.month, 1)
+                market_open = get_next_market_open_day(candidate, self.market_name)
+                return market_open.date() == dt.date() and matches_time(dt)
+            except ValueError:
+                return False
         elif self.rebalance_frequency == RebalanceFrequency.mid_of_month:
-            # Use pre-computed dates for fast lookup
-            return dt.date() in self._rebalance_dates and matches_time(dt)
+            # Use pre-computed dates for fast lookup; if not present compute
+            # from the 15th of the month.
+            if dt.date() in self._rebalance_dates:
+                return matches_time(dt)
+            try:
+                candidate = datetime(dt.year, dt.month, 15)
+                market_open = get_next_market_open_day(candidate, self.market_name)
+                return market_open.date() == dt.date() and matches_time(dt)
+            except ValueError:
+                return False
         elif self.rebalance_frequency == RebalanceFrequency.end_of_month:
             # approximate by calendar month end
             first_next_month = (dt.replace(day=28) + timedelta(days=4)).replace(day=1)
@@ -217,28 +235,51 @@ class FrequencyBasedAllocation(Allocation, ABC):
             # use calendar month end check (may differ from last trading day)
             return dt.date() == day_in_end.date() and matches_time(dt)
         elif self.rebalance_frequency == RebalanceFrequency.start_of_quarter:
-            # Use pre-computed dates for fast lookup
-            if dt.month in (1, 4, 7, 10):
-                return dt.date() in self._rebalance_dates and matches_time(dt)
-            return False
+            # Use pre-computed dates for fast lookup; fall back to computing
+            # next market open from the 1st of the quarter month.
+            if dt.month not in (1, 4, 7, 10):
+                return False
+            if dt.date() in self._rebalance_dates:
+                return matches_time(dt)
+            try:
+                candidate = datetime(dt.year, dt.month, 1)
+                market_open = get_next_market_open_day(candidate, self.market_name)
+                return market_open.date() == dt.date() and matches_time(dt)
+            except ValueError:
+                return False
         elif self.rebalance_frequency == RebalanceFrequency.mid_of_quarter:
-            # Use pre-computed dates for fast lookup
-            if dt.month in (2, 5, 8, 11):
-                return dt.date() in self._rebalance_dates and matches_time(dt)
-            return False
-        elif self.rebalance_frequency == RebalanceFrequency.end_of_quarter:
-            # end of quarter months: 3, 6, 9, 12
-            first_next_month = (dt.replace(day=28) + timedelta(days=4)).replace(day=1)
-            day_in_end = first_next_month - timedelta(days=1)
-            return dt.month in (3, 6, 9,
-                                12) and dt.date() == day_in_end.date() and matches_time(
-                dt)
+            # Use pre-computed dates for fast lookup; fallback to computing
+            # next market open from day 14 of the mid-quarter month.
+            if dt.month not in (2, 5, 8, 11):
+                return False
+            if dt.date() in self._rebalance_dates:
+                return matches_time(dt)
+            try:
+                candidate = datetime(dt.year, dt.month, 14)
+                market_open = get_next_market_open_day(candidate, self.market_name)
+                return market_open.date() == dt.date() and matches_time(dt)
+            except ValueError:
+                return False
         elif self.rebalance_frequency == RebalanceFrequency.start_of_year:
-            # Use pre-computed dates for fast lookup
-            return dt.date() in self._rebalance_dates and matches_time(dt)
+            # Use pre-computed dates for fast lookup; fallback to Jan 1st
+            if dt.date() in self._rebalance_dates:
+                return matches_time(dt)
+            try:
+                candidate = datetime(dt.year, 1, 1)
+                market_open = get_next_market_open_day(candidate, self.market_name)
+                return market_open.date() == dt.date() and matches_time(dt)
+            except ValueError:
+                return False
         elif self.rebalance_frequency == RebalanceFrequency.mid_of_year:
-            # Use pre-computed dates for fast lookup
-            return dt.date() in self._rebalance_dates and matches_time(dt)
+            # Use pre-computed dates for fast lookup; fallback to Jul 1st
+            if dt.date() in self._rebalance_dates:
+                return matches_time(dt)
+            try:
+                candidate = datetime(dt.year, 7, 1)
+                market_open = get_next_market_open_day(candidate, self.market_name)
+                return market_open.date() == dt.date() and matches_time(dt)
+            except ValueError:
+                return False
         elif self.rebalance_frequency == RebalanceFrequency.end_of_year:
             first_next_year = dt.replace(month=12, day=28) + timedelta(days=4)
             first_of_next_year = first_next_year.replace(month=1, day=1)
