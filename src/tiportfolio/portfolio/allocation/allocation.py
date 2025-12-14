@@ -1,9 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from ftplib import all_errors
-from typing import List, TypedDict, Optional, Mapping, Tuple
-
-from datetime import datetime
+from typing import List, TypedDict, Optional, Tuple
 
 from pandas import DataFrame, MultiIndex, Timestamp
 
@@ -48,9 +45,9 @@ class Allocation(ABC):
                 "fees",
                 "cost_basis",
             ],
-            index=MultiIndex.from_arrays([[], []], names=["datetime", "strategy_unique_name"]),
+            index=MultiIndex.from_arrays([[], []], names=["datetime", "strategy_name"]),
         )
-        self.strategy_ratio_map: Mapping[Tuple[Timestamp, str], float] = {}
+        self.strategy_ratio_map: dict[Tuple[Timestamp, str], float] = {}
 
     def is_first_step(self, current_step: Timestamp) -> bool:
         return current_step == self.all_steps[0]
@@ -78,8 +75,6 @@ class Allocation(ABC):
         quantity = self.portfolio_df.loc[idx, 'quantity']
         return quantity
 
-
-
     def walk_forward(self) -> None:
         if self.all_steps.empty:
             raise ValueError("No price data available in the specified time window")
@@ -89,20 +84,23 @@ class Allocation(ABC):
                 signal_for_current_step = strategy.execute(current_step)
                 logging.debug(
                     f"At {current_step}, Strategy {strategy.name} generated signal: {signal_for_current_step}")
+
             if self.is_time_to_rebalance(current_step):
-                self.rebalance(current_step)
+                for strategy in self.strategies:
+                    target_ratio = self.get_target_ratio(current_step, strategy.name)
+                    self.set_target_ratio(current_step, strategy.name, target_ratio)
+
+    def set_target_ratio(self, current_step: Timestamp, strategy_name: str, target_ratio: float) -> None:
+        if not (0.0 <= target_ratio <= 1.0):
+            raise ValueError("Target ratio must be between 0.0 and 1.0")
+        self.strategy_ratio_map[(current_step, strategy_name)] = target_ratio
 
     @abstractmethod
-    def rebalance(self, current_step: datetime, ) -> None:
-        """
-        Record time step to rebalance and the target ratio
-        :param current_step:
-        :return:
-        """
+    def get_target_ratio(self, current_step: Timestamp, strategy_name: str) -> float:
         raise NotImplementedError
 
     @abstractmethod
-    def is_time_to_rebalance(self, current_step: datetime) -> bool:
+    def is_time_to_rebalance(self, current_step: Timestamp) -> bool:
         raise NotImplementedError
 
     def evaluate(self) -> None:
@@ -117,53 +115,71 @@ class Allocation(ABC):
             raise ValueError("No price data available")
 
         all_rebalance_dates = set([date for (date, _) in self.strategy_ratio_map.keys()])
-        previous_rebalance_date: Optional[Timestamp] = None
+        previous_step: Optional[Timestamp] = None
 
         for step in self.all_steps:
+            for i in range(len(self.strategies)):
+                strategy = self.strategies[i]
+                # get quantity from previous step
+                previous_quantity = self.portfolio_df.loc[
+                    (previous_step, strategy.name), 'quantity'] if previous_step else 0.0
+                previous_cost_basis = self.portfolio_df.loc[
+                    (previous_step, strategy.name), 'cost_basis'] if previous_step else 0.0
 
-            if step in all_rebalance_dates:
-                logging.debug(f"Rebalance occurred at {step}")
+                previous_total_value = self.get_total_portfolio_value(previous_step) if previous_step else self.config[
+                    'initial_capital']
 
-                for strategy in self.strategies:
+                price_row = strategy.dataframe.loc[step]
+                signal = price_row.get('signal', 0)
+
+                if step in all_rebalance_dates:
+                    logging.debug(f"Rebalance occurred at {step}")
+
                     # get target ratio for this rebalance date
-                    target_ratio = self.strategy_ratio_map.get((step, str(strategy)), None)
+                    target_ratio = self.strategy_ratio_map.get((step, strategy.name), 0.0)
 
                     if target_ratio is None:
-                        logging.warning(f"No target ratio found for strategy {strategy} at rebalance date {step}")
+                        logging.warning(f"No target ratio found for strategy {strategy.name} at rebalance date {step}")
 
-
-                    previous_ratio = self.strategy_ratio_map.get((previous_rebalance_date, str(strategy)), 0.0)
+                    previous_ratio = self.strategy_ratio_map.get((previous_step, strategy.name),
+                                                                 0.0) if previous_step else 0.0
                     ratio_diff = target_ratio - previous_ratio
 
+                    # amount to trade
+                    trade_amount = ratio_diff * previous_total_value
+                    quantity = previous_quantity + trade_amount / strategy.dataframe.loc[step, 'close']
 
-            else:
-                logging.debug(f"No rebalance at {step}")
+                    fees = self.config.get('fees_config', {}).get('commission',
+                                                                  0.0) * trade_amount if trade_amount != 0 else 0.0
+                    value = previous_total_value * target_ratio
+                    cost_basis = previous_cost_basis + fees
 
-                # based on strategy signal, write down data to columns of self.portfolio_df
-                for strategy in self.strategies:
-                    price_row = strategy.dataframe.loc[step]
-                    signal = price_row.get('signal', 0)
 
-                    quantity = (self.config['initial_capital'] * ratio) / price_row['close'] if signal != 0 else 0.0
+                else:
+                    logging.debug(f"No rebalance at {step}, log overall trade data")
+                    quantity = previous_quantity
+
+                    fees = 0.0  # no allocation change, so no fees
+                    cost_basis = previous_cost_basis + fees
                     value = quantity * price_row['close']
-                    fees = value * self.config['fees_config'].get('commission', 0.0)
-                    cost_basis = value + fees
 
-                    self.portfolio_df.loc[(step, strategy_name), :] = [
-                        signal,
-                        price_row['open'],
-                        price_row['high'],
-                        price_row['low'],
-                        price_row['close'],
-                        quantity,
-                        value,
-                        fees,
-                        cost_basis,
-                    ]
+                self.portfolio_df.loc[(step, strategy.name), :] = [
+                    signal,
+                    price_row['open'],
+                    price_row['high'],
+                    price_row['low'],
+                    price_row['close'],
+                    quantity,
+                    value,
+                    fees,
+                    cost_basis,
+                ]
 
-
-
-
+            # keep track of the most recent rebalance date
+            previous_step = step
+            # sum all value for step to get total portfolio value
+            total_value = self.get_total_portfolio_value(step)
+            logging.debug(f"Total value: {total_value}")
 
     def get_metrics(self):
         # user self.portfolio_df to calculate metrics like total return, max drawdown, etc.

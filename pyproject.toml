@@ -36,9 +36,8 @@ dev = [
 [project.scripts]
 tiportfolio = "tiportfolio.main:main"
 
-
-
-
+[tool.uv]
+package = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
