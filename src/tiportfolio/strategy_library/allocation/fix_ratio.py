@@ -12,6 +12,10 @@ from tiportfolio.portfolio.trading import Trading
 
 class FixRatioFrequencyBasedAllocation(FrequencyBasedAllocation):
 
+    def get_target_ratio(self, current_step: Timestamp, strategy_name: str) -> float:
+        # return the fixed value for the strategy
+        return self.strategy_ratio_map.get((current_step, strategy_name), 0.0)
+
     def __init__(
             self,
             config: PortfolioConfig,
@@ -41,7 +45,3 @@ class FixRatioFrequencyBasedAllocation(FrequencyBasedAllocation):
     def rebalance(self, current_step: Timestamp) -> None:
         for i in range(len(self.strategies)):
             self.strategy_ratio_map[(current_step, str(self.strategies[i]))] = self.allocation_percentages[i]
-
-
-
-
