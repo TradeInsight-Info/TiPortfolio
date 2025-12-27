@@ -13,8 +13,12 @@ from tiportfolio.portfolio.trading import Trading
 class FixRatioFrequencyBasedAllocation(FrequencyBasedAllocation):
 
     def get_target_ratio(self, current_step: Timestamp, strategy_name: str) -> float:
-        # return the fixed value for the strategy
-        return self.strategy_ratio_map.get((current_step, strategy_name), 0.0)
+        # return the fixed value for the strategy from allocation_percentages
+        for i, strategy in enumerate(self.strategies):
+            if strategy.name == strategy_name:
+                return self.allocation_percentages[i]
+        # Strategy not found (should not happen in normal operation)
+        raise ValueError(f"Strategy '{strategy_name}' not found in strategies list")
 
     def __init__(
             self,
