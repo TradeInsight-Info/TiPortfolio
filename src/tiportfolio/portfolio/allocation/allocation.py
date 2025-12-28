@@ -121,10 +121,12 @@ class Allocation(ABC):
             for i in range(len(self.strategies)):
                 strategy = self.strategies[i]
                 # get quantity from previous step
-                previous_quantity = self.portfolio_df.at[
-                    (previous_step, strategy.name), 'quantity'] if previous_step else 0.0
-                previous_cost_basis = self.portfolio_df.at[
-                    (previous_step, strategy.name), 'cost_basis'] if previous_step else 0.0
+                if previous_step and (previous_step, strategy.name) in self.portfolio_df.index:
+                    previous_quantity = self.portfolio_df.at[(previous_step, strategy.name), 'quantity']
+                    previous_cost_basis = self.portfolio_df.at[(previous_step, strategy.name), 'cost_basis']
+                else:
+                    previous_quantity = 0.0
+                    previous_cost_basis = 0.0
 
                 previous_total_value = self.get_total_portfolio_value(previous_step) if previous_step else self.config[
                     'initial_capital']

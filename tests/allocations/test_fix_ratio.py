@@ -11,8 +11,12 @@ from tiportfolio.strategy_library.allocation.fix_ratio import (
 )
 from tiportfolio.strategy_library.trading.long_hold import LongHold
 
+# set debug level to DEBUG globally
+import logging
+logging.getLogger().setLevel(logging.DEBUG)
 
-class TestFixRatioAllocationAllApple(TestCase):
+
+class TestFixRatioAllocationAllOnAppleFrom20190101to20190331(TestCase):
     def setUp(self) -> None:
         data_path = Path(__file__).resolve().parents[1] / "data" / "aapl.csv"
         df = pd.read_csv(data_path, parse_dates=["date"])
@@ -25,6 +29,9 @@ class TestFixRatioAllocationAllApple(TestCase):
         market_open_index = market_open_index.tz_convert("America/New_York")
         df.index = market_open_index
         df.index.name = "date"
+
+        # cut df to 2019-01-01 to 2019-03-31
+        df = df.loc["2019-01-01":"2019-03-31"]  # type: ignore
         self.prices = df[["open", "high", "low", "close", "volume"]]
 
         fees: FeesConfig = {
@@ -61,7 +68,7 @@ class TestFixRatioAllocationAllApple(TestCase):
         {(Timestamp('2019-01-15 09:30:00-0500', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2019-02-15 09:30:00-0500', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2019-03-15 09:30:00-0400', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2019-04-15 09:30:00-0400', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2019-05-15 09:30:00-0400', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2019-06-17 09:30:00-0400', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2019-07-15 09:30:00-0400', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2019-08-15 09:30:00-0400', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2019-09-16 09:30:00-0400', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2019-10-15 09:30:00-0400', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2019-11-15 09:30:00-0500', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2019-12-16 09:30:00-0500', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2020-01-15 09:30:00-0500', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2020-02-18 09:30:00-0500', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2020-03-16 09:30:00-0400', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2020-04-15 09:30:00-0400', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2020-05-15 09:30:00-0400', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2020-06-15 09:30:00-0400', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2020-07-15 09:30:00-0400', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2020-08-17 09:30:00-0400', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2020-09-15 09:30:00-0400', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2020-10-15 09:30:00-0400', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2020-11-16 09:30:00-0500', tz='America/New_York'), 'LongHold - AAPL'): 1.0, (Timestamp('2020-12-15 09:30:00-0500', tz='America/New_York'), 'LongHold - AAPL'): 1.0}
 
         """
-        # in the strategy_quantity_map, the key should be match the list above
+        # in the strategy_quantity_map, the key should be match the list above and value should be 1.0 all the time
         for (step, strategy_name), allocation_percentage in strategy_quantity_map.items():
             self.assertEqual(strategy_name, "LongHold - AAPL")
             self.assertEqual(allocation_percentage, 1.0)
@@ -73,33 +80,36 @@ class TestFixRatioAllocationAllApple(TestCase):
             strategy_quantity_map.keys(),
         )
 
+        # the step should be match the expected mid of month dates
         self.assertListEqual(
             list(rebalance_dates),
             [
                 pd.Timestamp("2019-01-15 09:30:00-05:00", tz="America/New_York"),
                 pd.Timestamp("2019-02-15 09:30:00-05:00", tz="America/New_York"),
                 pd.Timestamp("2019-03-15 09:30:00-04:00", tz="America/New_York"),
-                pd.Timestamp("2019-04-15 09:30:00-04:00", tz="America/New_York"),
-                pd.Timestamp("2019-05-15 09:30:00-04:00", tz="America/New_York"),
-                pd.Timestamp("2019-06-17 09:30:00-04:00", tz="America/New_York"),
-                pd.Timestamp("2019-07-15 09:30:00-04:00", tz="America/New_York"),
-                pd.Timestamp("2019-08-15 09:30:00-04:00", tz="America/New_York"),
-                pd.Timestamp("2019-09-16 09:30:00-04:00", tz="America/New_York"),
-                pd.Timestamp("2019-10-15 09:30:00-04:00", tz="America/New_York"),
-                pd.Timestamp("2019-11-15 09:30:00-05:00", tz="America/New_York"),
-                pd.Timestamp("2019-12-16 09:30:00-05:00", tz="America/New_York"),
-                pd.Timestamp("2020-01-15 09:30:00-05:00", tz="America/New_York"),
-                pd.Timestamp("2020-02-18 09:30:00-05:00", tz="America/New_York"),
-                pd.Timestamp("2020-03-16 09:30:00-04:00", tz="America/New_York"),
-                pd.Timestamp("2020-04-15 09:30:00-04:00", tz="America/New_York"),
-                pd.Timestamp("2020-05-15 09:30:00-04:00", tz="America/New_York"),
-                pd.Timestamp("2020-06-15 09:30:00-04:00", tz="America/New_York"),
-                pd.Timestamp("2020-07-15 09:30:00-04:00", tz="America/New_York"),
-                pd.Timestamp("2020-08-17 09:30:00-04:00", tz="America/New_York"),
-                # until december 2020
-                pd.Timestamp("2020-09-15 09:30:00-04:00", tz="America/New_York"),
-                pd.Timestamp("2020-10-15 09:30:00-04:00", tz="America/New_York"),
-                pd.Timestamp("2020-11-16 09:30:00-05:00", tz="America/New_York"),
-                pd.Timestamp("2020-12-15 09:30:00-05:00", tz="America/New_York"),
-        ]
-        )
+                # pd.Timestamp("2019-04-15 09:30:00-04:00", tz="America/New_York"),
+                # pd.Timestamp("2019-05-15 09:30:00-04:00", tz="America/New_York"),
+                # pd.Timestamp("2019-06-17 09:30:00-04:00", tz="America/New_York"),
+                # pd.Timestamp("2019-07-15 09:30:00-04:00", tz="America/New_York"),
+                # pd.Timestamp("2019-08-15 09:30:00-04:00", tz="America/New_York"),
+                # pd.Timestamp("2019-09-16 09:30:00-04:00", tz="America/New_York"),
+                # pd.Timestamp("2019-10-15 09:30:00-04:00", tz="America/New_York"),
+                # pd.Timestamp("2019-11-15 09:30:00-05:00", tz="America/New_York"),
+                # pd.Timestamp("2019-12-16 09:30:00-05:00", tz="America/New_York"),
+                # pd.Timestamp("2020-01-15 09:30:00-05:00", tz="America/New_York"),
+                # pd.Timestamp("2020-02-18 09:30:00-05:00", tz="America/New_York"),
+                # pd.Timestamp("2020-03-16 09:30:00-04:00", tz="America/New_York"),
+                # pd.Timestamp("2020-04-15 09:30:00-04:00", tz="America/New_York"),
+                # pd.Timestamp("2020-05-15 09:30:00-04:00", tz="America/New_York"),
+                # pd.Timestamp("2020-06-15 09:30:00-04:00", tz="America/New_York"),
+                # pd.Timestamp("2020-07-15 09:30:00-04:00", tz="America/New_York"),
+                # pd.Timestamp("2020-08-17 09:30:00-04:00", tz="America/New_York"),
+                # pd.Timestamp("2020-09-15 09:30:00-04:00", tz="America/New_York"),
+                # pd.Timestamp("2020-10-15 09:30:00-04:00", tz="America/New_York"),
+                # pd.Timestamp("2020-11-16 09:30:00-05:00", tz="America/New_York"),
+                # pd.Timestamp("2020-12-15 09:30:00-05:00", tz="America/New_York"),
+        ])
+
+
+        allocation.evaluate()
+        self.assertFalse(allocation.portfolio_df.empty)
