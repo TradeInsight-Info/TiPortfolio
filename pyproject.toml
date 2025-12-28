@@ -19,7 +19,6 @@ dependencies = [
     "diskcache>=5.6.3",
     "joblib>=1.5.2",
     "matplotlib>=3.10.8",
-    "numba>=0.60.0",
     "numpy>=2.2.6",
     "pandas>=2.3.3",
     "pandas-market-calendars>=5.1.3",
