@@ -72,7 +72,7 @@ class Allocation(ABC):
         if idx not in self.portfolio_df.index:
             raise ValueError(f"No portfolio data available for the given time step and strategy: {idx}")
 
-        quantity = self.portfolio_df.loc[idx, 'quantity']
+        quantity = self.portfolio_df.at[idx, 'quantity']
         return quantity
 
     def walk_forward(self) -> None:
@@ -121,9 +121,9 @@ class Allocation(ABC):
             for i in range(len(self.strategies)):
                 strategy = self.strategies[i]
                 # get quantity from previous step
-                previous_quantity = self.portfolio_df.loc[
+                previous_quantity = self.portfolio_df.at[
                     (previous_step, strategy.name), 'quantity'] if previous_step else 0.0
-                previous_cost_basis = self.portfolio_df.loc[
+                previous_cost_basis = self.portfolio_df.at[
                     (previous_step, strategy.name), 'cost_basis'] if previous_step else 0.0
 
                 previous_total_value = self.get_total_portfolio_value(previous_step) if previous_step else self.config[
@@ -147,7 +147,7 @@ class Allocation(ABC):
 
                     # amount to trade
                     trade_amount = ratio_diff * previous_total_value
-                    quantity = previous_quantity + trade_amount / strategy.dataframe.loc[step, 'close']
+                    quantity = previous_quantity + trade_amount / strategy.dataframe.at[step, 'close']
 
                     fees = self.config.get('fees_config', {}).get('commission',
                                                                   0.0) * trade_amount if trade_amount != 0 else 0.0
