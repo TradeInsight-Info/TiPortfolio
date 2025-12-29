@@ -1,7 +1,7 @@
-
 from abc import ABC, abstractmethod
 from typing import List, TypedDict, Optional, Tuple
 
+import numpy as np
 from pandas import DataFrame, MultiIndex, Timestamp
 from tqdm import tqdm
 
@@ -18,6 +18,15 @@ class PortfolioConfig(TypedDict):
     risk_free_rate: float
     initial_capital: float
     market_name: Optional[str]  # todo in the future support multiple markets
+
+
+class PortfolioMetricsResult(TypedDict):
+    final_value: float
+    total_return: float
+    max_drawdown: float
+    sharpe_ratio: float
+    annualized_return: float
+    mar_ratio: float
 
 
 class Allocation(ABC):
@@ -134,8 +143,14 @@ class Allocation(ABC):
                     previous_quantity = 0.0
                     previous_cost_basis = 0.0
 
-                previous_total_value = self.get_total_portfolio_value(previous_step) if previous_step else self.config[
-                    'initial_capital']
+                if previous_step:
+                    previous_total_value = self.get_total_portfolio_value(previous_step)
+                    # If previous portfolio value is 0 (no trades made yet), use initial_capital
+                    if previous_total_value < 1e-10:
+                        previous_total_value = self.config['initial_capital']
+                    # Otherwise, keep the actual previous_total_value (don't override it)
+                else:
+                    previous_total_value = self.config['initial_capital']
 
                 price_row = strategy.dataframe.loc[step]
                 signal = price_row.get('signal', 0)
@@ -149,8 +164,16 @@ class Allocation(ABC):
                     if target_ratio is None:
                         logger.warning(f"No target ratio found for strategy {strategy.name} at rebalance date {step}")
 
-                    previous_ratio = self.strategy_ratio_map.get((previous_step, strategy.name),
-                                                                 0.0) if previous_step else 0.0
+                    # Find the most recent rebalance date <= previous_step
+                    if previous_step:
+                        previous_rebalance_dates = [d for d in all_rebalance_dates if d <= previous_step]
+                        if previous_rebalance_dates:
+                            most_recent_rebalance = max(previous_rebalance_dates)
+                            previous_ratio = self.strategy_ratio_map.get((most_recent_rebalance, strategy.name), 0.0)
+                        else:
+                            previous_ratio = 0.0
+                    else:
+                        previous_ratio = 0.0
                     ratio_diff = target_ratio - previous_ratio
 
                     # amount to trade
@@ -189,6 +212,118 @@ class Allocation(ABC):
             total_value = self.get_total_portfolio_value(step)
             logger.debug(f"Total value: {total_value}")
 
-    def get_metrics(self):
-        # user self.portfolio_df to calculate metrics like total return, max drawdown, etc.
-        pass
+    def get_metrics(self) -> PortfolioMetricsResult:
+        """
+        Calculate portfolio performance metrics from self.portfolio_df.
+
+        Returns:
+            PortfolioMetricsResult: Dictionary containing final_value,
+                total_return, max_drawdown, sharpe_ratio, annualized_return,
+                and mar_ratio.
+        """
+        if self.portfolio_df.empty:
+            raise ValueError(
+                "Portfolio DataFrame is empty. Run evaluate() first."
+            )
+
+        # Get all unique datetime steps
+        unique_steps = sorted(
+            self.portfolio_df.index.get_level_values(0).unique()
+        )
+
+        if len(unique_steps) < 2:
+            raise ValueError(
+                "Insufficient data to calculate metrics. "
+                "Need at least 2 time steps."
+            )
+
+        # Calculate total portfolio value at each step
+        portfolio_values = []
+        for step in unique_steps:
+            total_value = self.get_total_portfolio_value(step)
+            portfolio_values.append(total_value)
+
+        # Convert to numpy array for easier calculations
+        values = np.array(portfolio_values)
+        initial_capital = self.config['initial_capital']
+
+        # Calculate period returns with protection against division by zero
+        # Replace zeros in denominator with a small epsilon to avoid Inf/NaN
+        denominator = values[:-1].copy()
+        denominator[denominator == 0] = 1e-10
+        period_returns = np.diff(values) / denominator
+        # Replace any remaining NaN or Inf with 0.0
+        period_returns = np.nan_to_num(period_returns, nan=0.0, posinf=0.0, neginf=0.0)
+
+        # Calculate cumulative returns
+        final_value = float(values[-1])
+        total_return = (final_value - initial_capital) / initial_capital
+
+        # Calculate drawdowns with protection against division by zero and NaN
+        # Replace any NaN or Inf in values before calculation
+        values_clean = np.nan_to_num(values, nan=0.0, posinf=0.0, neginf=0.0)
+        cumulative_max = np.maximum.accumulate(values_clean)
+        # Replace zeros in cumulative_max with a small epsilon to avoid division by zero
+        cumulative_max = np.where(cumulative_max == 0, 1e-10, cumulative_max)
+        drawdowns = (values_clean / cumulative_max) - 1.0
+        # Replace any NaN or Inf in drawdowns before taking min
+        drawdowns = np.nan_to_num(drawdowns, nan=0.0, posinf=0.0, neginf=0.0)
+        max_drawdown = float(np.min(drawdowns))
+
+        # Calculate annualized return
+        num_trading_days = len(unique_steps) - 1
+        if num_trading_days > 0:
+            # Assuming 252 trading days per year
+            years = num_trading_days / 252.0
+            if years > 0:
+                annualized_return = (
+                        (1.0 + total_return) ** (1.0 / years) - 1.0
+                )
+            else:
+                annualized_return = 0.0
+        else:
+            annualized_return = 0.0
+
+        # Calculate Sharpe ratio with protection against invalid values
+        risk_free_rate = self.config['risk_free_rate']
+        if len(period_returns) > 1:
+            # Filter out any remaining NaN/Inf values (shouldn't happen after previous fix, but be safe)
+            valid_returns = period_returns[np.isfinite(period_returns)]
+            if len(valid_returns) > 1:
+                # Annualized volatility
+                annualized_volatility = (
+                        np.std(valid_returns, ddof=1) * np.sqrt(252.0)
+                )
+                # Ensure annualized_volatility is valid and positive
+                if annualized_volatility > 1e-10 and np.isfinite(annualized_volatility):
+                    sharpe_ratio = (
+                            (annualized_return - risk_free_rate) /
+                            annualized_volatility
+                    )
+                    # Ensure sharpe_ratio is finite
+                    if not np.isfinite(sharpe_ratio):
+                        sharpe_ratio = 0.0
+                else:
+                    sharpe_ratio = 0.0
+            else:
+                sharpe_ratio = 0.0
+        else:
+            sharpe_ratio = 0.0
+
+        # Calculate MAR ratio (return divided by max drawdown)
+        max_dd_abs = abs(max_drawdown)
+        if max_dd_abs > 1e-10:  # Protection against division by zero
+            mar_ratio = total_return / max_dd_abs
+        else:
+            mar_ratio = 0.0
+
+        result: PortfolioMetricsResult = {
+            "final_value": final_value,
+            "total_return": total_return,
+            "max_drawdown": max_drawdown,
+            "sharpe_ratio": sharpe_ratio,
+            "annualized_return": annualized_return,
+            "mar_ratio": mar_ratio,
+        }
+
+        return result

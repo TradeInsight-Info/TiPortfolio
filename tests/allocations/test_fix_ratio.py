@@ -108,3 +108,7 @@ class TestFixRatioAllocationAllOnAppleFrom20190101to20190331(TestCase):
 
         allocation.evaluate()
         self.assertFalse(allocation.portfolio_df.empty)
+
+        print(allocation.portfolio_df[['signal', 'close', 'quantity' ]].head(20))
+        print(allocation.portfolio_df[['signal', 'close', 'quantity' ]].tail(20))
+        print(allocation.get_metrics())
