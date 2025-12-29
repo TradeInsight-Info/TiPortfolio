@@ -11,11 +11,6 @@ from tiportfolio.strategy_library.allocation.fix_ratio import (
 )
 from tiportfolio.strategy_library.trading.long_hold import LongHold
 
-# set debug level to DEBUG globally
-import logging
-logging.getLogger().setLevel(logging.DEBUG)
-
-
 class TestFixRatioAllocationAllOnAppleFrom20190101to20190331(TestCase):
     def setUp(self) -> None:
         data_path = Path(__file__).resolve().parents[1] / "data" / "aapl.csv"
