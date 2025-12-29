@@ -6,6 +6,7 @@ from pandas import DataFrame, MultiIndex, Timestamp
 from tqdm import tqdm
 
 from tiportfolio.performance.metrics import calculate_portfolio_metrics
+from tiportfolio.performance.plotting import plot_portfolio_value
 from tiportfolio.portfolio.trading import Trading
 from tiportfolio.portfolio.types import FeesConfig
 from tiportfolio.utils.default_logger import logger
@@ -213,9 +214,23 @@ class Allocation(ABC):
             total_value = self.get_total_portfolio_value(step)
             logger.debug(f"Total value: {total_value}")
 
-    def get_metrics(self) -> PortfolioMetricsResult:
+    def get_metrics(
+        self,
+        plot: bool = False,
+        fig_size: Tuple[float, float] = (12, 6),
+        show_strategies: bool = True,
+        show_rebalance_dates: bool = True,
+    ) -> PortfolioMetricsResult:
         """
         Calculate portfolio performance metrics from self.portfolio_df.
+
+        Args:
+            plot: Whether to generate and display a plot of portfolio values.
+            fig_size: Figure size (width, height) in inches. Only used if plot=True.
+            show_strategies: Whether to show individual strategy values in plot.
+                Only used if plot=True.
+            show_rebalance_dates: Whether to mark rebalance dates in plot.
+                Only used if plot=True.
 
         Returns:
             PortfolioMetricsResult: Dictionary containing final_value,
@@ -274,5 +289,40 @@ class Allocation(ABC):
             "annualized_return": metrics["annualized_return"],
             "mar_ratio": metrics["mar_ratio"],
         }
+
+        # Generate plot if requested
+        if plot:
+            # Build strategy values dictionary
+            strategy_values_dict: dict[str, list[float]] = {}
+            strategy_names = sorted(
+                self.portfolio_df.index.get_level_values(1).unique()
+            )
+
+            for strategy_name in strategy_names:
+                strategy_values = []
+                for step in unique_steps:
+                    if (step, strategy_name) in self.portfolio_df.index:
+                        value = self.portfolio_df.at[(step, strategy_name), "value"]
+                        strategy_values.append(value)
+                    else:
+                        strategy_values.append(0.0)
+                strategy_values_dict[strategy_name] = strategy_values
+
+            # Get rebalance dates
+            rebalance_dates = sorted(
+                set([date for (date, _) in self.strategy_ratio_map.keys()])
+            )
+
+            # Call plotting utility function
+            plot_portfolio_value(
+                steps=unique_steps,
+                portfolio_values=portfolio_values,
+                strategy_values_dict=strategy_values_dict,
+                rebalance_dates=rebalance_dates,
+                initial_capital=initial_capital,
+                figsize=fig_size,
+                show_strategies=show_strategies,
+                show_rebalance_dates=show_rebalance_dates,
+            )
 
         return result
