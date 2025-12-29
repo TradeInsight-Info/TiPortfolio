@@ -111,4 +111,4 @@ class TestFixRatioAllocationAllOnAppleFrom20190101to20190331(TestCase):
 
         print(allocation.portfolio_df[['signal', 'close', 'quantity' ]].head(20))
         print(allocation.portfolio_df[['signal', 'close', 'quantity' ]].tail(20))
-        print(allocation.get_metrics())
+        print(allocation.get_metrics(True))
