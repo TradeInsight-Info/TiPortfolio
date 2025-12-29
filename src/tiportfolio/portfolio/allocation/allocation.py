@@ -1,11 +1,13 @@
-import logging
+
 from abc import ABC, abstractmethod
 from typing import List, TypedDict, Optional, Tuple
 
 from pandas import DataFrame, MultiIndex, Timestamp
+from tqdm import tqdm
 
 from tiportfolio.portfolio.trading import Trading
 from tiportfolio.portfolio.types import FeesConfig
+from tiportfolio.utils.default_logger import logger
 from tiportfolio.utils.init_tz import init_tz
 
 init_tz()  # todo move to main entry point
@@ -76,13 +78,14 @@ class Allocation(ABC):
         return quantity
 
     def walk_forward(self) -> None:
+        print("Starting walk-forward allocation process...")
         if self.all_steps.empty:
             raise ValueError("No price data available in the specified time window")
 
-        for current_step in self.all_steps:
+        for current_step in tqdm(self.all_steps):
             for strategy in self.strategies:
                 signal_for_current_step = strategy.execute(current_step)
-                logging.debug(
+                logger.debug(
                     f"At {current_step}, Strategy {strategy.name} generated signal: {signal_for_current_step}")
 
             if self.is_time_to_rebalance(current_step):
@@ -111,13 +114,16 @@ class Allocation(ABC):
         During the loop, get the allocation ratio from self.strategy_ratio_map
         (using the most recent rebalance date <= current step).
         """
+        print("Starting portfolio evaluation...")
         if self.all_steps.empty:
-            raise ValueError("No price data available")
+            raise ValueError("No data available during evaluation")
+        else:
+            logger.info(f"Evaluating portfolio over {len(self.all_steps)} steps")
 
         all_rebalance_dates = set([date for (date, _) in self.strategy_ratio_map.keys()])
         previous_step: Optional[Timestamp] = None
 
-        for step in self.all_steps:
+        for step in tqdm(self.all_steps):
             for i in range(len(self.strategies)):
                 strategy = self.strategies[i]
                 # get quantity from previous step
@@ -135,13 +141,13 @@ class Allocation(ABC):
                 signal = price_row.get('signal', 0)
 
                 if step in all_rebalance_dates:
-                    logging.debug(f"Rebalance occurred at {step}")
+                    logger.debug(f"Rebalance occurred at {step}")
 
                     # get target ratio for this rebalance date
                     target_ratio = self.strategy_ratio_map.get((step, strategy.name), 0.0)
 
                     if target_ratio is None:
-                        logging.warning(f"No target ratio found for strategy {strategy.name} at rebalance date {step}")
+                        logger.warning(f"No target ratio found for strategy {strategy.name} at rebalance date {step}")
 
                     previous_ratio = self.strategy_ratio_map.get((previous_step, strategy.name),
                                                                  0.0) if previous_step else 0.0
@@ -158,7 +164,7 @@ class Allocation(ABC):
 
 
                 else:
-                    logging.debug(f"No rebalance at {step}, log overall trade data")
+                    logger.debug(f"No rebalance at {step}, log overall trade data")
                     quantity = previous_quantity
 
                     fees = 0.0  # no allocation change, so no fees
@@ -181,7 +187,7 @@ class Allocation(ABC):
             previous_step = step
             # sum all value for step to get total portfolio value
             total_value = self.get_total_portfolio_value(step)
-            logging.debug(f"Total value: {total_value}")
+            logger.debug(f"Total value: {total_value}")
 
     def get_metrics(self):
         # user self.portfolio_df to calculate metrics like total return, max drawdown, etc.
