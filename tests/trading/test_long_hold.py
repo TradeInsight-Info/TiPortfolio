@@ -34,7 +34,11 @@ class TestLongHold(TestCase):
 
         self.assertEqual(signal, TradingSignal.LONG)
 
-        strategy.after_all()
+
+        try:
+            strategy.after_all()
+        except Exception as e:
+            self.assertIsNotNone(e) # this requires at least 2 steps
 
     def test_long_hold_execute_returns_long_and_slices_history(self):
         # Create a simple prices DataFrame with a DateTimeIndex

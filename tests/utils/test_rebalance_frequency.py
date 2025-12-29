@@ -3,6 +3,7 @@ from typing import List
 from unittest import TestCase
 
 import pandas as pd
+from pandas import Timestamp
 
 from tiportfolio.portfolio.allocation.allocation import (
     PortfolioConfig,
@@ -22,6 +23,9 @@ class DummyStrategy(Trading):
 
 class DummyFrequencyAllocation(FrequencyBasedAllocation):
     """Concrete subclass used only for testing is_time_to_rebalance."""
+
+    def get_target_ratio(self, current_step: Timestamp, strategy_name: str) -> float:
+        return 1.0
 
     def rebalance(self, current_step: datetime) -> None:  # pragma: no cover - behaviour not under test
         return None
