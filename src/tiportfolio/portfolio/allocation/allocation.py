@@ -5,6 +5,7 @@ import numpy as np
 from pandas import DataFrame, MultiIndex, Timestamp
 from tqdm import tqdm
 
+from tiportfolio.performance.metrics import calculate_portfolio_metrics
 from tiportfolio.portfolio.trading import Trading
 from tiportfolio.portfolio.types import FeesConfig
 from tiportfolio.utils.default_logger import logger
@@ -243,87 +244,35 @@ class Allocation(ABC):
             total_value = self.get_total_portfolio_value(step)
             portfolio_values.append(total_value)
 
-        # Convert to numpy array for easier calculations
+        # Convert to numpy array
         values = np.array(portfolio_values)
         initial_capital = self.config['initial_capital']
 
-        # Calculate period returns with protection against division by zero
-        # Replace zeros in denominator with a small epsilon to avoid Inf/NaN
+        # Calculate period returns from values
         denominator = values[:-1].copy()
         denominator[denominator == 0] = 1e-10
         period_returns = np.diff(values) / denominator
-        # Replace any remaining NaN or Inf with 0.0
         period_returns = np.nan_to_num(period_returns, nan=0.0, posinf=0.0, neginf=0.0)
 
-        # Calculate cumulative returns
-        final_value = float(values[-1])
-        total_return = (final_value - initial_capital) / initial_capital
-
-        # Calculate drawdowns with protection against division by zero and NaN
-        # Replace any NaN or Inf in values before calculation
-        values_clean = np.nan_to_num(values, nan=0.0, posinf=0.0, neginf=0.0)
-        cumulative_max = np.maximum.accumulate(values_clean)
-        # Replace zeros in cumulative_max with a small epsilon to avoid division by zero
-        cumulative_max = np.where(cumulative_max == 0, 1e-10, cumulative_max)
-        drawdowns = (values_clean / cumulative_max) - 1.0
-        # Replace any NaN or Inf in drawdowns before taking min
-        drawdowns = np.nan_to_num(drawdowns, nan=0.0, posinf=0.0, neginf=0.0)
-        max_drawdown = float(np.min(drawdowns))
-
-        # Calculate annualized return
+        # Calculate metrics using shared utility function
         num_trading_days = len(unique_steps) - 1
-        if num_trading_days > 0:
-            # Assuming 252 trading days per year
-            years = num_trading_days / 252.0
-            if years > 0:
-                annualized_return = (
-                        (1.0 + total_return) ** (1.0 / years) - 1.0
-                )
-            else:
-                annualized_return = 0.0
-        else:
-            annualized_return = 0.0
-
-        # Calculate Sharpe ratio with protection against invalid values
-        risk_free_rate = self.config['risk_free_rate']
-        if len(period_returns) > 1:
-            # Filter out any remaining NaN/Inf values (shouldn't happen after previous fix, but be safe)
-            valid_returns = period_returns[np.isfinite(period_returns)]
-            if len(valid_returns) > 1:
-                # Annualized volatility
-                annualized_volatility = (
-                        np.std(valid_returns, ddof=1) * np.sqrt(252.0)
-                )
-                # Ensure annualized_volatility is valid and positive
-                if annualized_volatility > 1e-10 and np.isfinite(annualized_volatility):
-                    sharpe_ratio = (
-                            (annualized_return - risk_free_rate) /
-                            annualized_volatility
-                    )
-                    # Ensure sharpe_ratio is finite
-                    if not np.isfinite(sharpe_ratio):
-                        sharpe_ratio = 0.0
-                else:
-                    sharpe_ratio = 0.0
-            else:
-                sharpe_ratio = 0.0
-        else:
-            sharpe_ratio = 0.0
-
-        # Calculate MAR ratio (return divided by max drawdown)
-        max_dd_abs = abs(max_drawdown)
-        if max_dd_abs > 1e-10:  # Protection against division by zero
-            mar_ratio = total_return / max_dd_abs
-        else:
-            mar_ratio = 0.0
+        metrics = calculate_portfolio_metrics(
+            values=values,
+            initial_capital=initial_capital,
+            period_returns=period_returns,
+            risk_free_rate=self.config['risk_free_rate'],
+            num_trading_days=num_trading_days,
+            calculate_sharpe=True,
+            calculate_annualized=True,
+        )
 
         result: PortfolioMetricsResult = {
-            "final_value": final_value,
-            "total_return": total_return,
-            "max_drawdown": max_drawdown,
-            "sharpe_ratio": sharpe_ratio,
-            "annualized_return": annualized_return,
-            "mar_ratio": mar_ratio,
+            "final_value": metrics["final_value"],
+            "total_return": metrics["total_return"],
+            "max_drawdown": metrics["max_drawdown"],
+            "sharpe_ratio": metrics["sharpe_ratio"],
+            "annualized_return": metrics["annualized_return"],
+            "mar_ratio": metrics["mar_ratio"],
         }
 
         return result

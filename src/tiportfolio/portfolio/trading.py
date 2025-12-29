@@ -1,8 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import TypedDict, Optional, Tuple
 
+import numpy as np
 from pandas import DataFrame, Timestamp, DatetimeIndex
 
+from tiportfolio.performance.metrics import calculate_portfolio_metrics
 from tiportfolio.portfolio.types import TradingSignal
 from tiportfolio.utils.constants import BASIC_REQUIRED_COLUMNS
 
@@ -137,6 +139,26 @@ class Trading(ABC):
         self.prices["value"] = (1 + self.prices["pnl"]).cumprod()
         self.prices["cumulative_pnl"] = self.prices["value"] - 1
 
+        # Calculate period returns from value column for metrics calculation
+        values = np.array(self.prices["value"].values)
+        initial_capital = 1.0  # Value starts at 1.0
+        denominator = values[:-1].copy()
+        denominator[denominator == 0] = 1e-10
+        period_returns = np.diff(values) / denominator
+        period_returns = np.nan_to_num(period_returns, nan=0.0, posinf=0.0, neginf=0.0)
+
+        # Calculate metrics using shared utility function
+        metrics = calculate_portfolio_metrics(
+            values=values,
+            initial_capital=initial_capital,
+            period_returns=period_returns,
+            risk_free_rate=None,
+            num_trading_days=None,
+            calculate_sharpe=False,
+            calculate_annualized=False,
+        )
+
+        # Keep existing columns for backward compatibility
         self.prices["cumulative_max"] = self.prices["value"].cummax()
         self.prices["drawdown"] = self.prices["value"] / self.prices["cumulative_max"] - 1
         self.prices["max_drawdown"] = self.prices["drawdown"].cummin()
@@ -145,10 +167,10 @@ class Trading(ABC):
         self.prices["mar_ratio"] = self.prices["cumulative_pnl"] / max_dd_abs
 
         summary: TradingAlgorithmStrategyResult = {
-            "final_value": float(self.prices["value"].iloc[-1]),
-            "total_return": float(self.prices["cumulative_pnl"].iloc[-1]),
-            "max_drawdown": float(self.prices["max_drawdown"].min()),
-            "mar_ratio": float(self.prices["mar_ratio"].iloc[-1]),
+            "final_value": metrics["final_value"],
+            "total_return": metrics["total_return"],
+            "max_drawdown": metrics["max_drawdown"],
+            "mar_ratio": metrics["mar_ratio"],
         }
 
         return self.prices, summary
