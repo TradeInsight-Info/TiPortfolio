@@ -37,13 +37,12 @@ class FrequencyBasedAllocation(Allocation, ABC):
             config: PortfolioConfig,
             strategies: List[Trading],
             rebalance_frequency: RebalanceFrequency,
-            market_name: str = 'NYSE',
             hour: int = 9,
             minute: int = 30,
     ) -> None:
         super().__init__(config, strategies)
         self.rebalance_frequency = rebalance_frequency
-        self.market_name = market_name
+        self.market_name = self.config.get("market_name", 'NYSE')
         self.rebalance_hour = hour
         self.rebalance_minute = minute
         self.rebalance_second = 0

@@ -74,7 +74,6 @@ class TestFixRatioAllocationAllOnAppleAndGLDFrom20190101to20190331(TestCase):
             strategies=[self.strategy_aapl, self.strategy_gld],
             allocation_ratio_list=[0.7, 0.3],
             rebalance_frequency=RebalanceFrequency.mid_of_month,
-            market_name="NYSE",
         )
 
         allocation.walk_forward()
