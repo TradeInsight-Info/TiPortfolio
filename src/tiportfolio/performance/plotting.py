@@ -10,10 +10,10 @@ def plot_portfolio_value(
     portfolio_values: List[float],
     strategy_values_dict: Dict[str, List[float]],
     rebalance_dates: Optional[List[Timestamp]] = None,
-    initial_capital: Optional[float] = None,
     figsize: Tuple[float, float] = (12, 6),
     show_strategies: bool = True,
     show_rebalance_dates: bool = True,
+    use_log_scale: bool = False,
 ) -> None:
     """
     Plot portfolio value over time with strategy breakdown and rebalance dates.
@@ -25,11 +25,12 @@ def plot_portfolio_value(
             at each step. Keys are strategy names, values are lists of floats
             corresponding to each step.
         rebalance_dates: Optional list of rebalance dates to mark on the plot.
-        initial_capital: Optional initial capital value to display as a
-            horizontal reference line.
         figsize: Figure size (width, height) in inches.
         show_strategies: Whether to show individual strategy values.
         show_rebalance_dates: Whether to mark rebalance dates.
+        use_log_scale: Whether to use symmetric logarithmic scale for y-axis
+            (default True). Symlog provides symmetric scaling where equal
+            percentage changes have equal visual distance.
 
     Raises:
         ValueError: If inputs are invalid or insufficient data.
@@ -54,18 +55,6 @@ def plot_portfolio_value(
 
     # Create figure and axes
     _, ax = plt.subplots(figsize=figsize)
-
-    # Plot initial capital reference line if provided
-    if initial_capital is not None:
-        ax.axhline(
-            y=initial_capital,
-            color="gray",
-            linestyle="-.",
-            alpha=0.5,
-            linewidth=1.5,
-            label="Initial Capital",
-            zorder=1,
-        )
 
     # Plot total portfolio value
     ax.plot(
@@ -110,6 +99,10 @@ def plot_portfolio_value(
                     label="Rebalance" if i == 0 else "",
                     zorder=2,
                 )
+
+    # Apply symmetric log scale if requested
+    if use_log_scale:
+        ax.set_yscale('symlog')
 
     # Formatting
     ax.set_xlabel("Step (Datetime)", fontsize=11)

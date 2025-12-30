@@ -2,7 +2,10 @@ from typing import List
 
 from pandas import Timestamp
 
-from tiportfolio.portfolio.allocation.allocation import PortfolioConfig
+from tiportfolio.portfolio.allocation.allocation import (
+    CASH_STRATEGY_NAME,
+    PortfolioConfig,
+)
 from tiportfolio.portfolio.allocation.frequency_based_allocation import (
     FrequencyBasedAllocation,
     RebalanceFrequency,
@@ -13,6 +16,12 @@ from tiportfolio.portfolio.trading import Trading
 class FixRatioFrequencyBasedAllocation(FrequencyBasedAllocation):
 
     def get_target_ratio(self, current_step: Timestamp, strategy_name: str) -> float:
+        # Handle cash strategy - calculate automatically
+        if strategy_name == CASH_STRATEGY_NAME:
+            # Cash ratio = 1.0 - sum of all stock strategy ratios
+            total_stock_ratio = sum(self.allocation_percentages)
+            return 1.0 - total_stock_ratio
+        
         # return the fixed value for the strategy from allocation_percentages
         for i, strategy in enumerate(self.strategies):
             if strategy.name == strategy_name:
@@ -35,8 +44,9 @@ class FixRatioFrequencyBasedAllocation(FrequencyBasedAllocation):
             raise ValueError(
                 "Length of allocation_percentages must match number of strategy_library"
             )
-        if not abs(sum(allocation_ratio_list) - 1.0) < 1e-6:
-            raise ValueError("Sum of allocation_percentages must be 1.0")
+        # Allow sum to be <= 1.0 (remaining goes to cash)
+        if sum(allocation_ratio_list) > 1.0:
+            raise ValueError("Sum of allocation_percentages must be <= 1.0")
         self.allocation_percentages = allocation_ratio_list
         self.rebalance_frequency = rebalance_frequency
         super().__init__(

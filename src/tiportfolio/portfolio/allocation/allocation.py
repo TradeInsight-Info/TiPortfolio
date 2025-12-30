@@ -14,6 +14,9 @@ from tiportfolio.utils.init_tz import init_tz
 
 init_tz()  # todo move to main entry point
 
+# Cash strategy name constant
+CASH_STRATEGY_NAME = "__CASH__"
+
 
 class PortfolioConfig(TypedDict):
     fees_config: FeesConfig
@@ -124,6 +127,7 @@ class Allocation(ABC):
 
         During the loop, get the allocation ratio from self.strategy_ratio_map
         (using the most recent rebalance date <= current step).
+        Cash is handled as a virtual strategy with price=1.0.
         """
         print("Starting portfolio evaluation...")
         if self.all_steps.empty:
@@ -135,6 +139,28 @@ class Allocation(ABC):
         previous_step: Optional[Timestamp] = None
 
         for step in tqdm(self.all_steps):
+            # Get previous total portfolio value (cash + stocks)
+            if previous_step:
+                previous_total_value = self.get_total_portfolio_value(previous_step)
+                if previous_total_value < 1e-10:
+                    previous_total_value = self.config['initial_capital']
+            else:
+                previous_total_value = self.config['initial_capital']
+
+            # Get or initialize cash quantity
+            if previous_step and (previous_step, CASH_STRATEGY_NAME) in self.portfolio_df.index:
+                cash_quantity = self.portfolio_df.at[(previous_step, CASH_STRATEGY_NAME), 'quantity']
+            else:
+                # First step: initialize cash with initial capital
+                cash_quantity = self.config['initial_capital']
+
+            # Calculate and store cash target ratio if rebalancing
+            if step in all_rebalance_dates:
+                cash_target_ratio = self.get_target_ratio(step, CASH_STRATEGY_NAME)
+                # Store cash ratio in strategy_ratio_map
+                self.strategy_ratio_map[(step, CASH_STRATEGY_NAME)] = cash_target_ratio
+
+            # Process stock strategies first
             for i in range(len(self.strategies)):
                 strategy = self.strategies[i]
                 # get quantity from previous step
@@ -145,17 +171,9 @@ class Allocation(ABC):
                     previous_quantity = 0.0
                     previous_cost_basis = 0.0
 
-                if previous_step:
-                    previous_total_value = self.get_total_portfolio_value(previous_step)
-                    # If previous portfolio value is 0 (no trades made yet), use initial_capital
-                    if previous_total_value < 1e-10:
-                        previous_total_value = self.config['initial_capital']
-                    # Otherwise, keep the actual previous_total_value (don't override it)
-                else:
-                    previous_total_value = self.config['initial_capital']
-
                 price_row = strategy.dataframe.loc[step]
                 signal = price_row.get('signal', 0)
+                stock_price = price_row['close']
 
                 if step in all_rebalance_dates:
                     logger.debug(f"Rebalance occurred at {step}")
@@ -180,33 +198,62 @@ class Allocation(ABC):
 
                     # amount to trade
                     trade_amount = ratio_diff * previous_total_value
-                    quantity = previous_quantity + trade_amount / strategy.dataframe.at[step, 'close']
+                    
+                    # Calculate fees
+                    commission_rate = self.config.get('fees_config', {}).get('commission', 0.0)
+                    fees = abs(trade_amount) * commission_rate if trade_amount != 0 else 0.0
 
-                    fees = self.config.get('fees_config', {}).get('commission',
-                                                                  0.0) * trade_amount if trade_amount != 0 else 0.0
-                    value = previous_total_value * target_ratio
+                    # Update cash and quantity based on trade
+                    if trade_amount > 0:  # Buying
+                        shares = trade_amount / stock_price
+                        quantity = previous_quantity + shares
+                        cash_quantity -= (trade_amount + fees)
+                    elif trade_amount < 0:  # Selling
+                        shares = abs(trade_amount) / stock_price
+                        quantity = previous_quantity - shares
+                        cash_quantity += (abs(trade_amount) - fees)
+                    else:  # No trade
+                        quantity = previous_quantity
+
+                    value = quantity * stock_price
                     cost_basis = previous_cost_basis + fees
-
 
                 else:
                     logger.debug(f"No rebalance at {step}, log overall trade data")
                     quantity = previous_quantity
-
                     fees = 0.0  # no allocation change, so no fees
                     cost_basis = previous_cost_basis + fees
-                    value = quantity * price_row['close']
+                    value = quantity * stock_price
 
                 self.portfolio_df.loc[(step, strategy.name), :] = [
                     signal,
                     price_row['open'],
                     price_row['high'],
                     price_row['low'],
-                    price_row['close'],
+                    stock_price,
                     quantity,
                     value,
                     fees,
                     cost_basis,
                 ]
+
+            # Handle cash strategy
+            # On rebalance, cash was adjusted during stock trades above
+            # Cash quantity should now be approximately: previous_total_value * cash_target_ratio - fees
+            # On non-rebalance steps, cash quantity stays the same (already set above)
+
+            # Store cash entry in portfolio_df
+            self.portfolio_df.loc[(step, CASH_STRATEGY_NAME), :] = [
+                0,  # signal (cash is always "hold")
+                1.0,  # open
+                1.0,  # high
+                1.0,  # low
+                1.0,  # close (always 1.0)
+                cash_quantity,  # quantity
+                cash_quantity,  # value = quantity * 1.0
+                0.0,  # fees (cash doesn't have fees)
+                0.0,  # cost_basis (cash doesn't have cost basis)
+            ]
 
             # keep track of the most recent rebalance date
             previous_step = step
@@ -214,12 +261,13 @@ class Allocation(ABC):
             total_value = self.get_total_portfolio_value(step)
             logger.debug(f"Total value: {total_value}")
 
-    def get_metrics(
+    def get_performance_metrics(
         self,
         plot: bool = False,
         fig_size: Tuple[float, float] = (12, 6),
         show_strategies: bool = True,
         show_rebalance_dates: bool = True,
+        use_log_scale: bool = False,
     ) -> PortfolioMetricsResult:
         """
         Calculate portfolio performance metrics from self.portfolio_df.
@@ -230,6 +278,8 @@ class Allocation(ABC):
             show_strategies: Whether to show individual strategy values in plot.
                 Only used if plot=True.
             show_rebalance_dates: Whether to mark rebalance dates in plot.
+                Only used if plot=True.
+            use_log_scale: Whether to use logarithmic scale for y-axis in plot.
                 Only used if plot=True.
 
         Returns:
@@ -319,10 +369,10 @@ class Allocation(ABC):
                 portfolio_values=portfolio_values,
                 strategy_values_dict=strategy_values_dict,
                 rebalance_dates=rebalance_dates,
-                initial_capital=initial_capital,
                 figsize=fig_size,
                 show_strategies=show_strategies,
                 show_rebalance_dates=show_rebalance_dates,
+                use_log_scale=use_log_scale,
             )
 
         return result
