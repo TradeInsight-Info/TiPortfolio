@@ -110,8 +110,12 @@ class TestFixRatioAllocationAllOnAppleFrom20190101to20190331(TestCase):
         self.assertFalse(allocation.portfolio_df.empty)
 
         print("Portfolio DataFrame top 16 and bottom 16 rows:")
-        print(allocation.portfolio_df[['signal', 'close', 'quantity' ]].head(16))
-        print(allocation.portfolio_df[['signal', 'close', 'quantity' ]].tail(16))
+        print(allocation.portfolio_df[['signal', 'close', 'quantity', 'value' ]].head(20))
+        print(allocation.portfolio_df[['signal', 'close', 'quantity', 'value' ]].tail(20))
+
+
+
+
 
         print("Portfolio Result Metrics:")
         metrics = allocation.get_performance_metrics(True)

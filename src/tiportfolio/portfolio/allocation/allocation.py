@@ -198,16 +198,19 @@ class Allocation(ABC):
 
                     # amount to trade
                     trade_amount = ratio_diff * previous_total_value
-                    
+
                     # Calculate fees
                     commission_rate = self.config.get('fees_config', {}).get('commission', 0.0)
                     fees = abs(trade_amount) * commission_rate if trade_amount != 0 else 0.0
 
                     # Update cash and quantity based on trade
                     if trade_amount > 0:  # Buying
-                        shares = trade_amount / stock_price
+                        # Reduce trade amount by fees before calculating shares
+                        # This ensures fees reduce the purchase amount, not cash
+                        net_trade_amount = trade_amount - fees
+                        shares = net_trade_amount / stock_price
                         quantity = previous_quantity + shares
-                        cash_quantity -= (trade_amount + fees)
+                        cash_quantity -= trade_amount  # Only deduct original trade_amount, fees already accounted for
                     elif trade_amount < 0:  # Selling
                         shares = abs(trade_amount) / stock_price
                         quantity = previous_quantity - shares
