@@ -35,7 +35,6 @@ class FixRatioFrequencyBasedAllocation(FrequencyBasedAllocation):
             strategies: List[Trading],
             allocation_ratio_list: List[float],
             rebalance_frequency: RebalanceFrequency,
-            market_name: str = 'NYSE',
             hour: int = 9,
             minute: int = 30,
     ) -> None:
@@ -50,7 +49,7 @@ class FixRatioFrequencyBasedAllocation(FrequencyBasedAllocation):
         self.allocation_percentages = allocation_ratio_list
         self.rebalance_frequency = rebalance_frequency
         super().__init__(
-            config, strategies, rebalance_frequency, market_name, hour, minute
+            config, strategies, rebalance_frequency, hour, minute
         )
 
     def is_time_to_rebalance(self, current_step: Timestamp) -> bool:

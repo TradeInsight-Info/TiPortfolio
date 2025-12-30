@@ -49,6 +49,15 @@ class Allocation(ABC):
         self.strategies: List[Trading] = list(
             strategies
         )
+
+        logger.info(
+            f"Initialized Allocation with {len(self.strategies)} strategies with initial capital {self.config['initial_capital']}. "
+        )
+        # log all strategy names
+        for strategy in self.strategies:
+            logger.info(f" - Strategy: {strategy.name}")
+
+
         self.all_steps = self.strategies[0].all_steps  # we assume all strategies have the same time index
         self.portfolio_df: DataFrame = DataFrame(
             columns=[
