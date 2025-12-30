@@ -49,12 +49,9 @@ class TestFixRatioAllocationAllOnAppleAndGLDFrom20190101to20190331(TestCase):
         df_gld = df_gld.loc["2019-01-01":"2019-03-31"]  # type: ignore
         self.prices_gld = df_gld[["open", "high", "low", "close", "volume"]]
 
-        fees: FeesConfig = {
+        self.config: PortfolioConfig = {
             "commission": 0.0001,
             "slippage": 0.0,
-        }
-        self.config: PortfolioConfig = {
-            "fees_config": fees,
             "risk_free_rate": 0.04,
             "initial_capital": 100_000,
             "market_name": "NYSE",

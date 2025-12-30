@@ -19,7 +19,8 @@ CASH_STRATEGY_NAME = "__CASH__"
 
 
 class PortfolioConfig(TypedDict):
-    fees_config: FeesConfig
+    commission: float
+    slippage: float
     risk_free_rate: float
     initial_capital: float
     market_name: Optional[str]  # todo in the future support multiple markets
@@ -200,7 +201,7 @@ class Allocation(ABC):
                     trade_amount = ratio_diff * previous_total_value
 
                     # Calculate fees
-                    commission_rate = self.config.get('fees_config', {}).get('commission', 0.0)
+                    commission_rate = self.config.get('commission', 0.0)
                     fees = abs(trade_amount) * commission_rate if trade_amount != 0 else 0.0
 
                     # Update cash and quantity based on trade

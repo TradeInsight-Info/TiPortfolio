@@ -51,7 +51,9 @@ def _build_allocation(freq: RebalanceFrequency) -> DummyFrequencyAllocation:
     # access attributes on ``None``.
     strategy = DummyStrategy("DUMMY", "DUMMY", prices=prices, config={})
     config: PortfolioConfig = {
-        "fees_config": {"commission": 0.0, "slippage": 0.0, "risk_free_rate": 0.0},
+        "commission": 0.0,
+        "slippage": 0.0,
+        "risk_free_rate": 0.0,
         "initial_capital": 1_000.0,
         "market_name": "NYSE",
     }
