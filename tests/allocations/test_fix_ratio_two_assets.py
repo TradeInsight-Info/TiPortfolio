@@ -122,11 +122,6 @@ class TestFixRatioAllocationAllOnAppleAndGLDFrom20190101to20190331(TestCase):
         strategy_names = allocation.portfolio_df.index.get_level_values(1).unique()
         self.assertIn("LongHold - AAPL", strategy_names)
         self.assertIn("LongHold - GLD", strategy_names)
-
-        print("Portfolio DataFrame top 16 and bottom 16 rows:")
-        print(allocation.portfolio_df[['signal', 'close', 'quantity', 'value']].head(30))
-        print(allocation.portfolio_df[['signal', 'close', 'quantity', 'value']].tail(30))
-
         # Verify that on 2019-01-15, portfolio values match expected
         trade_date = pd.Timestamp(
             "2019-01-15 09:30:00-05:00", tz="America/New_York"
