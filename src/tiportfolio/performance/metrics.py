@@ -53,11 +53,34 @@ def calculate_portfolio_metrics(
     total_return = (final_value - initial_capital) / initial_capital
 
     # Calculate drawdowns with protection against division by zero and NaN
-    cumulative_max = np.maximum.accumulate(values_clean)
-    cumulative_max = np.where(cumulative_max == 0, 1e-10, cumulative_max)
-    drawdowns = (values_clean / cumulative_max) - 1.0
-    drawdowns = np.nan_to_num(drawdowns, nan=0.0, posinf=0.0, neginf=0.0)
-    max_drawdown = float(np.min(drawdowns))
+    # Filter out leading zeros - portfolio should start from initial_capital
+    # Find first non-zero value index
+    first_valid_idx = 0
+    for i, val in enumerate(values_clean):
+        if val > 1e-10:
+            first_valid_idx = i
+            break
+
+    # If all values are zero or very small, set max_drawdown to 0
+    if first_valid_idx == len(values_clean) - 1 and values_clean[first_valid_idx] < 1e-10:
+        max_drawdown = 0.0
+    else:
+        # Use values from first valid index onwards
+        if first_valid_idx > 0:
+            values_for_drawdown = values_clean[first_valid_idx:].copy()
+        else:
+            values_for_drawdown = values_clean.copy()
+
+        # Ensure first value is at least initial_capital to avoid -1.0 drawdown
+        if values_for_drawdown[0] < initial_capital * 0.01:
+            values_for_drawdown[0] = initial_capital
+
+        cumulative_max = np.maximum.accumulate(values_for_drawdown)
+        # Ensure cumulative_max is never zero or too small
+        cumulative_max = np.maximum(cumulative_max, initial_capital * 0.01)
+        drawdowns = (values_for_drawdown / cumulative_max) - 1.0
+        drawdowns = np.nan_to_num(drawdowns, nan=0.0, posinf=0.0, neginf=0.0)
+        max_drawdown = float(np.min(drawdowns))
 
     # Calculate annualized return
     if calculate_annualized and num_trading_days is not None:
