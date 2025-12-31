@@ -102,7 +102,7 @@ class Allocation(ABC):
         return quantity
 
     def walk_forward(self) -> None:
-        print("Starting walk-forward allocation process...")
+        logger.info("Starting walk-forward allocation process...")
         if self.all_steps.empty:
             raise ValueError("No price data available in the specified time window")
 
@@ -113,6 +113,7 @@ class Allocation(ABC):
                     f"At {current_step}, Strategy {strategy.name} generated signal: {signal_for_current_step}")
 
             if self.is_time_to_rebalance(current_step):
+                logger.debug(f"Rebalancing at {current_step}")
                 for strategy in self.strategies:
                     target_ratio = self.get_target_ratio(current_step, strategy.name)
                     self.set_target_ratio(current_step, strategy.name, target_ratio)
