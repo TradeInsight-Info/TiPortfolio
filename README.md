@@ -16,19 +16,21 @@ and it can be extended to different algorithms similar to Riskfolio-Lib. In anot
 
 ## Get started
 
-> todo
+Check [researching notebooks](./research/) for more details.
+
 
 
 ## Features
 > including features work in progress
 
-
+- [x] Simple Backtesting
+- [x] Scheduled Rebalancing
 - [ ] Dollar neutral
 - [ ] Beta neutral
 - [ ] Tail risk management
 - [ ] Volatility Targeting
 - [ ] Drawdown control
-- [x] Simple Backtesting
+
 
 
 
