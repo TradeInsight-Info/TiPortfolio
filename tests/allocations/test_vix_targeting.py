@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from unittest import TestCase
-from unittest.mock import patch
 from tiportfolio.portfolio.allocation.vix_targeting import VixTargetingAllocation
 from tiportfolio.portfolio.allocation.allocation import (
     CASH_STRATEGY_NAME,
@@ -45,7 +44,11 @@ class TestVixTargetingAllocation(TestCase):
         # Range 15 to 30 (target_vol 15 + vix_boundaries 0 and 15)
         alloc = VixTargetingAllocation(
             self.config, [self.strategy_voo, self.strategy_bil],
-            self.vix_data, [0.5, 0.1], target_vol=15.0, vix_boundaries=(0.0, 15.0)
+            self.vix_data, 
+            base_weights={self.strategy_voo.name: 0.9, self.strategy_bil.name: 0.1}, 
+            risky_assets=[self.strategy_voo.name], 
+            target_vol=15.0, 
+            vix_boundaries=(0.0, 15.0)
         )
         
         # Step 0: First step -> Rebalance
@@ -70,18 +73,15 @@ class TestVixTargetingAllocation(TestCase):
         # target_vol=15.0, boundaries=(-1.0, 5.0) -> low=14.0, high=20.0
         dates = pd.date_range("2025-01-01", periods=6, freq="D")
         
-        # Step 0: VIX=15 (normal regime) -> Rebalance
-        # Step 1: VIX=19 (still normal, < 20) -> No rebalance
-        # Step 2: VIX=21 (high regime, > 20) -> Rebalance
-        # Step 3: VIX=14.5 (normal regime, back < 20 and > 14) -> Rebalance
-        # Step 4: VIX=13 (low regime, < 14) -> Rebalance
-        # Step 5: VIX=13 (still low) -> No rebalance
-        
         vix_data = pd.Series([15.0, 19.0, 21.0, 14.5, 13.0, 13.0], index=dates)
         
         alloc = VixTargetingAllocation(
             self.config, [self.strategy_voo, self.strategy_bil],
-            vix_data, [0.5, 0.1], target_vol=15.0, vix_boundaries=(-1.0, 5.0)
+            vix_data, 
+            base_weights={self.strategy_voo.name: 0.9, self.strategy_bil.name: 0.1}, 
+            risky_assets=[self.strategy_voo.name], 
+            target_vol=15.0, 
+            vix_boundaries=(-1.0, 5.0)
         )
         
         self.assertTrue(alloc.is_time_to_rebalance(dates[0]))
@@ -91,76 +91,86 @@ class TestVixTargetingAllocation(TestCase):
         self.assertTrue(alloc.is_time_to_rebalance(dates[4]))
         self.assertFalse(alloc.is_time_to_rebalance(dates[5]))
 
-    def test_weight_calculation_erc_vol_targeting(self) -> None:
-        # Full concentration case:
-        # target_vol=20, flags=[0.5, 0.1], VIX=20
-        # ERC weights: w_voo = 1.0, w_bil = 5.0 -> Capped to 1.0
-        # Scaling leaves us with w_voo = 1/6, w_bil = 5/6
-        # To seek target vol, it shifts all possible weight from BIL to VOO
+    def test_weight_calculation_base_weights(self) -> None:
+        # Normal case
+        # target_vol=15, VIX=20
+        # M = 15/20 = 0.75
+        # w_voo = 0.9 * 0.75 = 0.675
+        # w_bil = 1.0 - 0.675 = 0.325
         alloc = VixTargetingAllocation(
             self.config, [self.strategy_voo, self.strategy_bil],
-            self.vix_data, [0.5, 0.1], target_vol=20.0, max_leverage=1.0
+            self.vix_data, 
+            base_weights={self.strategy_voo.name: 0.9, self.strategy_bil.name: 0.1}, 
+            risky_assets=[self.strategy_voo.name], 
+            target_vol=15.0, 
+            max_leverage=1.0
         )
         
         w_voo = alloc.get_target_ratio(self.dates[0], self.strategy_voo.name)
         w_bil = alloc.get_target_ratio(self.dates[0], self.strategy_bil.name)
         w_cash = alloc.get_target_ratio(self.dates[0], CASH_STRATEGY_NAME)
         
-        self.assertAlmostEqual(w_voo, 1.0)
-        self.assertAlmostEqual(w_bil, 0.0)
+        self.assertAlmostEqual(w_voo, 0.675)
+        self.assertAlmostEqual(w_bil, 0.325)
         self.assertAlmostEqual(w_cash, 0.0)
         
-        # Partial shift case: Target Vol = 8
-        # ERC weights: w_voo = 0.4, w_bil = 2.0 -> Capped to 1.0
-        # Scaled weights: w_voo = 1/6, w_bil = 5/6
-        # Current vol = 3.333. Delta Vol = 4.667.
-        # Vol increase per unit shift = 20 * (0.5 - 0.1) = 8
-        # Shift = 4.667 / 8 = 0.583333
-        # Final w_bil = 5/6 - 0.583333 = 0.25
-        # Final w_voo = 1/6 + 0.583333 = 0.75
-        alloc_partial = VixTargetingAllocation(
+        # Capped case
+        # target_vol=30, VIX=20
+        # M = 30/20 = 1.5
+        # w_voo = 0.9 * 1.5 = 1.35 -> Capped to 1.0
+        # w_bil = 1.0 - 1.0 = 0.0
+        alloc_capped = VixTargetingAllocation(
             self.config, [self.strategy_voo, self.strategy_bil],
-            self.vix_data, [0.5, 0.1], target_vol=8.0, max_leverage=1.0
+            self.vix_data, 
+            base_weights={self.strategy_voo.name: 0.9, self.strategy_bil.name: 0.1}, 
+            risky_assets=[self.strategy_voo.name], 
+            target_vol=30.0, 
+            max_leverage=1.0
         )
         
-        w_voo_p = alloc_partial.get_target_ratio(self.dates[0], self.strategy_voo.name)
-        w_bil_p = alloc_partial.get_target_ratio(self.dates[0], self.strategy_bil.name)
+        w_voo_capped = alloc_capped.get_target_ratio(self.dates[0], self.strategy_voo.name)
+        w_bil_capped = alloc_capped.get_target_ratio(self.dates[0], self.strategy_bil.name)
         
-        self.assertAlmostEqual(w_voo_p, 0.75)
-        self.assertAlmostEqual(w_bil_p, 0.25)
+        self.assertAlmostEqual(w_voo_capped, 1.0)
+        self.assertAlmostEqual(w_bil_capped, 0.0)
 
     def test_weight_calculation_with_cash(self) -> None:
-        # Set target_vol low so we have cash
-        # target_vol=2, flags=[0.5, 0.1], VIX=20
-        # W_voo = 2 / (2 * 20 * 0.5) = 2 / 20 = 0.1
-        # W_bil = 2 / (2 * 20 * 0.1) = 2 / 4 = 0.5
-        # Total = 0.6. Cash = 0.4.
-        
+        # target_vol=10, VIX=20
+        # M = 10/20 = 0.5
+        # No safe assets provided (only VOO in strategies)
+        # w_voo = 0.9 * 0.5 = 0.45
+        # Cash = 1.0 - 0.45 = 0.55
         alloc = VixTargetingAllocation(
-            self.config, [self.strategy_voo, self.strategy_bil],
-            self.vix_data, [0.5, 0.1], target_vol=2.0
+            self.config, [self.strategy_voo],
+            self.vix_data, 
+            base_weights={self.strategy_voo.name: 0.9}, 
+            risky_assets=[self.strategy_voo.name], 
+            target_vol=10.0
         )
         
-        self.assertAlmostEqual(alloc.get_target_ratio(self.dates[0], self.strategy_voo.name), 0.1)
-        self.assertAlmostEqual(alloc.get_target_ratio(self.dates[0], self.strategy_bil.name), 0.5)
-        self.assertAlmostEqual(alloc.get_target_ratio(self.dates[0], CASH_STRATEGY_NAME), 0.4)
+        self.assertAlmostEqual(alloc.get_target_ratio(self.dates[0], self.strategy_voo.name), 0.45)
+        self.assertAlmostEqual(alloc.get_target_ratio(self.dates[0], CASH_STRATEGY_NAME), 0.55)
 
     def test_walk_forward_integration(self) -> None:
         alloc = VixTargetingAllocation(
             self.config, [self.strategy_voo],
-            self.vix_data, [0.5], target_vol=5.0, vix_boundaries=(10.0, 25.0)
+            self.vix_data, 
+            base_weights={self.strategy_voo.name: 0.9}, 
+            risky_assets=[self.strategy_voo.name], 
+            target_vol=15.0, 
+            vix_boundaries=(0.0, 15.0)
         )
         
         alloc.walk_forward()
-        # Step 0: VIX=20 -> W = 5 / (1 * 20 * 0.5) = 0.5
-        # Step 3: VIX=40 -> W = 5 / (1 * 40 * 0.5) = 0.25
-        # Step 4: VIX=20 -> W = 0.5 (edge trigger back to normal)
-        # Step 6: VIX=10 -> W = 5 / (1 * 10 * 0.5) = 1.0
+        # Step 0: VIX=20 -> M = 15/20 = 0.75. W = 0.9 * 0.75 = 0.675
+        # Step 3: VIX=40 -> M = 15/40 = 0.375. W = 0.9 * 0.375 = 0.3375
+        # Step 4: VIX=20 -> W = 0.675
+        # Step 6: VIX=10 -> M = 15/10 = 1.5. W = 0.9 * 1.5 = 1.35 -> Capped to 1.0
         
-        self.assertEqual(alloc.strategy_ratio_map[(self.dates[0], self.strategy_voo.name)], 0.5)
-        self.assertEqual(alloc.strategy_ratio_map[(self.dates[3], self.strategy_voo.name)], 0.25)
-        self.assertEqual(alloc.strategy_ratio_map[(self.dates[4], self.strategy_voo.name)], 0.5)
-        self.assertEqual(alloc.strategy_ratio_map[(self.dates[6], self.strategy_voo.name)], 1.0)
+        self.assertAlmostEqual(alloc.strategy_ratio_map[(self.dates[0], self.strategy_voo.name)], 0.675)
+        self.assertAlmostEqual(alloc.strategy_ratio_map[(self.dates[3], self.strategy_voo.name)], 0.3375)
+        self.assertAlmostEqual(alloc.strategy_ratio_map[(self.dates[4], self.strategy_voo.name)], 0.675)
+        self.assertAlmostEqual(alloc.strategy_ratio_map[(self.dates[6], self.strategy_voo.name)], 1.0)
         
         # Step 1 should have NO entry in strategy_ratio_map because no rebalance
         self.assertNotIn((self.dates[1], self.strategy_voo.name), alloc.strategy_ratio_map)
@@ -173,7 +183,11 @@ class TestVixTargetingAllocation(TestCase):
         
         alloc = VixTargetingAllocation(
             self.config, [self.strategy_voo, self.strategy_bil],
-            vix_data, [0.5, 0.1], target_vol=15.0, vix_boundaries=(0.0, 15.0)
+            vix_data, 
+            base_weights={self.strategy_voo.name: 0.9, self.strategy_bil.name: 0.1}, 
+            risky_assets=[self.strategy_voo.name], 
+            target_vol=15.0, 
+            vix_boundaries=(0.0, 15.0)
         )
         
         w_voo_0 = alloc.get_target_ratio(dates[0], self.strategy_voo.name)
@@ -182,28 +196,3 @@ class TestVixTargetingAllocation(TestCase):
         # But since it's not a rebalance day, it should return cached weights from step 0 (VIX=20).
         w_voo_1 = alloc.get_target_ratio(dates[1], self.strategy_voo.name)
         self.assertEqual(w_voo_0, w_voo_1)
-
-    @patch('tiportfolio.utils.market_data.yf.Ticker')
-    def test_auto_fetch_beta(self, mock_ticker: patch) -> None:
-        # Setup mock returns
-        # VOO beta = 1.0, BIL beta = 0.0
-        mock_ticker_instance_voo = mock_ticker.return_value
-        mock_ticker_instance_bil = mock_ticker.return_value
-        
-        def mock_ticker_side_effect(symbol):
-            class MockTickerInfo:
-                def __init__(self, sym):
-                    if sym == "VOO":
-                        self.info = {'beta': 1.0}
-                    else:
-                        self.info = {'beta': 0.01}
-            return MockTickerInfo(symbol)
-            
-        mock_ticker.side_effect = mock_ticker_side_effect
-        
-        alloc = VixTargetingAllocation(
-            self.config, [self.strategy_voo, self.strategy_bil],
-            self.vix_data, risk_multipliers=None, target_vol=15.0, vix_boundaries=(0.0, 15.0)
-        )
-        
-        self.assertEqual(alloc.risk_multipliers, [1.0, 0.01])

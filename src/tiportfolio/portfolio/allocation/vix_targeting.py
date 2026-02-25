@@ -1,4 +1,4 @@
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict
 import pandas as pd
 from pandas import Timestamp
 
@@ -9,7 +9,6 @@ from tiportfolio.portfolio.allocation.allocation import (
 )
 from tiportfolio.portfolio.trading import Trading
 from tiportfolio.utils.default_logger import logger
-from tiportfolio.utils.market_data import fetch_beta
 
 
 class VixTargetingAllocation(Allocation):
@@ -20,11 +19,8 @@ class VixTargetingAllocation(Allocation):
     Rebalancing is triggered only when the VIX index moves outside a 
     specified target range.
     
-    Weights are calculated such that each strategy contributes equally 
-    to the target portfolio volatility:
-    W_i = Target_Vol / (N * VIX * Risk_Multiplier_i)
-    
-    The total weight is capped by max_leverage. The remainder is cash.
+    Risky assets are scaled by Target_Vol / Current_VIX.
+    Remaining weight is distributed equally among safe assets.
     """
 
     def __init__(
@@ -32,7 +28,8 @@ class VixTargetingAllocation(Allocation):
         config: PortfolioConfig,
         strategies: List[Trading],
         vix_data: pd.Series,
-        risk_multipliers: Optional[List[float]] = None,
+        base_weights: Dict[str, float],
+        risky_assets: List[str],
         target_vol: float = 15.0,
         vix_boundaries: Tuple[float, float] = (-0.5, 6.0),
         max_leverage: float = 1.0,
@@ -44,29 +41,16 @@ class VixTargetingAllocation(Allocation):
             config: Portfolio configuration.
             strategies: List of strategies to allocate to.
             vix_data: Pandas Series of VIX values, indexed by datetime.
-            risk_multipliers: Sensitivity of each strategy to market volatility. If None, beta values will be fetched from Yahoo Finance.
+            base_weights: Base weights for each strategy (e.g., {"VOO": 0.9, "BIL": 0.1}).
+            risky_assets: List of strategy names that are considered risky and will be scaled.
             target_vol: Target annualized volatility for the portfolio.
             vix_boundaries: (low_offset, high_offset) Relative to target_vol, triggers a rebalance when crossed.
             max_leverage: Maximum total weight for all strategies.
         """
-        if risk_multipliers is None:
-            logger.info("risk_multipliers not provided. Auto-fetching Beta values from Yahoo Finance...")
-            risk_multipliers = []
-            for strategy in strategies:
-                try:
-                    beta = fetch_beta(getattr(strategy, 'symbol_stock', ''))
-                    risk_multipliers.append(beta)
-                except Exception as e:
-                    raise ValueError(f"Failed to auto-fetch beta for strategy '{strategy.name}': {e}")
-                    
-        if len(risk_multipliers) != len(strategies):
-            raise ValueError(
-                "Length of risk_multipliers must match number of strategies"
-            )
-            
         super().__init__(config, strategies)
         self.vix_data = vix_data.sort_index()
-        self.risk_multipliers = risk_multipliers
+        self.base_weights = base_weights
+        self.risky_assets = risky_assets
         self.target_vol = target_vol
         self.vix_boundaries = vix_boundaries
         self.max_leverage = max_leverage
@@ -134,61 +118,39 @@ class VixTargetingAllocation(Allocation):
                         current_step, vix
                     )
                 else:
-                    # Formula: W_i = Target_Vol / (N * VIX * Risk_Multiplier_i)
-                    num_strategies = len(self.strategies)
-                    weights = []
-                    for flag in self.risk_multipliers:
-                        w = self.target_vol / (num_strategies * vix * flag)
-                        weights.append(w)
-                    
-                    # Cap total risky weight by max_leverage
-                    total_risky = sum(weights)
-                    if total_risky > self.max_leverage:
-                        scale = self.max_leverage / total_risky
-                        weights = [w * scale for w in weights]
-                        
-                        # Iteratively shift capital from lowest vol to highest vol 
-                        # to achieve Target_Vol or become 100% concentrated
-                        while True:
-                            current_vol = sum(w * vix * f for w, f in zip(weights, self.risk_multipliers))
-                            if current_vol >= self.target_vol - 1e-6:
-                                break
-                                
-                            # Find asset with highest flag
-                            max_flag_idx = -1
-                            max_flag = -1.0
-                            for i, f in enumerate(self.risk_multipliers):
-                                if f > max_flag:
-                                    max_flag = f
-                                    max_flag_idx = i
-                                    
-                            # Find asset with lowest flag that still has weight > 0
-                            min_flag_idx = -1
-                            min_flag = float('inf')
-                            for i, (f, w) in enumerate(zip(self.risk_multipliers, weights)):
-                                if i != max_flag_idx and w > 1e-6 and f < min_flag:
-                                    min_flag = f
-                                    min_flag_idx = i
-                                    
-                            if min_flag_idx == -1 or max_flag <= min_flag + 1e-9:
-                                break  # Cannot shift anymore
-                                
-                            delta_vol = self.target_vol - current_vol
-                            vol_increase_per_unit = vix * (max_flag - min_flag)
-                            
-                            shift = delta_vol / vol_increase_per_unit
-                            actual_shift = min(shift, weights[min_flag_idx])
-                            
-                            weights[min_flag_idx] -= actual_shift
-                            weights[max_flag_idx] += actual_shift
-                    
-                    # Update current weights cache
                     new_weights = {}
-                    for i, strategy in enumerate(self.strategies):
-                        new_weights[strategy.name] = weights[i]
+                    multiplier = self.target_vol / vix
                     
-                    total_risky_capped = sum(weights)
-                    new_weights[CASH_STRATEGY_NAME] = 1.0 - total_risky_capped
+                    total_risky_weight = 0.0
+                    for strat_name in self.risky_assets:
+                        base_weight = self.base_weights.get(strat_name, 0.0)
+                        w = base_weight * multiplier
+                        new_weights[strat_name] = w
+                        total_risky_weight += w
+                        
+                    # Cap total risky weight
+                    if total_risky_weight > self.max_leverage:
+                        scale = self.max_leverage / total_risky_weight
+                        for strat_name in self.risky_assets:
+                            new_weights[strat_name] *= scale
+                        total_risky_weight = self.max_leverage
+                        
+                    # Distribute remaining weight to safe assets
+                    remaining_weight = self.max_leverage - total_risky_weight
+                    safe_assets = [s.name for s in self.strategies if s.name not in self.risky_assets]
+                    
+                    if safe_assets:
+                        weight_per_safe_asset = remaining_weight / len(safe_assets)
+                        for strat_name in safe_assets:
+                            new_weights[strat_name] = weight_per_safe_asset
+                    
+                    # Ensure all strategies are in the new_weights dict
+                    for strategy in self.strategies:
+                        if strategy.name not in new_weights:
+                            new_weights[strategy.name] = 0.0
+                            
+                    if CASH_STRATEGY_NAME not in new_weights:
+                        new_weights[CASH_STRATEGY_NAME] = 1.0 - sum(new_weights.get(s.name, 0.0) for s in self.strategies)
                     
                     self._current_weights = new_weights
                     self._last_vix = vix
