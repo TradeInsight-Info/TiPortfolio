@@ -100,6 +100,11 @@ class Allocation(ABC):
 
         quantity = self.portfolio_df.at[idx, 'quantity']
         return quantity
+    
+    
+    @property
+    def all_rebalance_dates(self) -> List[Timestamp]:
+        return sorted(set([date for (date, _) in self.strategy_ratio_map.keys()]))
 
     def walk_forward(self) -> None:
         logger.info("Starting walk-forward allocation process...")
