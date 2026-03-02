@@ -66,22 +66,17 @@ def validate_vix_regime_bounds(
 
 @dataclass
 class VixRegimeAllocation:
-    """AllocationStrategy that switches between high-vol and low-vol allocations by VIX level.
+    """AllocationStrategy that switches between high-vol and low-vol allocations based on engine decision.
 
-    When VIX >= target_vix + upper_bound use high_vol_allocation; when VIX <= target_vix + lower_bound
-    use low_vol_allocation; in band use low_vol_allocation. Both sub-strategies must use the same symbols.
+    The engine determines whether to use high_vol_allocation or low_vol_allocation and passes
+    this decision via the 'use_high_vol_allocation' context parameter. Both sub-strategies 
+    must use the same symbols.
     """
 
-    target_vix: float
-    lower_bound: float
-    upper_bound: float
     high_vol_allocation: AllocationStrategy
     low_vol_allocation: AllocationStrategy
 
     def __post_init__(self) -> None:
-        validate_vix_regime_bounds(
-            self.target_vix, self.lower_bound, self.upper_bound
-        )
         high_syms = set(self.high_vol_allocation.get_symbols())
         low_syms = set(self.low_vol_allocation.get_symbols())
         if high_syms != low_syms:
@@ -100,25 +95,16 @@ class VixRegimeAllocation:
         prices_row: pd.Series,
         **context: Any,
     ) -> dict[str, float]:
-        vix_at_date = context.get("vix_at_date")
-        if vix_at_date is None or (isinstance(vix_at_date, float) and pd.isna(vix_at_date)):
-            return self.low_vol_allocation.get_target_weights(
-                date, total_equity, positions_dollars, prices_row, **context
-            )
-        v = float(vix_at_date)
-        upper_thresh = self.target_vix + self.upper_bound
-        lower_thresh = self.target_vix + self.lower_bound
-        if v >= upper_thresh:
+        use_high_vol = context.get("use_high_vol_allocation", False)
+        
+        if use_high_vol:
             return self.high_vol_allocation.get_target_weights(
                 date, total_equity, positions_dollars, prices_row, **context
             )
-        if v <= lower_thresh:
+        else:
             return self.low_vol_allocation.get_target_weights(
                 date, total_equity, positions_dollars, prices_row, **context
             )
-        return self.low_vol_allocation.get_target_weights(
-            date, total_equity, positions_dollars, prices_row, **context
-        )
 
 
 class VixChangeFilter:

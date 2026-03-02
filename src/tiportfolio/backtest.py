@@ -128,8 +128,10 @@ def run_backtest(
 
             if date in rebalance_set:
                 do_rebalance = True
-                if rebalance_filter is not None and vix_series is not None:
+                # For vix_regime, we don't use rebalance_filter - rebalance is determined by schedule kwargs
+                if rebalance_filter is not None and vix_series is not None and schedule_spec != "vix_regime":
                     do_rebalance = rebalance_filter(date, vix_series, last_rebalance_date)
+                
                 if do_rebalance:
                     equity_before = total_equity
                     ctx = context_for_date(date) if context_for_date else {}

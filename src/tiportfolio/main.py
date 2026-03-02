@@ -110,9 +110,6 @@ def main() -> None:
         high_weights = dict(zip(target_symbols, high_list))
         low_weights = dict(zip(target_symbols, low_list))
         allocation = VixRegimeAllocation(
-            target_vix=args.target_vix,
-            lower_bound=args.lower_bound,
-            upper_bound=args.upper_bound,
             high_vol_allocation=FixRatio(weights=high_weights),
             low_vol_allocation=FixRatio(weights=low_weights),
         )

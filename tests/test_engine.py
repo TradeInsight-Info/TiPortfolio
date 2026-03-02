@@ -114,9 +114,6 @@ def test_volatility_based_engine_uses_dfs_in_dict():
         ),
     }
     allocation = VixRegimeAllocation(
-        target_vix=20.0,
-        lower_bound=-1.0,
-        upper_bound=10.0,
         high_vol_allocation=FixRatio(weights={"SPY": 0.33, "QQQ": 0.33, "GLD": 0.34}),
         low_vol_allocation=FixRatio(weights={"SPY": 0.5, "QQQ": 0.3, "GLD": 0.2}),
     )

@@ -30,13 +30,10 @@ def test_fix_ratio_get_target_weights_ignores_context():
 
 
 def test_vix_regime_allocation_high_low_by_context():
-    """VixRegimeAllocation returns high_vol weights when vix_at_date >= upper, low_vol when <= lower."""
+    """VixRegimeAllocation returns high_vol weights when use_high_vol_allocation=True, low_vol when False."""
     high = FixRatio(weights={"A": 0.4, "B": 0.6})
     low = FixRatio(weights={"A": 0.7, "B": 0.3})
     strat = VixRegimeAllocation(
-        target_vix=20.0,
-        lower_bound=-1.0,
-        upper_bound=10.0,
         high_vol_allocation=high,
         low_vol_allocation=low,
     )
@@ -44,33 +41,19 @@ def test_vix_regime_allocation_high_low_by_context():
     eq, pos = 1000.0, {"A": 500.0, "B": 500.0}
 
     w_high = strat.get_target_weights(
-        pd.Timestamp("2020-01-01"), eq, pos, row, vix_at_date=31.0
+        pd.Timestamp("2020-01-01"), eq, pos, row, use_high_vol_allocation=True
     )
     assert w_high["A"] == 0.4 and w_high["B"] == 0.6
 
     w_low = strat.get_target_weights(
-        pd.Timestamp("2020-01-01"), eq, pos, row, vix_at_date=18.0
+        pd.Timestamp("2020-01-01"), eq, pos, row, use_high_vol_allocation=False
     )
     assert w_low["A"] == 0.7 and w_low["B"] == 0.3
 
-    w_band = strat.get_target_weights(
-        pd.Timestamp("2020-01-01"), eq, pos, row, vix_at_date=25.0
+    w_default = strat.get_target_weights(
+        pd.Timestamp("2020-01-01"), eq, pos, row
     )
-    assert w_band["A"] == 0.7 and w_band["B"] == 0.3
-
-
-def test_vix_regime_allocation_rejects_lower_gt_upper():
-    """VixRegimeAllocation validates lower_bound <= upper_bound."""
-    high = FixRatio(weights={"A": 0.5, "B": 0.5})
-    low = FixRatio(weights={"A": 0.5, "B": 0.5})
-    with pytest.raises(ValueError, match="lower_bound <= upper_bound"):
-        VixRegimeAllocation(
-            target_vix=20.0,
-            lower_bound=10.0,
-            upper_bound=-1.0,
-            high_vol_allocation=high,
-            low_vol_allocation=low,
-        )
+    assert w_default["A"] == 0.7 and w_default["B"] == 0.3
 
 
 def test_vix_regime_allocation_same_symbols():
@@ -80,9 +63,6 @@ def test_vix_regime_allocation_same_symbols():
     low_extra = FixRatio(weights={"A": 0.33, "B": 0.33, "C": 0.34})
     with pytest.raises(ValueError, match="same symbols"):
         VixRegimeAllocation(
-            target_vix=20.0,
-            lower_bound=-1.0,
-            upper_bound=10.0,
             high_vol_allocation=high,
             low_vol_allocation=low_extra,
         )
@@ -145,9 +125,6 @@ def test_volatility_based_engine_vix_regime_synthetic():
         ),
     }
     allocation = VixRegimeAllocation(
-        target_vix=20.0,
-        lower_bound=-1.0,
-        upper_bound=10.0,
         high_vol_allocation=FixRatio(weights={"SPY": 0.33, "QQQ": 0.33, "GLD": 0.34}),
         low_vol_allocation=FixRatio(weights={"SPY": 0.5, "QQQ": 0.3, "GLD": 0.2}),
     )

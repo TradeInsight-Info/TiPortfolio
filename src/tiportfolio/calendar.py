@@ -70,6 +70,7 @@ def _vix_regime_rebalance_dates(
     vix_aligned = vix_series.reindex(trading_dates).ffill().bfill()
     upper_thresh = target_vix + upper_bound
     lower_thresh = target_vix + lower_bound
+    
     rebalance_list: list[pd.Timestamp] = []
     for i, date in enumerate(trading_dates):
         v = vix_aligned.loc[date]
@@ -87,6 +88,7 @@ def _vix_regime_rebalance_dates(
         # Cross below lower: prev > lower_thresh and now <= lower_thresh
         if prev_v > lower_thresh and v <= lower_thresh:
             rebalance_list.append(date)
+    
     return rebalance_list
 
 
@@ -100,6 +102,7 @@ def get_rebalance_dates(
     target_vix: float | None = None,
     lower_bound: float | None = None,
     upper_bound: float | None = None,
+    **kwargs: Any,
 ) -> pd.DatetimeIndex:
     """Return rebalance dates aligned to trading_dates for the given schedule.
 
@@ -107,6 +110,15 @@ def get_rebalance_dates(
     present in trading_dates are included.
     For schedule "vix_regime", vix_series, target_vix, lower_bound, upper_bound are required.
     """
+    # Extract vix_series and other parameters from kwargs if not provided directly
+    if vix_series is None and "vix_series" in kwargs:
+        vix_series = kwargs["vix_series"]
+    if target_vix is None and "target_vix" in kwargs:
+        target_vix = kwargs["target_vix"]
+    if lower_bound is None and "lower_bound" in kwargs:
+        lower_bound = kwargs["lower_bound"]
+    if upper_bound is None and "upper_bound" in kwargs:
+        upper_bound = kwargs["upper_bound"]
     if not isinstance(trading_dates, pd.DatetimeIndex):
         trading_dates = pd.DatetimeIndex(trading_dates)
     if start is not None:
