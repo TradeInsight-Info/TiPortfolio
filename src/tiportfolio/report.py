@@ -14,7 +14,7 @@ def summary_table(result: BacktestResult) -> pd.DataFrame:
 
 
 # Metrics used in compare_strategies; higher is better except max_drawdown (lower is better)
-_COMPARE_METRICS = ("sharpe_ratio", "cagr", "max_drawdown", "mar_ratio")
+_COMPARE_METRICS = ("sharpe_ratio", "cagr", "max_drawdown", "mar_ratio", "final_value")
 
 
 def compare_strategies(
@@ -32,12 +32,18 @@ def compare_strategies(
     """
     rows = []
     for key in _COMPARE_METRICS:
-        va = result_a.metrics.get(key, float("nan"))
-        vb = result_b.metrics.get(key, float("nan"))
-        if key == "max_drawdown":
-            better = "A" if va < vb else ("B" if vb < va else "tie")
-        else:
+        if key == "final_value":
+            # Get final value from equity curve
+            va = result_a.equity_curve.iloc[-1] if not result_a.equity_curve.empty else float("nan")
+            vb = result_b.equity_curve.iloc[-1] if not result_b.equity_curve.empty else float("nan")
             better = "A" if va > vb else ("B" if vb > va else "tie")
+        else:
+            va = result_a.metrics.get(key, float("nan"))
+            vb = result_b.metrics.get(key, float("nan"))
+            if key == "max_drawdown":
+                better = "A" if va < vb else ("B" if vb < va else "tie")
+            else:
+                better = "A" if va > vb else ("B" if vb > va else "tie")
         rows.append({name_a: va, name_b: vb, "better": better})
     df = pd.DataFrame(rows, index=list(_COMPARE_METRICS))
     df.index.name = "metric"
@@ -249,6 +255,58 @@ def plot_portfolio_with_assets_interactive(
                     )
     fig.update_layout(
         title="Portfolio value: total and by asset",
+        xaxis_title="Date",
+        yaxis_title="Value",
+        hovermode="closest",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        margin=dict(t=80),
+    )
+    return fig
+
+
+def plot_strategy_comparison_interactive(
+    result_a: BacktestResult,
+    result_b: BacktestResult,
+    *,
+    name_a: str = "Strategy A",
+    name_b: str = "Strategy B",
+):
+    """Interactive comparison chart (Plotly) for two strategies."""
+    try:
+        import plotly.graph_objects as go
+    except ImportError:
+        raise ImportError(
+            "Plotly is required for interactive charts. Install with: uv add --dev plotly"
+        ) from None
+
+    fig = go.Figure()
+    
+    # Strategy A line
+    fig.add_trace(
+        go.Scatter(
+            x=result_a.equity_curve.index,
+            y=result_a.equity_curve.values,
+            name=name_a,
+            mode="lines",
+            line=dict(width=2),
+            hovertemplate=f"Date: %{{x|%Y-%m-%d}}<br>{name_a}: %{{y:,.2f}}<extra></extra>",
+        )
+    )
+    
+    # Strategy B line
+    fig.add_trace(
+        go.Scatter(
+            x=result_b.equity_curve.index,
+            y=result_b.equity_curve.values,
+            name=name_b,
+            mode="lines",
+            line=dict(width=2),
+            hovertemplate=f"Date: %{{x|%Y-%m-%d}}<br>{name_b}: %{{y:,.2f}}<extra></extra>",
+        )
+    )
+    
+    fig.update_layout(
+        title=f"Equity: {name_a} vs {name_b}",
         xaxis_title="Date",
         yaxis_title="Value",
         hovermode="closest",

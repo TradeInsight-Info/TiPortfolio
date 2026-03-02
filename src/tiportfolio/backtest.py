@@ -38,6 +38,7 @@ class BacktestResult:
     def summary(self) -> str:
         """Human-readable summary table."""
         m = self.metrics
+        final_value = self.equity_curve.iloc[-1] if not self.equity_curve.empty else float('nan')
         lines = [
             "Backtest Summary",
             "----------------",
@@ -45,6 +46,7 @@ class BacktestResult:
             f"CAGR:            {m.get('cagr', float('nan')):.2%}",
             f"Max Drawdown:    {m.get('max_drawdown', float('nan')):.2%}",
             f"MAR Ratio:       {m.get('mar_ratio', float('nan')):.4f}",
+            f"Final Value:      {final_value:,.2f}",
             f"Rebalances:      {len(self.rebalance_decisions)}",
         ]
         return "\n".join(lines)
