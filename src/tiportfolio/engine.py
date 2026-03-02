@@ -37,11 +37,14 @@ def _vix_series_from_prices(
             f"prices must contain volatility symbol {volatility_symbol!r} for vix_regime / vol-based run"
         )
     df = prices[volatility_symbol]
-    if "close" in df.columns:
-        ser = df["close"]
-    else:
-        ser = df.iloc[:, 0]
-    ser = ser.reindex(trading_dates).ffill().bfill()
+    
+    # Normalize dates by removing time component and timezone
+    df.index = pd.to_datetime(df.index).date
+    trading_dates_normalized = pd.to_datetime(trading_dates).date
+    
+    ser = df["close"] if "close" in df.columns else df.iloc[:, 0]
+    ser = ser.reindex(trading_dates_normalized).ffill().bfill()
+    ser.index = trading_dates  # Restore original trading_dates index
     return ser
 
 
@@ -191,7 +194,19 @@ class VolatilityBasedEngine(BacktestEngine):
 
             def context_for_date(d: pd.Timestamp) -> dict[str, Any]:
                 v = vix_ser.asof(d)
-                return {"vix_at_date": None if pd.isna(v) else float(v)}
+                vix_value = None if pd.isna(v) else float(v)
+                
+                # Calculate allocation decision in the engine
+                use_high_vol = False
+                if vix_value is not None:
+                    upper_thresh = target_vix + upper_bound
+                    lower_thresh = target_vix + lower_bound
+                    use_high_vol = vix_value >= upper_thresh
+                
+                return {
+                    "vix_at_date": vix_value,
+                    "use_high_vol_allocation": use_high_vol
+                }
 
             context_for_date = context_for_date
 
