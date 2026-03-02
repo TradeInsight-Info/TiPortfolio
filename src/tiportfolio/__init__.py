@@ -13,7 +13,7 @@ from tiportfolio.engine import (
     ScheduleBasedEngine,
     VolatilityBasedEngine,
 )
-from tiportfolio.report import compare_strategies, rebalance_decisions_table
+from tiportfolio.report import compare_strategies, plot_strategy_comparison_interactive, rebalance_decisions_table
 
 __all__ = [
     "AllocationStrategy",
@@ -25,6 +25,7 @@ __all__ = [
     "Schedule",
     "ScheduleBasedEngine",
     "rebalance_decisions_table",
+    "plot_strategy_comparison_interactive",
     "VixChangeFilter",
     "VixRegimeAllocation",
     "VolatilityBasedEngine",
