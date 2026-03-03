@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from tiportfolio.engine import VOLATILITY_SYMBOLS
+from .constants import VOLATILITY_INDEX_SYMBOLS as VOLATILITY_SYMBOLS
 
 
 def normalize_volatility_symbol(symbol: str) -> str:
