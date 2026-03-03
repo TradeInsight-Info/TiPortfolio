@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 from tiportfolio.helpers.data import Alpaca, YFinance
+from tiportfolio.utils.constants import VOLATILITY_INDEX_SYMBOLS
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -202,9 +203,6 @@ def fetch_prices(
         cause = cause or str(e)
 
     raise RuntimeError(f"Failed to fetch data: {cause}")
-
-
-VOLATILITY_INDEX_SYMBOLS = ("VIX", "VVIX", "RVX", "VXD")
 
 
 def fetch_volatility_index(

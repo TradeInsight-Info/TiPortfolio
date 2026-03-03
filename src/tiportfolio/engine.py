@@ -10,20 +10,9 @@ import pandas as pd
 from tiportfolio.allocation import AllocationStrategy, FixRatio, validate_vix_regime_bounds
 from tiportfolio.backtest import BacktestResult, run_backtest
 from tiportfolio.calendar import Schedule
-from tiportfolio.data import fetch_prices, fetch_volatility_index, normalize_prices, VOLATILITY_INDEX_SYMBOLS
-
-
-VOLATILITY_SYMBOLS = VOLATILITY_INDEX_SYMBOLS
-
-
-def _normalize_volatility_symbol(symbol: str) -> str:
-    """Return symbol without ^ and uppercased; validate against VOLATILITY_SYMBOLS."""
-    s = symbol.strip().upper().lstrip("^")
-    if s not in VOLATILITY_SYMBOLS:
-        raise ValueError(
-            f"volatility_symbol must be one of {VOLATILITY_SYMBOLS}; got {symbol!r}"
-        )
-    return s
+from tiportfolio.data import fetch_prices, fetch_volatility_index, normalize_prices
+from tiportfolio.utils.constants import VOLATILITY_INDEX_SYMBOLS as VOLATILITY_SYMBOLS
+from tiportfolio.utils.symbols import normalize_volatility_symbol
 
 
 def _vix_series_from_prices(
@@ -149,14 +138,14 @@ class VolatilityBasedEngine(BacktestEngine):
         else:
             if start is None or end is None:
                 raise ValueError("start and end are required when not passing dfs_in_dict")
-            vol_sym = _normalize_volatility_symbol(volatility_symbol) if volatility_symbol else "VIX"
+            vol_sym = normalize_volatility_symbol(volatility_symbol) if volatility_symbol else "VIX"
             sym_list = [s.upper() if isinstance(s, str) else str(s).upper() for s in symbols]
             # Fetch allocation symbols and volatility index separately; use fetch_volatility_index for the index
             prices = fetch_prices(sym_list, start=start, end=end)
             vol_df = fetch_volatility_index(vol_sym, start=start, end=end)
             prices[vol_sym] = vol_df
 
-        vol_sym = _normalize_volatility_symbol(volatility_symbol) if volatility_symbol else "VIX"
+        vol_sym = normalize_volatility_symbol(volatility_symbol) if volatility_symbol else "VIX"
         if not vol_sym:
             raise ValueError("volatility_symbol is required for VolatilityBasedEngine.run()")
         allocation_keys = set(self.allocation.get_symbols())
