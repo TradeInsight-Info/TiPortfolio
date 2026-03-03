@@ -56,11 +56,13 @@ class BacktestEngine:
         rebalance: Schedule,
         fee_per_share: float = 0.0035,
         initial_value: float = 10000.0,
+        risk_free_rate: float = 0.04,
     ) -> None:
         self.allocation = allocation
         self.rebalance = rebalance
         self.fee_per_share = fee_per_share
         self.initial_value = initial_value
+        self.risk_free_rate = risk_free_rate
 
     def run(
         self,
@@ -80,6 +82,7 @@ class BacktestEngine:
             start=start,
             end=end,
             initial_value=self.initial_value,
+            risk_free_rate=self.risk_free_rate,
         )
 
 
@@ -278,4 +281,5 @@ class VolatilityBasedEngine(BacktestEngine):
             end=end,
             initial_value=self.initial_value,
             rebalance_dates=rebalance_dates_for_backtest,
+            risk_free_rate=self.risk_free_rate,
         )

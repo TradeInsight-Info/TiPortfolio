@@ -34,6 +34,7 @@ class BacktestResult:
     metrics: dict[str, float]
     rebalance_decisions: list[RebalanceDecision] = field(default_factory=list)
     asset_curves: pd.DataFrame | None = None  # date index, one column per symbol (value in dollars)
+    total_fee: float = 0.0
 
     def summary(self) -> str:
         """Human-readable summary table."""
@@ -46,7 +47,9 @@ class BacktestResult:
             f"CAGR:            {m.get('cagr', float('nan')):.2%}",
             f"Max Drawdown:    {m.get('max_drawdown', float('nan')):.2%}",
             f"MAR Ratio:       {m.get('mar_ratio', float('nan')):.4f}",
+            f"Kelly Leverage:  {m.get('kelly_leverage', float('nan')):.4f}",
             f"Final Value:      {final_value:,.2f}",
+            f"Total Fee:        {self.total_fee:,.2f}",
             f"Rebalances:      {len(self.rebalance_decisions)}",
         ]
         return "\n".join(lines)
@@ -61,6 +64,7 @@ def run_backtest(
     end: str | pd.Timestamp | None,
     initial_value: float = 10000.0,
     rebalance_dates: pd.DatetimeIndex | None = None,
+    risk_free_rate: float = 0.0,
 ) -> BacktestResult:
     """Core backtest: prices_df has date index and one column per symbol.
 
@@ -81,7 +85,7 @@ def run_backtest(
     if prices_df.empty:
         return BacktestResult(
             equity_curve=pd.Series(dtype=float),
-            metrics=compute_metrics(pd.Series(dtype=float)),
+            metrics=compute_metrics(pd.Series(dtype=float), risk_free_rate=risk_free_rate),
         )
 
     trading_dates = prices_df.index
@@ -168,10 +172,12 @@ def run_backtest(
             index=dates_index,
         ).sort_index()
         asset_curves.index.name = "date"
-    metrics = compute_metrics(equity_curve)
+    metrics = compute_metrics(equity_curve, risk_free_rate=risk_free_rate)
+    total_fee = sum(d.fee_paid for d in decisions)
     return BacktestResult(
         equity_curve=equity_curve,
         metrics=metrics,
         rebalance_decisions=decisions,
         asset_curves=asset_curves,
+        total_fee=total_fee,
     )

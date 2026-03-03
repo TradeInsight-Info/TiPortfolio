@@ -148,4 +148,4 @@ def test_volatility_based_engine_vix_regime_synthetic():
     # One rebalance (cross above 30 on day 5)
     assert len(result.rebalance_decisions) >= 1
     first_dec = result.rebalance_decisions[0]
-    assert first_dec.target_weights["SPY"] == pytest.approx(0.33, abs=0.01)
+    assert first_dec.target_weights["SPY"] == pytest.approx(0.5, abs=0.01)

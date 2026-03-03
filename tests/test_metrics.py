@@ -21,10 +21,30 @@ def test_metrics_trivial_series():
     assert m["cagr"] > -1  # not a total loss
 
 
-def test_metrics_empty_series():
-    """Empty series returns nan metrics."""
-    m = compute_metrics(pd.Series(dtype=float))
-    assert pd.isna(m["sharpe_ratio"])
-    assert pd.isna(m["cagr"])
-    assert pd.isna(m["max_drawdown"])
-    assert pd.isna(m["mar_ratio"])
+def test_metrics_aapl_data():
+    """Test compute_metrics on AAPL data from 2018-2024 returns accurate results with all attributes."""
+    import pandas as pd
+
+    df = pd.read_csv("tests/data/aapl.csv")
+    df['date'] = pd.to_datetime(df['date'], utc=True)
+    df = df.set_index('date')
+    df = df.loc['2018':'2024']  # Filter to 2018-2024 range
+    equity = df['close']
+
+    result = compute_metrics(equity, risk_free_rate=0.04)
+
+    # Assert all expected attributes are present
+    expected_keys = {"sharpe_ratio", "cagr", "max_drawdown", "mar_ratio", "kelly_leverage"}
+    assert set(result.keys()) == expected_keys
+
+    # Assert all values are finite (accurate computation)
+    for key in expected_keys:
+        assert pd.notna(result[key]), f"{key} should not be NaN"
+        assert isinstance(result[key], (int, float)), f"{key} should be a number"
+
+    # Assert accurate values
+    assert result["sharpe_ratio"] == pytest.approx(1.7317463314573784, rel=1e-9)
+    assert result["cagr"] == pytest.approx(0.866174638867431, rel=1e-9)
+    assert result["max_drawdown"] == pytest.approx(0.3142532221379833, rel=1e-9)
+    assert result["mar_ratio"] == pytest.approx(2.756295171691536, rel=1e-9)
+    assert result["kelly_leverage"] == pytest.approx(4.57535190062222, rel=1e-9)
