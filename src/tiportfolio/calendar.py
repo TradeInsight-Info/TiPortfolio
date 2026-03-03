@@ -123,9 +123,15 @@ def get_rebalance_dates(
         trading_dates = pd.DatetimeIndex(trading_dates)
     if start is not None:
         start = pd.Timestamp(start)
+        # Ensure timezone compatibility: if trading_dates has timezone, convert start to UTC
+        if hasattr(trading_dates, 'tz') and trading_dates.tz is not None:
+            start = start.tz_localize(trading_dates.tz) if start.tz is None else start
         trading_dates = trading_dates[trading_dates >= start]
     if end is not None:
         end = pd.Timestamp(end)
+        # Ensure timezone compatibility: if trading_dates has timezone, convert end to UTC
+        if hasattr(trading_dates, 'tz') and trading_dates.tz is not None:
+            end = end.tz_localize(trading_dates.tz) if end.tz is None else end
         trading_dates = trading_dates[trading_dates <= end]
     if len(trading_dates) == 0:
         return pd.DatetimeIndex([])
