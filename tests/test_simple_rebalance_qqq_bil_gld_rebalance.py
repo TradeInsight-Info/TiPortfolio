@@ -49,6 +49,7 @@ def test_simple_rebalance_qqq_bil_gld_summary_matches_csv():
     assert result.metrics["cagr"] == pytest.approx(row["cagr"], rel=1e-9)
     assert result.metrics["max_drawdown"] == pytest.approx(row["max_drawdown"], rel=1e-9)
     assert result.metrics["mar_ratio"] == pytest.approx(row["mar_ratio"], rel=1e-9)
+    assert result.metrics["kelly_leverage"] == pytest.approx(row["kelly_leverage"], rel=1e-9)
 
 
 def test_simple_rebalance_qqq_bil_gld_decisions_match_csv():

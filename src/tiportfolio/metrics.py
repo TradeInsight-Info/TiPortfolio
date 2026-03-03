@@ -23,6 +23,7 @@ def compute_metrics(
             "cagr": float("nan"),
             "max_drawdown": float("nan"),
             "mar_ratio": float("nan"),
+            "kelly_leverage": float("nan"),
         }
     equity = equity.dropna().sort_index()
     if len(equity) < 2:
@@ -31,6 +32,7 @@ def compute_metrics(
             "cagr": float("nan"),
             "max_drawdown": float("nan"),
             "mar_ratio": float("nan"),
+            "kelly_leverage": float("nan"),
         }
     returns = equity.pct_change().dropna()
     if returns.empty:
@@ -39,6 +41,7 @@ def compute_metrics(
             "cagr": float("nan"),
             "max_drawdown": float("nan"),
             "mar_ratio": float("nan"),
+            "kelly_leverage": float("nan"),
         }
 
     # CAGR: (end/start)^(252/n_days) - 1
@@ -63,8 +66,13 @@ def compute_metrics(
     excess = returns - (risk_free_rate / periods_per_year)
     if excess.std() == 0 or pd.isna(excess.std()):
         sharpe_ratio = float("nan")
+        kelly_leverage = float("nan")
     else:
         sharpe_ratio = (excess.mean() / excess.std()) * (periods_per_year ** 0.5)
+        # Kelly leverage: annualized mean excess return / (annualized std dev)^2
+        annualized_mean_excess = excess.mean() * periods_per_year
+        annualized_std_dev = excess.std() * (periods_per_year ** 0.5)
+        kelly_leverage = annualized_mean_excess / (annualized_std_dev ** 2) if annualized_std_dev != 0 else float("nan")
 
     # MAR: CAGR / max_drawdown (as in docs/thoughts.md)
     mar_ratio = cagr / max_drawdown_pct if max_drawdown_pct > 0 else float("nan")
@@ -74,4 +82,5 @@ def compute_metrics(
         "cagr": float(cagr),
         "max_drawdown": float(max_drawdown_pct),
         "mar_ratio": float(mar_ratio),
+        "kelly_leverage": float(kelly_leverage),
     }
