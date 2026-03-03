@@ -72,8 +72,8 @@ def test_engine_single_asset_empty_rebalance_decisions(prices_three):
     assert not pd.isna(result.metrics["sharpe_ratio"])
 
 
-def test_schedule_based_engine_uses_dfs_in_dict(prices_three):
-    """ScheduleBasedEngine with dfs_in_dict uses the dict and does not fetch."""
+def test_schedule_based_engine_uses_prices_df(prices_three):
+    """ScheduleBasedEngine with prices_df uses the dict and does not fetch."""
     allocation = FixRatio(weights={"SPY": 0.5, "QQQ": 0.3, "GLD": 0.2})
     schedule = Schedule("month_end")
     start, end = "2019-01-01", "2019-06-30"
@@ -92,7 +92,7 @@ def test_schedule_based_engine_uses_dfs_in_dict(prices_three):
         symbols=["SPY", "QQQ", "GLD"],
         start=start,
         end=end,
-        dfs_in_dict=prices_three,
+        prices_df=prices_three,
     )
     assert result.equity_curve is not None
     assert len(result.equity_curve) == len(result_ref.equity_curve)
@@ -100,8 +100,8 @@ def test_schedule_based_engine_uses_dfs_in_dict(prices_three):
     assert result.metrics["sharpe_ratio"] == pytest.approx(result_ref.metrics["sharpe_ratio"])
 
 
-def test_volatility_based_engine_uses_dfs_in_dict():
-    """VolatilityBasedEngine with dfs_in_dict uses the dict and does not fetch."""
+def test_volatility_based_engine_uses_prices_df():
+    """VolatilityBasedEngine with prices_df uses the dict and does not fetch."""
     ix = pd.date_range("2019-01-02", periods=10, freq="B")
     n = len(ix)
     prices = {
@@ -126,7 +126,7 @@ def test_volatility_based_engine_uses_dfs_in_dict():
         symbols=["SPY", "QQQ", "GLD"],
         start=ix[0],
         end=ix[-1],
-        dfs_in_dict=prices,
+        prices_df=prices,
         volatility_symbol="VIX",
         target_vix=20.0,
         lower_bound=-1.0,
@@ -141,7 +141,7 @@ def test_volatility_based_engine_uses_dfs_in_dict():
         symbols=["SPY", "QQQ", "GLD"],
         start=ix[0],
         end=ix[-1],
-        dfs_in_dict=prices,
+        prices_df=prices,
         volatility_symbol="VIX",
         target_vix=20.0,
         lower_bound=-1.0,

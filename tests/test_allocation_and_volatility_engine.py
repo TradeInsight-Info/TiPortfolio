@@ -137,7 +137,7 @@ def test_volatility_based_engine_vix_regime_synthetic():
         symbols=["SPY", "QQQ", "GLD"],
         start=ix[0],
         end=ix[-1],
-        dfs_in_dict=prices,
+        prices_df=prices,
         volatility_symbol="VIX",
         target_vix=20.0,
         lower_bound=-1.0,
