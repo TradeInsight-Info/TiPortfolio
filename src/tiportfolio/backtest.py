@@ -60,19 +60,12 @@ def run_backtest(
     start: str | pd.Timestamp | None,
     end: str | pd.Timestamp | None,
     initial_value: float = 10000.0,
-    rebalance_filter: Callable[
-        [pd.Timestamp, pd.Series, pd.Timestamp | None], bool
-    ] | None = None,
-    vix_series: pd.Series | None = None,
-    context_for_date: Callable[[pd.Timestamp], dict[str, Any]] | None = None,
-    schedule_kwargs: dict[str, Any] | None = None,
+    rebalance_dates: pd.DatetimeIndex | None = None,
 ) -> BacktestResult:
     """Core backtest: prices_df has date index and one column per symbol.
 
     allocation provides symbols and target weights via get_symbols/get_target_weights.
-    context_for_date(date) is merged into context when calling get_target_weights.
-    If rebalance_filter is set, rebalance only when filter(date, vix_series, last_rebalance_date) is True.
-    schedule_kwargs is passed to get_rebalance_dates (e.g. vix_series, target_vix for vix_regime).
+    If rebalance_dates is provided, use those instead of calculating from schedule_spec.
     """
     symbols = allocation.get_symbols()
     if start is not None:
@@ -92,19 +85,21 @@ def run_backtest(
         )
 
     trading_dates = prices_df.index
-    kwargs = schedule_kwargs or {}
-    rebalance_dates = get_rebalance_dates(
-        trading_dates, schedule_spec, start=start, end=end, **kwargs
-    )
-    rebalance_set = set(rebalance_dates)
+    if rebalance_dates is not None:
+        rebalance_set = set(rebalance_dates)
+    else:
+        rebalance_dates = get_rebalance_dates(
+            trading_dates, schedule_spec, start=start, end=end
+        )
+        rebalance_set = set(rebalance_dates)
 
     # Initial allocation on first date
     first_date = trading_dates[0]
     first_prices = prices_df.loc[first_date]
     initial_equity = float(initial_value)
-    context0 = context_for_date(first_date) if context_for_date else {}
+    context0 = {}
     weights0 = allocation.get_target_weights(
-        first_date, initial_equity, {}, first_prices, **context0
+        first_date, initial_equity, {}, first_prices
     )
     positions_dollars: dict[str, float] = {}
     for sym in symbols:
@@ -129,41 +124,34 @@ def run_backtest(
             total_equity = sum(positions_dollars[s] for s in symbols)
 
             if date in rebalance_set:
-                do_rebalance = True
-                # For vix_regime, we don't use rebalance_filter - rebalance is determined by schedule kwargs
-                if rebalance_filter is not None and vix_series is not None and schedule_spec != "vix_regime":
-                    do_rebalance = rebalance_filter(date, vix_series, last_rebalance_date)
-                
-                if do_rebalance:
-                    equity_before = total_equity
-                    ctx = context_for_date(date) if context_for_date else {}
-                    weights = allocation.get_target_weights(
-                        date, total_equity, positions_dollars, row, **ctx
-                    )
-                    target_dollars = {s: total_equity * weights.get(s, 0.0) for s in symbols}
-                    trades = {s: target_dollars[s] - positions_dollars[s] for s in symbols}
-                    fee_paid = 0.0
-                    for s in symbols:
-                        price = float(row[s]) if row[s] and not pd.isna(row[s]) else 0.0
-                        if price > 0:
-                            trade_qty = trades[s] / price
-                            fee_paid += abs(trade_qty) * fee_per_share
-                    for s in symbols:
-                        positions_dollars[s] = target_dollars[s]
-                    total_equity = sum(positions_dollars[s] for s in symbols) - fee_paid
-                    last_rebalance_date = date
-                    if len(symbols) > 1:
-                        decisions.append(
-                            RebalanceDecision(
-                                date=date,
-                                equity_before=equity_before,
-                                equity_after=total_equity,
-                                target_weights=dict(weights),
-                                trades_dollars=dict(trades),
-                                fee_paid=fee_paid,
-                                prices_at_rebalance={s: float(row[s]) for s in symbols},
-                            )
+                equity_before = total_equity
+                weights = allocation.get_target_weights(
+                    date, total_equity, positions_dollars, row
+                )
+                target_dollars = {s: total_equity * weights.get(s, 0.0) for s in symbols}
+                trades = {s: target_dollars[s] - positions_dollars[s] for s in symbols}
+                fee_paid = 0.0
+                for s in symbols:
+                    price = float(row[s]) if row[s] and not pd.isna(row[s]) else 0.0
+                    if price > 0:
+                        trade_qty = trades[s] / price
+                        fee_paid += abs(trade_qty) * fee_per_share
+                for s in symbols:
+                    positions_dollars[s] = target_dollars[s]
+                total_equity = sum(positions_dollars[s] for s in symbols) - fee_paid
+                last_rebalance_date = date
+                if len(symbols) > 1:
+                    decisions.append(
+                        RebalanceDecision(
+                            date=date,
+                            equity_before=equity_before,
+                            equity_after=total_equity,
+                            target_weights=dict(weights),
+                            trades_dollars=dict(trades),
+                            fee_paid=fee_paid,
+                            prices_at_rebalance={s: float(row[s]) for s in symbols},
                         )
+                    )
 
         equity_curve_list.append((date, total_equity))
         asset_curve_rows.append((date, dict(positions_dollars)))
