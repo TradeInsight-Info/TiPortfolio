@@ -195,20 +195,10 @@ class Allocation(ABC):
                     if target_ratio is None:
                         logger.warning(f"No target ratio found for strategy {strategy.name} at rebalance date {step}")
 
-                    # Find the most recent rebalance date <= previous_step
-                    if previous_step:
-                        previous_rebalance_dates = [d for d in all_rebalance_dates if d <= previous_step]
-                        if previous_rebalance_dates:
-                            most_recent_rebalance = max(previous_rebalance_dates)
-                            previous_ratio = self.strategy_ratio_map.get((most_recent_rebalance, strategy.name), 0.0)
-                        else:
-                            previous_ratio = 0.0
-                    else:
-                        previous_ratio = 0.0
-                    ratio_diff = target_ratio - previous_ratio
-
-                    # amount to trade
-                    trade_amount = ratio_diff * previous_total_value
+                   # FIX: Calculate trade amount based on actual drift, not just ratio difference
+                    current_strategy_value = previous_quantity * stock_price
+                    target_strategy_value = target_ratio * previous_total_value
+                    trade_amount = target_strategy_value - current_strategy_value
 
                     # Calculate fees
                     commission_rate = self.config.get('commission', 0.0)

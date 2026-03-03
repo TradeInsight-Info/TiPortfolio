@@ -227,12 +227,21 @@ class FrequencyBasedAllocation(Allocation, ABC):
                 return market_open.date() == dt.date() and matches_time(dt)
             except ValueError:
                 return False
+        # Fix: Correction for situations where no data is available at the end of the month
         elif self.rebalance_frequency == RebalanceFrequency.end_of_month:
-            # approximate by calendar month end
-            first_next_month = (dt.replace(day=28) + timedelta(days=4)).replace(day=1)
-            day_in_end = first_next_month - timedelta(days=1)
-            # use calendar month end check (may differ from last trading day)
-            return dt.date() == day_in_end.date() and matches_time(dt)
+            # Find the position of the current date in the data table.
+            try:
+                current_idx = self.all_steps.get_loc(current_step)
+            except KeyError:
+                return False            
+            # If this is the last piece of data, treat it as a rebalancing process.
+            if current_idx == len(self.all_steps) - 1:
+                return matches_time(current_step)                
+            # Look Ahead: Find the next date
+            next_step = self.all_steps[current_idx + 1]            
+            # If the month is different, it means today is the last trading day of this month.
+            is_last_trading_day = current_step.month != next_step.month            
+            return is_last_trading_day and matches_time(current_step)
         elif self.rebalance_frequency == RebalanceFrequency.start_of_quarter:
             # Use pre-computed dates for fast lookup; fall back to computing
             # next market open from the 1st of the quarter month.
