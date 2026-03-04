@@ -3,11 +3,11 @@
 import pytest
 
 from tiportfolio.data import (
-    load_csvs,
     merge_prices,
     normalize_prices,
     validate_prices_keys,
 )
+from conftest import load_csvs
 
 
 def test_load_csvs_yields_dict_with_date_index(data_dir):

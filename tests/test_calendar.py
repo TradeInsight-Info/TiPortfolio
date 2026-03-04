@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from tiportfolio.calendar import VALID_SCHEDULES, Schedule, get_rebalance_dates
+from tiportfolio.calendar import VALID_SCHEDULES, Schedule, get_rebalance_dates, normalize_price_index
 
 
 def test_schedule_accepts_valid_specs():
@@ -159,3 +159,36 @@ def test_get_rebalance_dates_never():
     dates = get_rebalance_dates(trading, "never")
     assert len(dates) == 0
     assert isinstance(dates, pd.DatetimeIndex)
+
+
+def test_normalize_price_index_naive_datetime():
+    """normalize_price_index converts naive datetime to UTC timezone, preserving original times."""
+    df = pd.DataFrame({'close': [100, 101]}, index=pd.to_datetime(['2020-01-01 09:30:00', '2020-01-02 16:00:00']))
+    result = normalize_price_index(df)
+    assert result.index.name == 'date'
+    assert str(result.index.tz) == 'UTC'
+    assert result.index[0].date() == pd.Timestamp('2020-01-01').date()
+    assert result.index[1].date() == pd.Timestamp('2020-01-02').date()
+    assert result.index[0].hour == 9  # Preserved original time
+    assert result.index[1].hour == 16  # Preserved original time
+    assert (result['close'].values == df['close'].values).all()
+
+
+def test_normalize_price_index_already_normalized():
+    """normalize_price_index leaves already normalized index unchanged."""
+    index = pd.DatetimeIndex(['2020-01-01', '2020-01-02'], tz='UTC')
+    df = pd.DataFrame({'close': [100, 101]}, index=index)
+    result = normalize_price_index(df)
+    assert result.index.equals(index)
+    assert (result['close'].values == df['close'].values).all()
+
+
+def test_normalize_price_index_string_index():
+    """normalize_price_index converts string index to datetime with UTC timezone."""
+    df = pd.DataFrame({'close': [100]}, index=['2020-01-01'])
+    result = normalize_price_index(df)
+    assert result.index.name == 'date'
+    assert str(result.index.tz) == 'UTC'
+    assert result.index[0].date() == pd.Timestamp('2020-01-01').date()
+    assert result.index[0].hour == 0
+    assert (result['close'].values == df['close'].values).all()

@@ -14,7 +14,7 @@ from tiportfolio import (
     VolatilityBasedEngine,
 )
 from tiportfolio.calendar import VALID_SCHEDULES
-from tiportfolio.data import load_csvs
+from conftest import load_csvs
 
 VOLATILITY_CHOICES = ("VIX", "VVIX", "RVX", "VXD")
 

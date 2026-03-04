@@ -21,66 +21,16 @@ if TYPE_CHECKING:
 DEFAULT_PRICE_COLUMN = "close"
 
 
-def load_csv(
-    path: str | Path,
-    *,
-    symbol: str | None = None,
-    date_column: str = "date",
-    price_column: str = DEFAULT_PRICE_COLUMN,
-) -> pd.DataFrame:
-    """Load a single CSV into a DataFrame with datetime index and price column.
+def load_price_df(path: str | Path) -> pd.DataFrame:
+    """Load a price CSV into a DataFrame with datetime index and OHLC columns.
 
-    Expects CSV with columns including `date_column` and `price_column`.
-    If `symbol` is None and CSV has a 'symbol' column, the first value is used.
+    Expects CSV with 'date' column and OHLC columns (open, high, low, close, etc.).
+    Parses dates as UTC to handle mixed timezones.
     """
     path = Path(path)
-    df = pd.read_csv(path)
-    if date_column in df.columns:
-        df[date_column] = pd.to_datetime(df[date_column], utc=True)
-        df = df.set_index(date_column)
-    if symbol is None and "symbol" in df.columns:
-        symbol = str(df["symbol"].iloc[0])
-    if price_column not in df.columns:
-        raise ValueError(f"CSV missing price column {price_column!r}: {path}")
-    out = df[[price_column]].copy()
-    out.index.name = "date"
-    if symbol is not None:
-        out.columns = [symbol]
-    return out
-
-
-def load_csvs(
-    paths: Iterable[str | Path],
-    *,
-    date_column: str = "date",
-    price_column: str = DEFAULT_PRICE_COLUMN,
-) -> dict[str, pd.DataFrame]:
-    """Load multiple CSVs into a dict symbol -> DataFrame.
-
-    Each path can be a file path; symbol is inferred from the 'symbol' column
-    in the CSV, or from the stem of the filename (e.g. spy.csv -> SPY if symbol
-    column missing). Each DataFrame has a datetime index and one price column.
-    """
-    result: dict[str, pd.DataFrame] = {}
-    for path in paths:
-        path = Path(path)
-        if path.suffix.lower() != ".csv":
-            continue
-        df = pd.read_csv(path)
-        if date_column in df.columns:
-            df[date_column] = pd.to_datetime(df[date_column], utc=True)
-            df = df.set_index(date_column)
-        if "symbol" in df.columns:
-            sym = str(df["symbol"].iloc[0])
-        else:
-            sym = path.stem.upper()
-        if price_column not in df.columns:
-            raise ValueError(f"CSV missing price column {price_column!r}: {path}")
-        frame = df[[price_column]].copy()
-        frame.index.name = "date"
-        frame.columns = [sym]
-        result[sym] = frame
-    return result
+    df = pd.read_csv(path, index_col='date', header=0)
+    df.index = pd.to_datetime(df.index, utc=True)
+    return df
 
 
 def validate_prices_keys(
@@ -179,7 +129,10 @@ def fetch_prices(
                 adjust="all",
             )
             if df is not None and not df.empty:
-                result = prices_dict_from_long_format(df)
+                result = {}
+                for symbol in df['symbol'].unique():
+                    sub = df[df['symbol'] == symbol].set_index('date')[['open', 'high', 'low', 'close', 'volume']]
+                    result[symbol] = sub
                 missing = requested - set(result.keys())
                 if not missing:
                     return result
@@ -192,7 +145,10 @@ def fetch_prices(
         yf = YFinance(auto_adjust=True)
         df = yf.query(sym_list, start_date=start, end_date=end)
         if df is not None and not df.empty:
-            result = prices_dict_from_long_format(df)
+            result = {}
+            for symbol in df['symbol'].unique():
+                sub = df[df['symbol'] == symbol].set_index('date')[['open', 'high', 'low', 'close', 'volume']]
+                result[symbol] = sub
             missing = requested - set(result.keys())
             if not missing:
                 return result
@@ -227,7 +183,10 @@ def fetch_volatility_index(
     df = yf.query([ticker], start_date=start, end_date=end)
     if df is None or df.empty:
         raise RuntimeError(f"Failed to fetch data: no data returned for {symbol!r}")
-    result = prices_dict_from_long_format(df)
+    result = {}
+    for sym in df['symbol'].unique():
+        sub = df[df['symbol'] == sym].set_index('date')[['open', 'high', 'low', 'close', 'volume']]
+        result[sym] = sub
     if not result:
         raise RuntimeError(f"Failed to fetch data: no data returned for {symbol!r}")
     out = next(iter(result.values()))
@@ -235,33 +194,3 @@ def fetch_volatility_index(
     if "close" not in out.columns and len(out.columns) == 1:
         out = out.rename(columns={out.columns[0]: "close"})
     return out
-
-
-def prices_dict_from_long_format(
-    df: pd.DataFrame,
-    *,
-    date_column: str = "date",
-    symbol_column: str = "symbol",
-    price_column: str = DEFAULT_PRICE_COLUMN,
-) -> dict[str, pd.DataFrame]:
-    """Convert a long-format DataFrame (symbol, date, close) to dict symbol -> DataFrame.
-
-    Compatible with output from tiportfolio.helpers.data.YFinance or Alpaca:
-    columns must include date_column, symbol_column, and price_column.
-    Each value is a DataFrame with datetime index (UTC) and one price column.
-    """
-    for col in (date_column, symbol_column, price_column):
-        if col not in df.columns:
-            raise ValueError(f"DataFrame missing column {col!r}")
-    result: dict[str, pd.DataFrame] = {}
-    for sym in df[symbol_column].unique():
-        sub = (
-            df.loc[df[symbol_column] == sym, [date_column, price_column]]
-            .set_index(date_column)
-            .sort_index()
-        )
-        sub.index = pd.to_datetime(sub.index, utc=True)
-        sub.columns = [sym]
-        sub.index.name = "date"
-        result[str(sym)] = sub
-    return result

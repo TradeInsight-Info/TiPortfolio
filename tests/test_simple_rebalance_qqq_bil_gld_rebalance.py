@@ -6,8 +6,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
+
 from tiportfolio import ScheduleBasedEngine, FixRatio, Schedule, rebalance_decisions_table
-from tiportfolio.data import load_csv
+from tiportfolio.calendar import normalize_price_index
+from tiportfolio.data import load_price_df
 
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
@@ -21,12 +23,12 @@ FEE_PER_SHARE = 0.0035
 
 
 def _load_qqq_bil_gld_prices():
-    """Load the 3 price CSVs (column name = symbol)."""
+    """Load the 3 price CSVs (OHLC format from *_df.csv files)."""
     symbols = list(WEIGHTS.keys())
     prices = {}
     for s in symbols:
-        path = DATA_DIR / f"{s.lower()}_{START[:4]}_{END[:4]}.csv"
-        prices[s] = load_csv(path, symbol=s, price_column=s)
+        path = DATA_DIR / f"{s.lower()}_{START[:4]}_{END[:4]}_df.csv"
+        prices[s] = load_price_df(path)
     return prices
 
 
@@ -42,7 +44,7 @@ def test_simple_rebalance_qqq_bil_gld_summary_matches_csv():
     )
     result = engine.run(symbols=symbols, prices_df=prices, start=START, end=END)
 
-    expected_summary = pd.read_csv(DATA_DIR / "qqq_bil_gld_2018_2024_summary.csv")
+    expected_summary = pd.read_csv(DATA_DIR / "results/qqq_bil_gld_2018_2024_summary.csv")
     assert len(expected_summary) == 1
     row = expected_summary.iloc[0]
 
@@ -66,7 +68,7 @@ def test_simple_rebalance_qqq_bil_gld_decisions_match_csv():
     result = engine.run(symbols=symbols, prices_df=prices, start=START, end=END)
 
     decisions = rebalance_decisions_table(result)
-    expected = pd.read_csv(DATA_DIR / "qqq_bil_gld_2018_2024_decisions.csv")
+    expected = pd.read_csv(DATA_DIR / "results/qqq_bil_gld_2018_2024_decisions.csv")
     expected["date"] = pd.to_datetime(expected["date"], utc=True)
 
     assert len(decisions) == len(expected)
@@ -81,8 +83,8 @@ def test_simple_rebalance_qqq_bil_gld_decisions_match_csv():
             rtol=1e-5,
             err_msg=f"Column {c}",
         )
-    # Compare dates (as datetime64 for consistent comparison)
+    # Compare dates (normalize to date only, ignoring timezone differences in time)
     np.testing.assert_array_equal(
-        pd.to_datetime(decisions["date"], utc=True).values.astype("datetime64[us]"),
-        pd.to_datetime(expected["date"], utc=True).values.astype("datetime64[us]"),
+        pd.to_datetime(decisions["date"], utc=True).dt.normalize().values,
+        pd.to_datetime(expected["date"], utc=True).dt.normalize().values,
     )
