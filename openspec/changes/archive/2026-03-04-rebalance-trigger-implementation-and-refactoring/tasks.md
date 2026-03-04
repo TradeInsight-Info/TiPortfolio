@@ -1,20 +1,20 @@
 ## 1. Implement New Rebalance Schedules in Calendar
 
-- [ ] 1.1 Add "weekly_monday", "weekly_wednesday", "weekly_friday", "never" to VALID_SCHEDULES in calendar.py
-- [ ] 1.2 Add weekly schedule handling in get_rebalance_dates function using pandas 'W-MON' etc. frequencies
-- [ ] 1.3 Add "never" schedule handling to return empty DatetimeIndex
-- [ ] 1.4 Use Tuesday if Monday market is closed (same for Wednesday and Friday), create a util get_next_market_day(date) @market_calendar.py based on pandas_market_calendars
+- [x] 1.1 Add "weekly_monday", "weekly_wednesday", "weekly_friday", "never" to VALID_SCHEDULES in calendar.py
+- [x] 1.2 Add weekly schedule handling in get_rebalance_dates function using pandas 'W-MON' etc. frequencies
+- [x] 1.3 Add "never" schedule handling to return empty DatetimeIndex
+- [x] 1.4 Use Tuesday if Monday market is closed (same for Wednesday and Friday), create a util get_next_market_day(date) @market_calendar.py based on pandas_market_calendars
 
 ## 2. Refactor BacktestEngine to Abstract Base Class
 
-- [ ] 2.1 Import ABC from abc module in engine.py
-- [ ] 2.2 Make BacktestEngine inherit from ABC
-- [ ] 2.3 Add @abstractmethod decorator to the run method
+- [x] 2.1 Import ABC from abc module in engine.py
+- [x] 2.2 Make BacktestEngine inherit from ABC
+- [x] 2.3 Add @abstractmethod decorator to the run method
 
 ## 3. Add Freezing Time Support to Volatility Engine
 
-- [ ] 3.1 Add freezing_days parameter (default 0) to VolatilityBasedEngine.__init__
-- [ ] 3.2 Implement freezing logic in VolatilityBasedEngine.run to skip rebalances within freezing period
+- [x] 3.1 Add freezing_days parameter (default 0) to VolatilityBasedEngine.__init__
+- [x] 3.2 Implement freezing logic in VolatilityBasedEngine.run to skip rebalances within freezing period
 
 ## 5. Refactor compare_strategies
 
