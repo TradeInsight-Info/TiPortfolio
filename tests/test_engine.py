@@ -11,7 +11,7 @@ from tiportfolio import (
     VixRegimeAllocation,
     VolatilityBasedEngine,
 )
-from tiportfolio.data import load_csvs
+from conftest import load_csvs
 
 
 def test_engine_run_returns_result(prices_three):
@@ -104,14 +104,35 @@ def test_volatility_based_engine_uses_prices_df():
     """VolatilityBasedEngine with prices_df uses the dict and does not fetch."""
     ix = pd.date_range("2019-01-02", periods=10, freq="B")
     n = len(ix)
+    spy_prices = [280.0 + i * 0.1 for i in range(n)]
+    qqq_prices = [180.0 + i * 0.1 for i in range(n)]
+    gld_prices = [120.0 + i * 0.1 for i in range(n)]
+    vix_prices = [25.0] * 5 + [32.0] * 5
     prices = {
-        "SPY": pd.DataFrame({"close": [280.0 + i * 0.1 for i in range(n)]}, index=ix),
-        "QQQ": pd.DataFrame({"close": [180.0 + i * 0.1 for i in range(n)]}, index=ix),
-        "GLD": pd.DataFrame({"close": [120.0 + i * 0.1 for i in range(n)]}, index=ix),
-        "VIX": pd.DataFrame(
-            {"close": [25.0] * 5 + [32.0] * 5},
-            index=ix,
-        ),
+        "SPY": pd.DataFrame({
+            "open": spy_prices,
+            "high": spy_prices,
+            "low": spy_prices,
+            "close": spy_prices
+        }, index=ix),
+        "QQQ": pd.DataFrame({
+            "open": qqq_prices,
+            "high": qqq_prices,
+            "low": qqq_prices,
+            "close": qqq_prices
+        }, index=ix),
+        "GLD": pd.DataFrame({
+            "open": gld_prices,
+            "high": gld_prices,
+            "low": gld_prices,
+            "close": gld_prices
+        }, index=ix),
+        "VIX": pd.DataFrame({
+            "open": vix_prices,
+            "high": vix_prices,
+            "low": vix_prices,
+            "close": vix_prices
+        }, index=ix),
     }
     allocation = VixRegimeAllocation(
         high_vol_allocation=FixRatio(weights={"SPY": 0.33, "QQQ": 0.33, "GLD": 0.34}),

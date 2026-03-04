@@ -220,6 +220,32 @@ def get_rebalance_dates(
     return pd.DatetimeIndex(rebalance_list).unique().sort_values()
 
 
+def normalize_price_index(df: pd.DataFrame, tz: str = 'UTC') -> pd.DataFrame:
+    """Normalize DataFrame index to timezone-aware datetime with specified timezone.
+    
+    - If index is not DatetimeIndex, convert it
+    - If index has no timezone, check for mixed tz and handle accordingly
+    - If index has timezone, convert to specified tz
+    - Set index name to 'date'
+    """
+    df = df.copy()
+    if not isinstance(df.index, pd.DatetimeIndex):
+        df.index = pd.to_datetime(df.index)
+    if df.index.tz is None:
+        # Check if it's actually mixed timezones (tz=None but individual elements have tz)
+        if len(df.index) > 0 and df.index[0].tz is not None:
+            # Mixed timezones, convert to target tz
+            df.index = df.index.tz_convert(tz)
+        else:
+            # Truly naive, localize to target tz
+            df.index = df.index.tz_localize(tz)
+    else:
+        # Has uniform timezone, convert to target tz
+        df.index = df.index.tz_convert(tz)
+    df.index.name = "date"
+    return df
+
+
 class Schedule:
     """Rebalance schedule spec; all dates are resolved to NYSE trading days."""
 

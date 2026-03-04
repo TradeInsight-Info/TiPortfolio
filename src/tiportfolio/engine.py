@@ -10,7 +10,7 @@ import pandas as pd
 
 from tiportfolio.allocation import AllocationStrategy, FixRatio, validate_vix_regime_bounds
 from tiportfolio.backtest import BacktestResult, run_backtest
-from tiportfolio.calendar import Schedule, get_rebalance_dates
+from tiportfolio.calendar import Schedule, get_rebalance_dates, normalize_price_index
 from tiportfolio.data import fetch_prices, fetch_volatility_index, normalize_prices
 from tiportfolio.utils.constants import VOLATILITY_INDEX_SYMBOLS as VOLATILITY_SYMBOLS
 from tiportfolio.utils.symbols import normalize_volatility_symbol
@@ -72,9 +72,19 @@ class BacktestEngine(ABC):
         *,
         start: str | pd.Timestamp | None = None,
         end: str | pd.Timestamp | None = None,
+        tz: str = 'UTC',
     ) -> BacktestResult:
-        """Run backtest. prices: dict symbol -> DataFrame (date index, price column)."""
+        """Run backtest. prices: dict symbol -> DataFrame (date index, OHLC columns). tz: timezone for normalization."""
         allocation_keys = set(self.allocation.get_symbols())
+        
+        # Validate OHLC columns in each DataFrame
+        for symbol, df in prices.items():
+            if not all(col in df.columns for col in ['open', 'high', 'low', 'close']):
+                raise ValueError(f"DataFrame for {symbol!r} missing required OHLC columns")
+        
+        # Apply index normalization to each DataFrame
+        prices = {symbol: normalize_price_index(df, tz=tz) for symbol, df in prices.items()}
+        
         prices_df = normalize_prices(prices, allocation_keys)
         return run_backtest(
             prices_df,
@@ -102,6 +112,7 @@ class ScheduleBasedEngine(BacktestEngine):
         start: str | pd.Timestamp | None = None,
         end: str | pd.Timestamp | None = None,
         prices_df: dict[str, pd.DataFrame] | None = None,
+        tz: str = 'UTC',
     ) -> BacktestResult:
         """Run backtest by fetching prices for the given symbols and date range.
 
@@ -109,11 +120,11 @@ class ScheduleBasedEngine(BacktestEngine):
         Otherwise start and end are required and data is fetched via Alpaca or Yahoo Finance.
         """
         if prices_df is not None and len(prices_df) > 0:
-            return super().run(prices=prices_df, start=start, end=end)
+            return super().run(prices=prices_df, start=start, end=end, tz=tz)
         if start is None or end is None:
             raise ValueError("start and end are required when not passing prices_df")
         prices = fetch_prices(symbols, start=start, end=end)
-        return super().run(prices=prices, start=start, end=end)
+        return super().run(prices=prices, start=start, end=end, tz=tz)
 
 
 class VolatilityBasedEngine(BacktestEngine):
@@ -141,6 +152,7 @@ class VolatilityBasedEngine(BacktestEngine):
         target_vix: float | None = None,
         lower_bound: float | None = None,
         upper_bound: float | None = None,
+        tz: str = 'UTC',
         rebalance_filter: Callable[
             [pd.Timestamp, pd.Series, pd.Timestamp | None], bool
         ] | None = None,
@@ -182,6 +194,7 @@ class VolatilityBasedEngine(BacktestEngine):
         
         # Handle VIX data extraction - prioritize vix_df if provided
         if vix_df is not None:
+            vix_df = normalize_price_index(vix_df, tz=tz)
             vix_series = _vix_series_from_prices(vix_df, vol_sym, trading_dates)
         else:
             # Fetch VIX data using fetch_volatility_index when not provided
