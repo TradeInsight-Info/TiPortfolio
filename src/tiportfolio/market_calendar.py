@@ -6,6 +6,9 @@ from datetime import date, timedelta
 from typing import Literal
 
 import pandas as pd
+import pandas_market_calendars as mcal
+
+_NYSE = mcal.get_calendar("NYSE")
 
 
 def closest_nyse_trading_day(
@@ -23,8 +26,6 @@ def closest_nyse_trading_day(
 
     Returns None if no trading day is found within max_offset_days.
     """
-    import pandas_market_calendars as mcal
-
     if isinstance(target, pd.Timestamp):
         target = target.date()
     elif not isinstance(target, date):
@@ -32,8 +33,7 @@ def closest_nyse_trading_day(
 
     start = target - timedelta(days=max_offset_days)
     end = target + timedelta(days=max_offset_days)
-    nyse = mcal.get_calendar("NYSE")
-    valid = nyse.valid_days(start_date=start, end_date=end)
+    valid = _NYSE.valid_days(start_date=start, end_date=end)
     valid_dates = set(d.date() for d in valid)
     # Map date -> one representative timestamp from valid (for return value)
     date_to_ts = {d.date(): d for d in valid}

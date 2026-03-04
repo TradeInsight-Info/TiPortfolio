@@ -38,7 +38,7 @@ def compare_strategies(*results, names=None):
             if key == "final_value":
                 v = result.equity_curve.iloc[-1] if not result.equity_curve.empty else float("nan")
             elif key == "total_fee":
-                v = sum(d.fee_paid for d in result.rebalance_decisions) if result.rebalance_decisions else 0.0
+                v = result.total_fee
             else:
                 v = result.metrics.get(key, float("nan"))
             values.append(v)

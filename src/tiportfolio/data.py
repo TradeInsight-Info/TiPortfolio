@@ -12,13 +12,20 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 from tiportfolio.helpers.data import Alpaca, YFinance
-from tiportfolio.utils.constants import VOLATILITY_INDEX_SYMBOLS
+from tiportfolio.utils.symbols import normalize_volatility_symbol
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
 
 DEFAULT_PRICE_COLUMN = "close"
+
+_OHLCV_COLS = ['open', 'high', 'low', 'close', 'volume']
+
+
+def _split_by_symbol(df: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    """Split a multi-symbol DataFrame into a dict of per-symbol DataFrames."""
+    return {sym: grp.set_index('date')[_OHLCV_COLS] for sym, grp in df.groupby('symbol')}
 
 
 def load_price_df(path: str | Path) -> pd.DataFrame:
@@ -129,10 +136,7 @@ def fetch_prices(
                 adjust="all",
             )
             if df is not None and not df.empty:
-                result = {}
-                for symbol in df['symbol'].unique():
-                    sub = df[df['symbol'] == symbol].set_index('date')[['open', 'high', 'low', 'close', 'volume']]
-                    result[symbol] = sub
+                result = _split_by_symbol(df)
                 missing = requested - set(result.keys())
                 if not missing:
                     return result
@@ -145,10 +149,7 @@ def fetch_prices(
         yf = YFinance(auto_adjust=True)
         df = yf.query(sym_list, start_date=start, end_date=end)
         if df is not None and not df.empty:
-            result = {}
-            for symbol in df['symbol'].unique():
-                sub = df[df['symbol'] == symbol].set_index('date')[['open', 'high', 'low', 'close', 'volume']]
-                result[symbol] = sub
+            result = _split_by_symbol(df)
             missing = requested - set(result.keys())
             if not missing:
                 return result
@@ -172,21 +173,14 @@ def fetch_volatility_index(
     Returns a DataFrame with datetime index and a "close" column.
     Raises ValueError if symbol is not allowed; raises RuntimeError on fetch failure.
     """
-    s = symbol.strip().upper().lstrip("^")
-    if s not in VOLATILITY_INDEX_SYMBOLS:
-        raise ValueError(
-            f"volatility index symbol must be one of {VOLATILITY_INDEX_SYMBOLS}; got {symbol!r}"
-        )
+    s = normalize_volatility_symbol(symbol)
     # Yahoo Finance uses ^ prefix for indices (e.g. ^VIX, ^VVIX)
     ticker = f"^{s}"
     yf = YFinance(auto_adjust=True)
     df = yf.query([ticker], start_date=start, end_date=end)
     if df is None or df.empty:
         raise RuntimeError(f"Failed to fetch data: no data returned for {symbol!r}")
-    result = {}
-    for sym in df['symbol'].unique():
-        sub = df[df['symbol'] == sym].set_index('date')[['open', 'high', 'low', 'close', 'volume']]
-        result[sym] = sub
+    result = _split_by_symbol(df)
     if not result:
         raise RuntimeError(f"Failed to fetch data: no data returned for {symbol!r}")
     out = next(iter(result.values()))
