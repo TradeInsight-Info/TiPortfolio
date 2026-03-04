@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tiportfolio import BacktestEngine, FixRatio, Schedule, rebalance_decisions_table
+from tiportfolio import ScheduleBasedEngine, FixRatio, Schedule, rebalance_decisions_table
 from tiportfolio.data import load_csv
 
 
@@ -33,13 +33,14 @@ def _load_qqq_bil_gld_prices():
 def test_simple_rebalance_qqq_bil_gld_summary_matches_csv():
     """Backtest with QQQ/BIL/GLD config; metrics match summary CSV."""
     prices = _load_qqq_bil_gld_prices()
-    engine = BacktestEngine(
+    symbols = list(WEIGHTS.keys())
+    engine = ScheduleBasedEngine(
         allocation=FixRatio(weights=WEIGHTS),
         rebalance=Schedule("month_start"),
         fee_per_share=FEE_PER_SHARE,
         initial_value=INITIAL_VALUE,
     )
-    result = engine.run(prices=prices, start=START, end=END)
+    result = engine.run(symbols=symbols, prices_df=prices, start=START, end=END)
 
     expected_summary = pd.read_csv(DATA_DIR / "qqq_bil_gld_2018_2024_summary.csv")
     assert len(expected_summary) == 1
@@ -55,13 +56,14 @@ def test_simple_rebalance_qqq_bil_gld_summary_matches_csv():
 def test_simple_rebalance_qqq_bil_gld_decisions_match_csv():
     """Backtest with QQQ/BIL/GLD config; rebalance decisions match decisions CSV."""
     prices = _load_qqq_bil_gld_prices()
-    engine = BacktestEngine(
+    symbols = list(WEIGHTS.keys())
+    engine = ScheduleBasedEngine(
         allocation=FixRatio(weights=WEIGHTS),
         rebalance=Schedule("month_start"),
         fee_per_share=FEE_PER_SHARE,
         initial_value=INITIAL_VALUE,
     )
-    result = engine.run(prices=prices, start=START, end=END)
+    result = engine.run(symbols=symbols, prices_df=prices, start=START, end=END)
 
     decisions = rebalance_decisions_table(result)
     expected = pd.read_csv(DATA_DIR / "qqq_bil_gld_2018_2024_decisions.csv")

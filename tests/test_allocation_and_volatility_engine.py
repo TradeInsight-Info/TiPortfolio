@@ -149,3 +149,39 @@ def test_volatility_based_engine_vix_regime_synthetic():
     assert len(result.rebalance_decisions) >= 1
     first_dec = result.rebalance_decisions[0]
     assert first_dec.target_weights["SPY"] == pytest.approx(0.5, abs=0.01)
+
+
+def test_volatility_based_engine_vix_regime_freezing():
+    """VolatilityBasedEngine with freezing_days skips rebalances within the period."""
+    ix = pd.date_range("2019-01-02", periods=10, freq="B")
+    # VIX with multiple crosses: 25,25,25,32,25,32,25,25,25,25
+    # Cross above 30 on day 3, below 19 on day 4, above again on day 5 (all within freezing)
+    vix_values = [25.0, 25.0, 25.0, 32.0, 25.0, 32.0, 25.0, 25.0, 25.0, 25.0]
+    prices = {
+        "SPY": pd.DataFrame({"close": [280.0 + i * 0.1 for i in range(10)]}, index=ix),
+        "QQQ": pd.DataFrame({"close": [180.0 + i * 0.1 for i in range(10)]}, index=ix),
+        "GLD": pd.DataFrame({"close": [120.0 + i * 0.1 for i in range(10)]}, index=ix),
+        "VIX": pd.DataFrame({"close": vix_values}, index=ix),
+    }
+    allocation = VixRegimeAllocation(
+        high_vol_allocation=FixRatio(weights={"SPY": 0.33, "QQQ": 0.33, "GLD": 0.34}),
+        low_vol_allocation=FixRatio(weights={"SPY": 0.5, "QQQ": 0.3, "GLD": 0.2}),
+    )
+    engine = VolatilityBasedEngine(
+        allocation=allocation,
+        rebalance=Schedule("vix_regime"),
+        fee_per_share=0,
+        freezing_days=3,
+    )
+    result = engine.run(
+        symbols=["SPY", "QQQ", "GLD"],
+        start=ix[0],
+        end=ix[-1],
+        prices_df=prices,
+        volatility_symbol="VIX",
+        target_vix=20.0,
+        lower_bound=-1.0,
+        upper_bound=10.0,
+    )
+    # Only one rebalance: day 3 (above); others within freezing period
+    assert len(result.rebalance_decisions) == 1

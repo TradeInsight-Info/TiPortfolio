@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable
 from typing import Any
 
@@ -46,7 +47,7 @@ def _vix_series_from_prices(
     return ser
 
 
-class BacktestEngine:
+class BacktestEngine(ABC):
     """Engine for running backtests with AllocationStrategy and scheduled rebalance."""
 
     def __init__(
@@ -64,6 +65,7 @@ class BacktestEngine:
         self.initial_value = initial_value
         self.risk_free_rate = risk_free_rate
 
+    @abstractmethod
     def run(
         self,
         prices: dict[str, pd.DataFrame],
@@ -122,6 +124,10 @@ class VolatilityBasedEngine(BacktestEngine):
     Fetches data (or uses prices_df), builds vix_series, and passes vix_at_date
     in context so VixRegimeAllocation can choose high vs low allocation.
     """
+
+    def __init__(self, *, freezing_days: int = 0, **kwargs):
+        super().__init__(**kwargs)
+        self.freezing_days = freezing_days
 
     def run(
         self,
@@ -261,6 +267,16 @@ class VolatilityBasedEngine(BacktestEngine):
                 lower_bound=lower_bound,
                 upper_bound=upper_bound
             )
+            
+            # Apply freezing period filter if enabled
+            if self.freezing_days > 0:
+                filtered_dates = []
+                last_rebalance = None
+                for date in sorted(rebalance_dates_for_backtest):
+                    if last_rebalance is None or (date - last_rebalance).days > self.freezing_days:
+                        filtered_dates.append(date)
+                        last_rebalance = date
+                rebalance_dates_for_backtest = pd.DatetimeIndex(filtered_dates)
             
             original_get_target_weights = allocation_strategy.get_target_weights
             

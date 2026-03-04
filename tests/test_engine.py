@@ -16,12 +16,12 @@ from tiportfolio.data import load_csvs
 
 def test_engine_run_returns_result(prices_three):
     """engine.run(prices=dict) returns BacktestResult with equity_curve and metrics."""
-    engine = BacktestEngine(
+    engine = ScheduleBasedEngine(
         allocation=FixRatio(weights={"SPY": 0.5, "QQQ": 0.3, "GLD": 0.2}),
         rebalance=Schedule("month_end"),
         fee_per_share=0,
     )
-    result = engine.run(prices=prices_three, start="2019-01-01", end="2019-06-30")
+    result = engine.run(symbols=["SPY", "QQQ", "GLD"], start="2019-01-01", end="2019-06-30", prices_df=prices_three)
     assert result.equity_curve is not None
     assert len(result.equity_curve) >= 1
     assert "sharpe_ratio" in result.metrics
@@ -33,12 +33,12 @@ def test_engine_run_returns_result(prices_three):
 def test_engine_rebalance_count_matches_calendar(prices_three):
     """Number of rebalance decisions matches schedule in date range."""
     prices_two = {k: prices_three[k] for k in ("SPY", "QQQ")}
-    engine = BacktestEngine(
+    engine = ScheduleBasedEngine(
         allocation=FixRatio(weights={"SPY": 0.5, "QQQ": 0.5}),
         rebalance=Schedule("quarter_end"),
         fee_per_share=0.0035,
     )
-    result = engine.run(prices=prices_two, start="2019-01-01", end="2019-12-31")
+    result = engine.run(symbols=["SPY", "QQQ"], start="2019-01-01", end="2019-12-31", prices_df=prices_two)
     # 4 quarters in 2019 -> expect 4 rebalances
     assert 3 <= len(result.rebalance_decisions) <= 5
     for d in result.rebalance_decisions:
@@ -49,23 +49,23 @@ def test_engine_rebalance_count_matches_calendar(prices_three):
 
 def test_engine_rejects_prices_keys_mismatch(prices_three):
     """run() raises when prices keys don't match allocation."""
-    engine = BacktestEngine(
+    engine = ScheduleBasedEngine(
         allocation=FixRatio(weights={"SPY": 0.5, "MISSING": 0.5}),
         rebalance=Schedule("month_end"),
     )
     with pytest.raises(ValueError, match="prices"):
-        engine.run(prices=prices_three)
+        engine.run(symbols=["SPY", "MISSING"], prices_df=prices_three)
 
 
 def test_engine_single_asset_empty_rebalance_decisions(prices_three):
     """Single-asset (buy-and-hold) produces no rebalance decisions."""
     prices_spy = {"SPY": prices_three["SPY"]}
-    engine = BacktestEngine(
+    engine = ScheduleBasedEngine(
         allocation=FixRatio(weights={"SPY": 1.0}),
         rebalance=Schedule("month_start"),
         fee_per_share=0.0035,
     )
-    result = engine.run(prices=prices_spy, start="2019-01-01", end="2019-12-31")
+    result = engine.run(symbols=["SPY"], start="2019-01-01", end="2019-12-31", prices_df=prices_spy)
     assert len(result.rebalance_decisions) == 0
     assert result.equity_curve is not None
     assert len(result.equity_curve) >= 1
@@ -77,12 +77,12 @@ def test_schedule_based_engine_uses_prices_df(prices_three):
     allocation = FixRatio(weights={"SPY": 0.5, "QQQ": 0.3, "GLD": 0.2})
     schedule = Schedule("month_end")
     start, end = "2019-01-01", "2019-06-30"
-    engine_base = BacktestEngine(
+    engine_base = ScheduleBasedEngine(
         allocation=allocation,
         rebalance=schedule,
         fee_per_share=0,
     )
-    result_ref = engine_base.run(prices=prices_three, start=start, end=end)
+    result_ref = engine_base.run(symbols=["SPY", "QQQ", "GLD"], start=start, end=end, prices_df=prices_three)
     engine_fetcher = ScheduleBasedEngine(
         allocation=allocation,
         rebalance=schedule,

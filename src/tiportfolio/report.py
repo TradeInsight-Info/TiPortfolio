@@ -13,38 +13,62 @@ def summary_table(result: BacktestResult) -> pd.DataFrame:
     return pd.DataFrame([result.metrics])
 
 
-# Metrics used in compare_strategies; higher is better except max_drawdown (lower is better)
-_COMPARE_METRICS = ("sharpe_ratio", "cagr", "max_drawdown", "mar_ratio", "final_value")
+# Metrics used in compare_strategies; higher is better except max_drawdown and total_fee (lower is better)
+_COMPARE_METRICS = ("sharpe_ratio", "cagr", "max_drawdown", "mar_ratio", "final_value", "kelly_leverage", "total_fee")
 
 
-def compare_strategies(
-    result_a: BacktestResult,
-    result_b: BacktestResult,
-    *,
-    name_a: str = "Strategy A",
-    name_b: str = "Strategy B",
-) -> pd.DataFrame:
-    """Compare two backtest results side-by-side.
+def compare_strategies(*results, names=None):
+    """Compare multiple backtest results side-by-side.
 
-    Returns a DataFrame with one row per metric (sharpe_ratio, cagr, max_drawdown, mar_ratio),
-    columns for each strategy's value, and a 'better' column (A, B, or tie).
-    Higher is better for Sharpe, CAGR, MAR; lower is better for max_drawdown.
+    Args:
+        *results: BacktestResult instances to compare
+        names: Optional list of names for each strategy. Auto-generated if None.
+
+    Returns:
+        DataFrame with one row per metric, columns for each strategy's value, and a 'better' column with the best strategy name.
+        Higher is better for sharpe_ratio, cagr, mar_ratio, final_value, kelly_leverage; lower is better for max_drawdown, total_fee.
     """
+    if names is None:
+        names = [f"Strategy {i+1}" for i in range(len(results))]
+    
     rows = []
     for key in _COMPARE_METRICS:
-        if key == "final_value":
-            # Get final value from equity curve
-            va = result_a.equity_curve.iloc[-1] if not result_a.equity_curve.empty else float("nan")
-            vb = result_b.equity_curve.iloc[-1] if not result_b.equity_curve.empty else float("nan")
-            better = "A" if va > vb else ("B" if vb > va else "tie")
-        else:
-            va = result_a.metrics.get(key, float("nan"))
-            vb = result_b.metrics.get(key, float("nan"))
-            if key == "max_drawdown":
-                better = "A" if va < vb else ("B" if vb < va else "tie")
+        values = []
+        for result in results:
+            if key == "final_value":
+                v = result.equity_curve.iloc[-1] if not result.equity_curve.empty else float("nan")
+            elif key == "total_fee":
+                v = sum(d.fee_paid for d in result.rebalance_decisions) if result.rebalance_decisions else 0.0
             else:
-                better = "A" if va > vb else ("B" if vb > va else "tie")
-        rows.append({name_a: va, name_b: vb, "better": better})
+                v = result.metrics.get(key, float("nan"))
+            values.append(v)
+        
+        row = {names[i]: v for i, v in enumerate(values)}
+        
+        # Determine best strategy
+        valid_values = [v for v in values if not pd.isna(v)]
+        if not valid_values:
+            best_name = "N/A"
+        else:
+            if key in ("sharpe_ratio", "cagr", "mar_ratio", "final_value", "kelly_leverage"):
+                best_val = max(valid_values)
+            elif key in ("max_drawdown", "total_fee"):
+                best_val = min(valid_values)
+            else:
+                best_val = None
+            if best_val is not None:
+                best_count = valid_values.count(best_val)
+                if best_count > 1:
+                    best_name = "tie"
+                else:
+                    best_idx = values.index(best_val)
+                    best_name = names[best_idx]
+            else:
+                best_name = "tie"
+        
+        row["better"] = best_name
+        rows.append(row)
+    
     df = pd.DataFrame(rows, index=list(_COMPARE_METRICS))
     df.index.name = "metric"
     return df
@@ -265,13 +289,18 @@ def plot_portfolio_with_assets_interactive(
 
 
 def plot_strategy_comparison_interactive(
-    result_a: BacktestResult,
-    result_b: BacktestResult,
-    *,
-    name_a: str = "Strategy A",
-    name_b: str = "Strategy B",
+    *strategies: BacktestResult,
+    names: list[str] | None = None,
 ):
-    """Interactive comparison chart (Plotly) for two strategies."""
+    """Interactive comparison chart (Plotly) for multiple strategies."""
+    if not strategies:
+        raise ValueError("At least one strategy is required")
+    
+    if names is None:
+        names = [f"Strategy {i+1}" for i in range(len(strategies))]
+    elif len(names) != len(strategies):
+        raise ValueError(f"names must have {len(strategies)} elements, got {len(names)}")
+    
     try:
         import plotly.graph_objects as go
     except ImportError:
@@ -281,32 +310,28 @@ def plot_strategy_comparison_interactive(
 
     fig = go.Figure()
     
-    # Strategy A line
-    fig.add_trace(
-        go.Scatter(
-            x=result_a.equity_curve.index,
-            y=result_a.equity_curve.values,
-            name=name_a,
-            mode="lines",
-            line=dict(width=2),
-            hovertemplate=f"Date: %{{x|%Y-%m-%d}}<br>{name_a}: %{{y:,.2f}}<extra></extra>",
-        )
-    )
+    colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
     
-    # Strategy B line
-    fig.add_trace(
-        go.Scatter(
-            x=result_b.equity_curve.index,
-            y=result_b.equity_curve.values,
-            name=name_b,
-            mode="lines",
-            line=dict(width=2),
-            hovertemplate=f"Date: %{{x|%Y-%m-%d}}<br>{name_b}: %{{y:,.2f}}<extra></extra>",
+    for i, (strategy, name) in enumerate(zip(strategies, names)):
+        color = colors[i % len(colors)]
+        fig.add_trace(
+            go.Scatter(
+                x=strategy.equity_curve.index,
+                y=strategy.equity_curve.values,
+                name=name,
+                mode="lines",
+                line=dict(width=2, color=color),
+                hovertemplate=f"Date: %{{x|%Y-%m-%d}}<br>{name}: %{{y:,.2f}}<extra></extra>",
+            )
         )
-    )
+    
+    if len(names) == 2:
+        title = f"Equity: {names[0]} vs {names[1]}"
+    else:
+        title = f"Equity: {len(strategies)} Strategies Comparison"
     
     fig.update_layout(
-        title=f"Equity: {name_a} vs {name_b}",
+        title=title,
         xaxis_title="Date",
         yaxis_title="Value",
         hovermode="closest",
