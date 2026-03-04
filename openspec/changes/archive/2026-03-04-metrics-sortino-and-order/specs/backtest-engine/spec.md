@@ -1,20 +1,4 @@
-# Purpose
-
-TBD
-
-## Requirements
-
-### Requirement: Abstract BacktestEngine base class
-
-The BacktestEngine SHALL be an abstract base class that cannot be instantiated directly, with shared initialization logic for subclasses.
-
-#### Scenario: Direct instantiation raises error
-- **WHEN** user attempts to instantiate BacktestEngine directly
-- **THEN** TypeError is raised indicating it's an abstract class
-
-#### Scenario: Subclasses inherit initialization
-- **WHEN** a subclass of BacktestEngine is instantiated
-- **THEN** the shared __init__ method sets allocation, rebalance, fee_per_share, initial_value, and risk_free_rate attributes correctly
+## MODIFIED Requirements
 
 ### Requirement: BacktestResult summary output
 `BacktestResult.summary()` SHALL return a human-readable string that includes `sharpe_ratio`, `sortino_ratio`, `mar_ratio`, `cagr`, `max_drawdown`, `kelly_leverage`, `mean_excess_return`, `final_value`, `total_fee`, and rebalance count, in that display order.
@@ -30,6 +14,8 @@ The BacktestEngine SHALL be an abstract base class that cannot be instantiated d
 #### Scenario: Summary metric order
 - **WHEN** `result.summary()` is called
 - **THEN** Sharpe Ratio appears before Sortino Ratio, which appears before MAR Ratio, which appears before CAGR, which appears before Max Drawdown
+
+## MODIFIED Requirements
 
 ### Requirement: compare_strategies top-5 metrics
 `compare_strategies()` SHALL compare strategies on exactly 5 metrics: `sharpe_ratio`, `sortino_ratio`, `mar_ratio`, `cagr`, `max_drawdown`, in that order. `sortino_ratio` is higher-is-better.

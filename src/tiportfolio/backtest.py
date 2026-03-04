@@ -43,14 +43,16 @@ class BacktestResult:
         lines = [
             "Backtest Summary",
             "----------------",
-            f"Sharpe Ratio:    {m.get('sharpe_ratio', float('nan')):.4f}",
-            f"CAGR:            {m.get('cagr', float('nan')):.2%}",
-            f"Max Drawdown:    {m.get('max_drawdown', float('nan')):.2%}",
-            f"MAR Ratio:       {m.get('mar_ratio', float('nan')):.4f}",
-            f"Kelly Leverage:  {m.get('kelly_leverage', float('nan')):.4f}",
-            f"Final Value:      {final_value:,.2f}",
-            f"Total Fee:        {self.total_fee:,.2f}",
-            f"Rebalances:      {len(self.rebalance_decisions)}",
+            f"Sharpe Ratio:        {m.get('sharpe_ratio', float('nan')):.4f}",
+            f"Sortino Ratio:       {m.get('sortino_ratio', float('nan')):.4f}",
+            f"MAR Ratio:           {m.get('mar_ratio', float('nan')):.4f}",
+            f"CAGR:                {m.get('cagr', float('nan')):.2%}",
+            f"Max Drawdown:        {m.get('max_drawdown', float('nan')):.2%}",
+            f"Kelly Leverage:      {m.get('kelly_leverage', float('nan')):.4f}",
+            f"Mean Excess Return:  {m.get('mean_excess_return', float('nan')):.4f}",
+            f"Final Value:         {final_value:,.2f}",
+            f"Total Fee:           {self.total_fee:,.2f}",
+            f"Rebalances:          {len(self.rebalance_decisions)}",
         ]
         return "\n".join(lines)
 

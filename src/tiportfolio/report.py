@@ -13,8 +13,8 @@ def summary_table(result: BacktestResult) -> pd.DataFrame:
     return pd.DataFrame([result.metrics])
 
 
-# Metrics used in compare_strategies; higher is better except max_drawdown and total_fee (lower is better)
-_COMPARE_METRICS = ("sharpe_ratio", "cagr", "max_drawdown", "mar_ratio", "final_value", "kelly_leverage", "total_fee")
+# Top-5 metrics used in compare_strategies; higher is better except max_drawdown (lower is better)
+_COMPARE_METRICS = ("sharpe_ratio", "sortino_ratio", "mar_ratio", "cagr", "max_drawdown")
 
 
 def compare_strategies(*results, names=None):
@@ -26,46 +26,29 @@ def compare_strategies(*results, names=None):
 
     Returns:
         DataFrame with one row per metric, columns for each strategy's value, and a 'better' column with the best strategy name.
-        Higher is better for sharpe_ratio, cagr, mar_ratio, final_value, kelly_leverage; lower is better for max_drawdown, total_fee.
+        Compares top-5 metrics: sharpe_ratio, sortino_ratio, mar_ratio, cagr, max_drawdown.
+        Higher is better for all except max_drawdown (lower is better).
     """
     if names is None:
         names = [f"Strategy {i+1}" for i in range(len(results))]
     
     rows = []
     for key in _COMPARE_METRICS:
-        values = []
-        for result in results:
-            if key == "final_value":
-                v = result.equity_curve.iloc[-1] if not result.equity_curve.empty else float("nan")
-            elif key == "total_fee":
-                v = result.total_fee
-            else:
-                v = result.metrics.get(key, float("nan"))
-            values.append(v)
-        
+        values = [result.metrics.get(key, float("nan")) for result in results]
         row = {names[i]: v for i, v in enumerate(values)}
-        
-        # Determine best strategy
+
+        # Determine best strategy; max is better except max_drawdown (lower is better)
         valid_values = [v for v in values if not pd.isna(v)]
         if not valid_values:
             best_name = "N/A"
         else:
-            if key in ("sharpe_ratio", "cagr", "mar_ratio", "final_value", "kelly_leverage"):
-                best_val = max(valid_values)
-            elif key in ("max_drawdown", "total_fee"):
-                best_val = min(valid_values)
-            else:
-                best_val = None
-            if best_val is not None:
-                best_count = valid_values.count(best_val)
-                if best_count > 1:
-                    best_name = "tie"
-                else:
-                    best_idx = values.index(best_val)
-                    best_name = names[best_idx]
-            else:
+            best_val = min(valid_values) if key == "max_drawdown" else max(valid_values)
+            best_count = valid_values.count(best_val)
+            if best_count > 1:
                 best_name = "tie"
-        
+            else:
+                best_name = names[values.index(best_val)]
+
         row["better"] = best_name
         rows.append(row)
     

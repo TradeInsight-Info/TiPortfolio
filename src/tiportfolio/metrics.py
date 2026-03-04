@@ -6,10 +6,12 @@ import pandas as pd
 
 _NAN_METRICS: dict[str, float] = {
     "sharpe_ratio": float("nan"),
+    "sortino_ratio": float("nan"),
+    "mar_ratio": float("nan"),
     "cagr": float("nan"),
     "max_drawdown": float("nan"),
-    "mar_ratio": float("nan"),
     "kelly_leverage": float("nan"),
+    "mean_excess_return": float("nan"),
 }
 
 
@@ -54,23 +56,33 @@ def compute_metrics(
 
     # Sharpe: annualized excess return / annualized vol
     excess = returns - (risk_free_rate / periods_per_year)
+    mean_excess_return = float(excess.mean() * periods_per_year)
     if excess.std() == 0 or pd.isna(excess.std()):
         sharpe_ratio = float("nan")
         kelly_leverage = float("nan")
     else:
         sharpe_ratio = (excess.mean() / excess.std()) * (periods_per_year ** 0.5)
         # Kelly leverage: annualized mean excess return / (annualized std dev)^2
-        annualized_mean_excess = excess.mean() * periods_per_year
         annualized_std_dev = excess.std() * (periods_per_year ** 0.5)
-        kelly_leverage = annualized_mean_excess / (annualized_std_dev ** 2) if annualized_std_dev != 0 else float("nan")
+        kelly_leverage = mean_excess_return / (annualized_std_dev ** 2) if annualized_std_dev != 0 else float("nan")
+
+    # Sortino: annualized mean excess return / annualized downside deviation
+    downside = excess[excess < 0]
+    if downside.empty or downside.std() == 0 or pd.isna(downside.std()):
+        sortino_ratio = float("nan")
+    else:
+        annualized_downside_std = downside.std() * (periods_per_year ** 0.5)
+        sortino_ratio = mean_excess_return / annualized_downside_std
 
     # MAR: CAGR / max_drawdown (as in docs/thoughts.md)
     mar_ratio = cagr / max_drawdown_pct if max_drawdown_pct > 0 else float("nan")
 
     return {
         "sharpe_ratio": float(sharpe_ratio),
+        "sortino_ratio": float(sortino_ratio),
+        "mar_ratio": float(mar_ratio),
         "cagr": float(cagr),
         "max_drawdown": float(max_drawdown_pct),
-        "mar_ratio": float(mar_ratio),
         "kelly_leverage": float(kelly_leverage),
+        "mean_excess_return": mean_excess_return,
     }
