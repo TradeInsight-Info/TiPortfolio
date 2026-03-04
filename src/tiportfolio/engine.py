@@ -37,14 +37,28 @@ def _vix_series_from_prices(
     else:
         df = prices
     
-    # Normalize dates by removing time component and timezone
-    df.index = pd.to_datetime(df.index).date
+    # Normalize dates without mutating the input DataFrame
+    date_index = pd.to_datetime(df.index).date
     trading_dates_normalized = pd.to_datetime(trading_dates).date
-    
-    ser = df["close"] if "close" in df.columns else df.iloc[:, 0]
-    ser = ser.reindex(trading_dates_normalized).ffill().bfill()
+
+    raw = df["close"] if "close" in df.columns else df.iloc[:, 0]
+    ser = pd.Series(raw.values, index=date_index).reindex(trading_dates_normalized).ffill().bfill()
     ser.index = trading_dates  # Restore original trading_dates index
     return ser
+
+
+class _AllocationWrapper:
+    """Local wrapper that overrides get_target_weights without mutating the original allocation."""
+
+    def __init__(self, wrapped: Any, get_target_weights_fn: Any) -> None:
+        self._wrapped = wrapped
+        self._get_target_weights_fn = get_target_weights_fn
+
+    def get_symbols(self) -> list[str]:
+        return self._wrapped.get_symbols()
+
+    def get_target_weights(self, *args: Any, **kwargs: Any) -> dict[str, float]:
+        return self._get_target_weights_fn(*args, **kwargs)
 
 
 class BacktestEngine(ABC):
@@ -172,10 +186,7 @@ class VolatilityBasedEngine(BacktestEngine):
                 raise ValueError("start and end are required when not passing prices_df")
             vol_sym = normalize_volatility_symbol(volatility_symbol) if volatility_symbol else "VIX"
             sym_list = [s.upper() if isinstance(s, str) else str(s).upper() for s in symbols]
-            # Fetch allocation symbols and volatility index separately; use fetch_volatility_index for the index
             prices = fetch_prices(sym_list, start=start, end=end)
-            vol_df = fetch_volatility_index(vol_sym, start=start, end=end)
-            prices[vol_sym] = vol_df
 
         vol_sym = normalize_volatility_symbol(volatility_symbol) if volatility_symbol else "VIX"
         if not vol_sym:
@@ -197,19 +208,8 @@ class VolatilityBasedEngine(BacktestEngine):
             vix_df = normalize_price_index(vix_df, tz=tz)
             vix_series = _vix_series_from_prices(vix_df, vol_sym, trading_dates)
         else:
-            # Fetch VIX data using fetch_volatility_index when not provided
-            try:
-                vix_data = fetch_volatility_index(vol_sym, start=start, end=end)
-                vix_series = _vix_series_from_prices(vix_data, vol_sym, trading_dates)
-            except Exception as e:
-                # Fallback to checking prices dict for backward compatibility
-                if vol_sym in prices:
-                    vix_series = _vix_series_from_prices(prices, vol_sym, trading_dates)
-                else:
-                    raise ValueError(
-                        f"Failed to fetch VIX data for {vol_sym!r} and not found in prices. "
-                        f"Error: {e}. Provide vix_df parameter or ensure VIX symbol is in prices."
-                    )
+            vix_data = fetch_volatility_index(vol_sym, start=start, end=end)
+            vix_series = _vix_series_from_prices(vix_data, vol_sym, trading_dates)
 
         schedule_kwargs: dict[str, Any] = {}
         context_for_date: Callable[[pd.Timestamp], dict[str, Any]] | None = None
@@ -246,30 +246,21 @@ class VolatilityBasedEngine(BacktestEngine):
 
             context_for_date = context_for_date
 
-        # Handle rebalance_filter logic by wrapping the allocation strategy
-        if rebalance_filter is not None and vix_series is not None and self.rebalance.spec != "vix_regime":
-            # Create a wrapper that handles the rebalance filter logic
-            original_get_target_weights = allocation_strategy.get_target_weights
-            
-            def filtered_get_target_weights(date, total_equity, positions_dollars, prices, **kwargs):
-                # Check if we should rebalance on this date
-                if date in trading_dates:  # Only check on trading days
-                    # Get last rebalance date from context or use a simple approach
-                    last_rebalance_date = kwargs.get('last_rebalance_date')
-                    should_rebalance = rebalance_filter(date, vix_series, last_rebalance_date)
-                    if not should_rebalance:
-                        # Return current positions (no rebalance)
-                        return {sym: positions_dollars.get(sym, 0) / total_equity for sym in allocation_strategy.get_symbols()}
-                return original_get_target_weights(date, total_equity, positions_dollars, prices, **kwargs)
-            
-            allocation_strategy.get_target_weights = filtered_get_target_weights
-
-        # Handle vix_regime context_for_date logic by wrapping the allocation strategy
         allocation_strategy = self.allocation
         rebalance_dates_for_backtest = None
-        
+
+        if rebalance_filter is not None and vix_series is not None and self.rebalance.spec != "vix_regime":
+            _orig_weights = allocation_strategy.get_target_weights
+
+            def filtered_get_target_weights(date, total_equity, positions_dollars, prices, **kwargs):
+                last_rebalance_date = kwargs.get('last_rebalance_date')
+                if not rebalance_filter(date, vix_series, last_rebalance_date):
+                    return {sym: positions_dollars.get(sym, 0) / total_equity for sym in allocation_strategy.get_symbols()}
+                return _orig_weights(date, total_equity, positions_dollars, prices, **kwargs)
+
+            allocation_strategy = _AllocationWrapper(allocation_strategy, filtered_get_target_weights)
+
         if self.rebalance.spec == "vix_regime":
-            # Calculate rebalance dates for vix_regime
             rebalance_dates_for_backtest = get_rebalance_dates(
                 trading_dates,
                 "vix_regime",
@@ -280,8 +271,7 @@ class VolatilityBasedEngine(BacktestEngine):
                 lower_bound=lower_bound,
                 upper_bound=upper_bound
             )
-            
-            # Apply freezing period filter if enabled
+
             if self.freezing_days > 0:
                 filtered_dates = []
                 last_rebalance = None
@@ -290,16 +280,15 @@ class VolatilityBasedEngine(BacktestEngine):
                         filtered_dates.append(date)
                         last_rebalance = date
                 rebalance_dates_for_backtest = pd.DatetimeIndex(filtered_dates)
-            
-            original_get_target_weights = allocation_strategy.get_target_weights
-            
+
+            _orig_weights = allocation_strategy.get_target_weights
+
             def context_aware_get_target_weights(date, total_equity, positions_dollars, prices, **kwargs):
-                # Add VIX context for vix_regime
                 context = context_for_date(date)
                 kwargs.update(context)
-                return original_get_target_weights(date, total_equity, positions_dollars, prices, **kwargs)
-            
-            allocation_strategy.get_target_weights = context_aware_get_target_weights
+                return _orig_weights(date, total_equity, positions_dollars, prices, **kwargs)
+
+            allocation_strategy = _AllocationWrapper(allocation_strategy, context_aware_get_target_weights)
 
         return run_backtest(
             prices_df,

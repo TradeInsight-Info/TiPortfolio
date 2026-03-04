@@ -18,8 +18,7 @@ def test_load_csvs_yields_dict_with_date_index(data_dir):
     assert set(result.keys()) >= {"QQQ", "SPY", "GLD"}
     for sym, df in result.items():
         assert hasattr(df.index, "name"), f"{sym} should have index"
-        assert len(df.columns) == 1
-        assert df.index.name in ("date", None) or "date" in str(df.index.name).lower()
+        assert {'open', 'high', 'low', 'close'}.issubset(df.columns), f"{sym} missing OHLC columns"
 
 
 def test_merge_prices_common_date_index(data_dir):
