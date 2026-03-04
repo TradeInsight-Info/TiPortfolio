@@ -14,9 +14,8 @@ from tiportfolio import (
     VolatilityBasedEngine,
 )
 from tiportfolio.calendar import VALID_SCHEDULES
+from tiportfolio.utils.constants import VOLATILITY_INDEX_SYMBOLS as VOLATILITY_CHOICES
 from conftest import load_csvs
-
-VOLATILITY_CHOICES = ("VIX", "VVIX", "RVX", "VXD")
 
 
 def main() -> None:

@@ -4,6 +4,14 @@ from __future__ import annotations
 
 import pandas as pd
 
+_NAN_METRICS: dict[str, float] = {
+    "sharpe_ratio": float("nan"),
+    "cagr": float("nan"),
+    "max_drawdown": float("nan"),
+    "mar_ratio": float("nan"),
+    "kelly_leverage": float("nan"),
+}
+
 
 def compute_metrics(
     equity: pd.Series,
@@ -18,31 +26,13 @@ def compute_metrics(
     periods_per_year: trading days per year for annualization (default 252).
     """
     if equity.empty or len(equity) < 2:
-        return {
-            "sharpe_ratio": float("nan"),
-            "cagr": float("nan"),
-            "max_drawdown": float("nan"),
-            "mar_ratio": float("nan"),
-            "kelly_leverage": float("nan"),
-        }
+        return dict(_NAN_METRICS)
     equity = equity.dropna().sort_index()
     if len(equity) < 2:
-        return {
-            "sharpe_ratio": float("nan"),
-            "cagr": float("nan"),
-            "max_drawdown": float("nan"),
-            "mar_ratio": float("nan"),
-            "kelly_leverage": float("nan"),
-        }
+        return dict(_NAN_METRICS)
     returns = equity.pct_change().dropna()
     if returns.empty:
-        return {
-            "sharpe_ratio": float("nan"),
-            "cagr": float("nan"),
-            "max_drawdown": float("nan"),
-            "mar_ratio": float("nan"),
-            "kelly_leverage": float("nan"),
-        }
+        return dict(_NAN_METRICS)
 
     # CAGR: (end/start)^(252/n_days) - 1
     n_days = (equity.index[-1] - equity.index[0]).days

@@ -179,16 +179,14 @@ class VolatilityBasedEngine(BacktestEngine):
         added to the symbol list if needed). For vix_regime, either vix_df or prices_df
         must contain the volatility symbol.
         """
+        vol_sym = normalize_volatility_symbol(volatility_symbol) if volatility_symbol else "VIX"
         if prices_df is not None and len(prices_df) > 0:
             prices = prices_df
         else:
             if start is None or end is None:
                 raise ValueError("start and end are required when not passing prices_df")
-            vol_sym = normalize_volatility_symbol(volatility_symbol) if volatility_symbol else "VIX"
             sym_list = [s.upper() if isinstance(s, str) else str(s).upper() for s in symbols]
             prices = fetch_prices(sym_list, start=start, end=end)
-
-        vol_sym = normalize_volatility_symbol(volatility_symbol) if volatility_symbol else "VIX"
         if not vol_sym:
             raise ValueError("volatility_symbol is required for VolatilityBasedEngine.run()")
         allocation_keys = set(self.allocation.get_symbols())
