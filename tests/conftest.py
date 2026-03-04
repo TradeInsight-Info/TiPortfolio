@@ -26,15 +26,12 @@ def prices_three(data_dir: Path) -> dict:
     """Dict with SPY, QQQ, GLD for integration tests."""
     paths = [data_dir / "spy.csv", data_dir / "qqq.csv", data_dir / "gld.csv"]
     prices = load_csvs(paths)
-    # Convert single price column to OHLC format
+    result = {}
     for symbol, df in prices.items():
-        price_series = df[symbol]
-        df['open'] = price_series
-        df['high'] = price_series
-        df['low'] = price_series
-        df['close'] = price_series
-        del df[symbol]
-    return prices
+        df = df.set_index('date')
+        df.index = pd.to_datetime(df.index, utc=True)
+        result[symbol] = df[['open', 'high', 'low', 'close', 'volume']]
+    return result
 
 
 def load_csvs(
