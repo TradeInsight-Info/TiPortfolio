@@ -50,8 +50,11 @@ def closest_nyse_trading_day(
         if which == "on_or_before":
             return [target - timedelta(days=i) for i in range(max_offset_days + 1)]
         raise ValueError(f"which must be 'closest', 'on_or_after', or 'on_or_before'; got {which!r}")
-
-    for c in candidates():
-        if c in valid_dates:
-            return date_to_ts[c]
+    for cand in candidates():
+        if cand in valid_dates:
+            return date_to_ts[cand]
     return None
+
+def get_next_market_day(target: date | pd.Timestamp) -> pd.Timestamp | None:
+    """Return the next NYSE trading day on or after the target date."""
+    return closest_nyse_trading_day(target, which="on_or_after")

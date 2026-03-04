@@ -10,15 +10,19 @@ from tiportfolio.market_calendar import closest_nyse_trading_day
 
 VALID_SCHEDULES = (
     "month_end",
-    "month_start",
-    "quarter_end",
-    "quarter_start",
-    "year_end",
-    "year_start",
     "month_mid",
+    "month_start",
+    "never",
+    "quarter_end",
     "quarter_mid",
-    "year_mid",
+    "quarter_start",
     "vix_regime",
+    "weekly_friday",
+    "weekly_monday",
+    "weekly_wednesday",
+    "year_end",
+    "year_mid",
+    "year_start",
 )
 
 
@@ -166,6 +170,15 @@ def get_rebalance_dates(
     elif schedule == "year_mid":
         target_dates = _target_dates_year_mid(first_ts, last_ts)
         which = "closest"
+    elif schedule == "weekly_monday":
+        target_dates = pd.date_range(start=first_ts, end=last_ts, freq="W-MON")
+        which = "on_or_after"
+    elif schedule == "weekly_wednesday":
+        target_dates = pd.date_range(start=first_ts, end=last_ts, freq="W-WED")
+        which = "on_or_after"
+    elif schedule == "weekly_friday":
+        target_dates = pd.date_range(start=first_ts, end=last_ts, freq="W-FRI")
+        which = "on_or_after"
     elif schedule == "vix_regime":
         if vix_series is None or target_vix is None or lower_bound is None or upper_bound is None:
             raise ValueError(
@@ -175,6 +188,8 @@ def get_rebalance_dates(
             trading_dates, vix_series, target_vix, lower_bound, upper_bound
         )
         return pd.DatetimeIndex(rebalance_list).unique().sort_values()
+    elif schedule == "never":
+        return pd.DatetimeIndex([])
     else:
         raise ValueError(
             f"Unknown schedule {schedule!r}; use one of {list(VALID_SCHEDULES)}"

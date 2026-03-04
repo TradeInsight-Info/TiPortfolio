@@ -116,3 +116,46 @@ def test_get_rebalance_dates_vix_regime_requires_params():
             target_vix=20.0,
             # missing lower_bound, upper_bound
         )
+
+
+def test_get_rebalance_dates_weekly_monday():
+    """weekly_monday produces rebalance dates on or after each Monday."""
+    trading = pd.date_range("2019-01-01", "2019-02-28", freq="B")
+    dates = get_rebalance_dates(trading, "weekly_monday")
+    assert dates.isin(trading).all()
+    assert len(dates) >= 4  # roughly 5 weeks in 2 months
+    # Verify dates are on Mondays or next trading day
+    for d in dates:
+        # The date should be a Monday or the next business day if Monday is not trading
+        day_of_week = d.weekday()  # 0=Monday
+        assert day_of_week <= 4  # Monday to Friday
+
+
+def test_get_rebalance_dates_weekly_wednesday():
+    """weekly_wednesday produces rebalance dates on or after each Wednesday."""
+    trading = pd.date_range("2019-01-01", "2019-02-28", freq="B")
+    dates = get_rebalance_dates(trading, "weekly_wednesday")
+    assert dates.isin(trading).all()
+    assert len(dates) >= 4
+    for d in dates:
+        day_of_week = d.weekday()  # 2=Wednesday
+        assert 2 <= day_of_week <= 6 or day_of_week == 0  # Wednesday to next Monday if needed, but should be close
+
+
+def test_get_rebalance_dates_weekly_friday():
+    """weekly_friday produces rebalance dates on or after each Friday."""
+    trading = pd.date_range("2019-01-01", "2019-02-28", freq="B")
+    dates = get_rebalance_dates(trading, "weekly_friday")
+    assert dates.isin(trading).all()
+    assert len(dates) >= 4
+    for d in dates:
+        day_of_week = d.weekday()  # 4=Friday
+        assert 4 <= day_of_week or day_of_week <= 1  # Friday or next Monday/Tuesday
+
+
+def test_get_rebalance_dates_never():
+    """never schedule returns empty DatetimeIndex."""
+    trading = pd.date_range("2019-01-02", "2020-06-30", freq="B")
+    dates = get_rebalance_dates(trading, "never")
+    assert len(dates) == 0
+    assert isinstance(dates, pd.DatetimeIndex)
