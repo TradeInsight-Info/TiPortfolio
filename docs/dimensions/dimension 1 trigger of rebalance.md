@@ -1,5 +1,8 @@
 Dimension 1: When to Rebalance
 
+- [x] Scheduled Rebalance
+- [x] Market Volatility Triggered Rebalance
+
 
 - Fix time Scheduled Rebalance, for example, every quarter, every year, every start of month, end of month, middle of month, every Monday, every Wednesaday, every Friday [implemented]
 

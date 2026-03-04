@@ -1,5 +1,5 @@
 
-- [ ] Fix Ratio
+- [x] Fix Ratio
 - [ ] Dollar neutral
 - [ ] Volatility Targeting
 - [ ] Beta neutral
