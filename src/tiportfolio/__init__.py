@@ -2,9 +2,12 @@
 
 from tiportfolio.allocation import (
     AllocationStrategy,
+    BetaNeutral,
+    DollarNeutral,
     FixRatio,
     VixChangeFilter,
     VixRegimeAllocation,
+    VolatilityTargeting,
 )
 from tiportfolio.backtest import BacktestResult, RebalanceDecision
 from tiportfolio.calendar import Schedule
@@ -19,7 +22,9 @@ __all__ = [
     "AllocationStrategy",
     "BacktestEngine",
     "BacktestResult",
+    "BetaNeutral",
     "compare_strategies",
+    "DollarNeutral",
     "FixRatio",
     "RebalanceDecision",
     "Schedule",
@@ -29,4 +34,5 @@ __all__ = [
     "VixChangeFilter",
     "VixRegimeAllocation",
     "VolatilityBasedEngine",
+    "VolatilityTargeting",
 ]
