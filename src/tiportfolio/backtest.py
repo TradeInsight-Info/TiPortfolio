@@ -41,7 +41,9 @@ class BacktestResult:
     def summary(self) -> str:
         """Human-readable summary table."""
         m = self.metrics
-        final_value = self.equity_curve.iloc[-1] if not self.equity_curve.empty else float('nan')
+        final_value = (
+            self.equity_curve.iloc[-1] if not self.equity_curve.empty else float("nan")
+        )
         lines = [
             "Backtest Summary",
             "----------------",
@@ -107,7 +109,10 @@ class BacktestResult:
                     buy_dates, buy_values, buy_text = [], [], []
                     sell_dates, sell_values, sell_text = [], [], []
                     for d in self.rebalance_decisions:
-                        if d.date not in self.asset_curves.index or col not in d.trades_dollars:
+                        if (
+                            d.date not in self.asset_curves.index
+                            or col not in d.trades_dollars
+                        ):
                             continue
                         trade = d.trades_dollars[col]
                         if trade == 0:
@@ -119,35 +124,60 @@ class BacktestResult:
                         if trade > 0:
                             buy_dates.append(d.date)
                             buy_values.append(y)
-                            price_str = f"Price: {price:,.2f}" if price is not None else "Price: -"
+                            price_str = (
+                                f"Price: {price:,.2f}"
+                                if price is not None
+                                else "Price: -"
+                            )
                             qty_str = f"<br>Qty: {qty:,.4f}" if qty is not None else ""
-                            buy_text.append(f"{col} Buy<br>Date: {date_str}<br>{price_str}{qty_str}")
+                            buy_text.append(
+                                f"{col} Buy<br>Date: {date_str}<br>{price_str}{qty_str}"
+                            )
                         else:
                             sell_dates.append(d.date)
                             sell_values.append(y)
-                            price_str = f"Price: {price:,.2f}" if price is not None else "Price: -"
+                            price_str = (
+                                f"Price: {price:,.2f}"
+                                if price is not None
+                                else "Price: -"
+                            )
                             qty_str = f"<br>Qty: {qty:,.4f}" if qty is not None else ""
-                            sell_text.append(f"{col} Sell<br>Date: {date_str}<br>{price_str}{qty_str}")
+                            sell_text.append(
+                                f"{col} Sell<br>Date: {date_str}<br>{price_str}{qty_str}"
+                            )
                     if buy_dates:
                         fig.add_trace(
                             go.Scatter(
-                                x=buy_dates, y=buy_values,
+                                x=buy_dates,
+                                y=buy_values,
                                 name=f"{col} Buy",
                                 mode="markers",
-                                marker=dict(symbol="triangle-up", size=10, color="green", line=dict(width=1.5, color="green")),
-                                hovertext=buy_text, hoverinfo="text",
-                                legendgroup=col, showlegend=False,
+                                marker=dict(
+                                    symbol="triangle-up",
+                                    size=10,
+                                    color="green",
+                                    line=dict(width=1.5, color="green"),
+                                ),
+                                hovertext=buy_text,
+                                hoverinfo="text",
+                                legendgroup=col,
+                                showlegend=False,
                             )
                         )
                     if sell_dates:
                         fig.add_trace(
                             go.Scatter(
-                                x=sell_dates, y=sell_values,
+                                x=sell_dates,
+                                y=sell_values,
                                 name=f"{col} Sell",
                                 mode="markers",
-                                marker=dict(symbol="triangle-down", size=10, color="red"),
-                                hovertext=sell_text, hoverinfo="text",
-                                legendgroup=col, showlegend=False,
+                                marker=dict(
+                                    symbol="triangle-down", size=10, color="red"
+                                ),
+                                hovertext=sell_text,
+                                hoverinfo="text",
+                                legendgroup=col,
+                                showlegend=False,
                             )
                         )
         fig.update_layout(
@@ -155,7 +185,9 @@ class BacktestResult:
             xaxis_title="Date",
             yaxis_title="Value",
             hovermode="closest",
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
+            ),
             margin=dict(t=80),
         )
         return fig
@@ -212,20 +244,31 @@ class BacktestResult:
             if date in book_data.index:
                 row = book_data.loc[date]
                 if isinstance(row, pd.Series):
-                    matrix.append([1 if pd.notna(row.get(asset)) and row.get(asset, 0) > 0 else 0 for asset in asset_list])
+                    matrix.append(
+                        [
+                            (
+                                1
+                                if pd.notna(row.get(asset)) and row.get(asset, 0) > 0
+                                else 0
+                            )
+                            for asset in asset_list
+                        ]
+                    )
                 else:
                     # If row is scalar, treat as single value
                     matrix.append([0] * len(asset_list))
             else:
                 matrix.append([0] * len(asset_list))
 
-        fig = go.Figure(data=go.Heatmap(
-            z=matrix,
-            x=dates,
-            y=assets,
-            colorscale='Blues',
-            showscale=False,
-        ))
+        fig = go.Figure(
+            data=go.Heatmap(
+                z=matrix,
+                x=dates,
+                y=assets,
+                colorscale="Blues",
+                showscale=False,
+            )
+        )
         fig.update_layout(
             title=f"Rolling Book Composition: {book_column}",
             xaxis_title="Rebalance Date",
@@ -249,6 +292,15 @@ class BacktestResult:
 
         Returns:
             Plotly Figure showing rolling portfolio beta over time.
+
+        Examples:
+            >>> # Auto-fetch SPY from YFinance
+            >>> fig = result.plot_portfolio_beta(lookback_days=60)
+            >>> fig.show()
+            >>>
+            >>> # Use custom benchmark
+            >>> benchmark_df = pd.DataFrame({"QQQ": prices}, index=dates)
+            >>> fig = result.plot_portfolio_beta(benchmark_symbol="QQQ", benchmark_prices=benchmark_df)
         """
         if self.asset_curves is None or self.asset_curves.empty:
             raise ValueError("asset_curves is not available")
@@ -257,22 +309,29 @@ class BacktestResult:
         if benchmark_prices is None or benchmark_prices.empty:
             if self._cached_benchmark is None:
                 from tiportfolio.helpers.data import YFinance
+
                 yf = YFinance()
                 start_date = self.asset_curves.index[0]
                 end_date = self.asset_curves.index[-1]
                 benchmark_data = yf.query([benchmark_symbol], start_date, end_date)
                 if benchmark_data.empty:
-                    raise ValueError(f"Could not fetch benchmark data for {benchmark_symbol}")
+                    raise ValueError(
+                        f"Could not fetch benchmark data for {benchmark_symbol}"
+                    )
                 # Set date index from the DATE column
-                if 'date' in benchmark_data.columns:
-                    benchmark_data = benchmark_data.set_index('date')
-                elif 'Date' in benchmark_data.columns:
-                    benchmark_data = benchmark_data.set_index('Date')
+                if "date" in benchmark_data.columns:
+                    benchmark_data = benchmark_data.set_index("date")
+                elif "Date" in benchmark_data.columns:
+                    benchmark_data = benchmark_data.set_index("Date")
+                # Ensure index is DatetimeIndex (YFinance returns RangeIndex by default)
+                # This explicit conversion is required for proper index alignment in reindex() operation
+                if not isinstance(benchmark_data.index, pd.DatetimeIndex):
+                    benchmark_data.index = pd.to_datetime(benchmark_data.index)
                 # Use close column
-                if 'close' in benchmark_data.columns:
-                    self._cached_benchmark = benchmark_data['close']
-                elif 'Close' in benchmark_data.columns:
-                    self._cached_benchmark = benchmark_data['Close']
+                if "close" in benchmark_data.columns:
+                    self._cached_benchmark = benchmark_data["close"]
+                elif "Close" in benchmark_data.columns:
+                    self._cached_benchmark = benchmark_data["Close"]
                 else:
                     self._cached_benchmark = benchmark_data.iloc[:, 0]
             benchmark_prices = self._cached_benchmark.to_frame()
@@ -285,44 +344,50 @@ class BacktestResult:
             ) from None
 
         # Normalize indices to tz-naive for alignment
-        asset_idx = self.asset_curves.index
-        bench_idx = benchmark_prices.index
+        asset_curves = self.asset_curves.copy()
+        benchmark_prices = benchmark_prices.copy()
 
         # Convert to tz-naive if needed
         try:
-            if asset_idx.tz is not None:
-                asset_idx = asset_idx.tz_localize(None)
+            if asset_curves.index.tz is not None:
+                asset_curves.index = asset_curves.index.tz_localize(None)
         except TypeError:
             pass  # Already tz-naive
 
         try:
-            if bench_idx.tz is not None:
-                bench_idx = bench_idx.tz_localize(None)
+            if benchmark_prices.index.tz is not None:
+                benchmark_prices.index = benchmark_prices.index.tz_localize(None)
         except TypeError:
             pass  # Already tz-naive
 
-        # Reindex both to common index
-        asset_aligned = self.asset_curves.reindex(asset_idx)
-        benchmark_aligned = benchmark_prices.reindex(asset_idx)
-        
-        valid_idx = benchmark_aligned.dropna().index
-        
-        if len(valid_idx) < lookback_days + 1:
-            raise ValueError(f"Not enough overlapping dates. Need at least {lookback_days + 1}, got {len(valid_idx)}")
+        # Find common dates between asset_curves and benchmark_prices
+        # Use intersection instead of reindex to handle potential date mismatches
+        common_dates = asset_curves.index.intersection(benchmark_prices.index)
 
-        portfolio_returns = asset_aligned.loc[valid_idx].pct_change().dropna()
+        if len(common_dates) < lookback_days + 1:
+            raise ValueError(
+                f"Not enough overlapping dates. Need at least {lookback_days + 1}, got {len(common_dates)}"
+            )
+
+        # Align both to common dates
+        asset_aligned = asset_curves.loc[common_dates]
+        benchmark_aligned = benchmark_prices.loc[common_dates]
+
+        portfolio_returns = asset_aligned.pct_change().dropna()
         benchmark_symbol = benchmark_prices.columns[0]
-        benchmark_returns = benchmark_aligned[benchmark_symbol].loc[valid_idx].pct_change().dropna()
+        benchmark_returns = benchmark_aligned[benchmark_symbol].pct_change().dropna()
 
-        common_returns_idx = portfolio_returns.index.intersection(benchmark_returns.index)
+        common_returns_idx = portfolio_returns.index.intersection(
+            benchmark_returns.index
+        )
         portfolio_returns = portfolio_returns.loc[common_returns_idx]
         benchmark_returns = benchmark_returns.loc[common_returns_idx]
 
         betas = []
         dates = []
         for i in range(lookback_days, len(common_returns_idx)):
-            window_pr = portfolio_returns.iloc[i-lookback_days:i]
-            window_br = benchmark_returns.iloc[i-lookback_days:i]
+            window_pr = portfolio_returns.iloc[i - lookback_days : i]
+            window_br = benchmark_returns.iloc[i - lookback_days : i]
 
             if len(window_br) < lookback_days:
                 betas.append(np.nan)
@@ -342,14 +407,16 @@ class BacktestResult:
             dates.append(common_returns_idx[i])
 
         fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=dates,
-            y=betas,
-            mode="lines",
-            name="Portfolio Beta",
-            line=dict(width=2),
-            hovertemplate="Date: %{x|%Y-%m-%d}<br>Beta: %{y:.4f}<extra></extra>",
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=dates,
+                y=betas,
+                mode="lines",
+                name="Portfolio Beta",
+                line=dict(width=2),
+                hovertemplate="Date: %{x|%Y-%m-%d}<br>Beta: %{y:.4f}<extra></extra>",
+            )
+        )
         fig.add_hline(y=1.0, line_dash="dash", line_color="gray", annotation_text="β=1")
         fig.add_hline(y=0.0, line_dash="dash", line_color="gray", annotation_text="β=0")
         fig.update_layout(
@@ -391,7 +458,9 @@ def run_backtest(
     if prices_df.empty:
         return BacktestResult(
             equity_curve=pd.Series(dtype=float),
-            metrics=compute_metrics(pd.Series(dtype=float), risk_free_rate=risk_free_rate),
+            metrics=compute_metrics(
+                pd.Series(dtype=float), risk_free_rate=risk_free_rate
+            ),
         )
 
     trading_dates = prices_df.index
@@ -407,7 +476,10 @@ def run_backtest(
     first_prices = prices_df.loc[first_date]
     initial_equity = float(initial_value)
     weights0 = allocation.get_target_weights(
-        first_date, initial_equity, {}, first_prices,
+        first_date,
+        initial_equity,
+        {},
+        first_prices,
         prices_history=prices_df.loc[:first_date],
     )
     positions_dollars: dict[str, float] = {}
@@ -434,10 +506,15 @@ def run_backtest(
             if date in rebalance_set:
                 equity_before = total_equity
                 weights = allocation.get_target_weights(
-                    date, total_equity, positions_dollars, row,
+                    date,
+                    total_equity,
+                    positions_dollars,
+                    row,
                     prices_history=prices_df.loc[:date],
                 )
-                target_dollars = {s: total_equity * weights.get(s, 0.0) for s in symbols}
+                target_dollars = {
+                    s: total_equity * weights.get(s, 0.0) for s in symbols
+                }
                 trades = {s: target_dollars[s] - positions_dollars[s] for s in symbols}
                 fee_paid = 0.0
                 for s in symbols:
