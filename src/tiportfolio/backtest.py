@@ -103,9 +103,9 @@ def run_backtest(
     first_date = trading_dates[0]
     first_prices = prices_df.loc[first_date]
     initial_equity = float(initial_value)
-    context0 = {}
     weights0 = allocation.get_target_weights(
-        first_date, initial_equity, {}, first_prices
+        first_date, initial_equity, {}, first_prices,
+        prices_history=prices_df.loc[:first_date],
     )
     positions_dollars: dict[str, float] = {}
     for sym in symbols:
@@ -132,7 +132,8 @@ def run_backtest(
             if date in rebalance_set:
                 equity_before = total_equity
                 weights = allocation.get_target_weights(
-                    date, total_equity, positions_dollars, row
+                    date, total_equity, positions_dollars, row,
+                    prices_history=prices_df.loc[:date],
                 )
                 target_dollars = {s: total_equity * weights.get(s, 0.0) for s in symbols}
                 trades = {s: target_dollars[s] - positions_dollars[s] for s in symbols}

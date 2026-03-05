@@ -29,11 +29,12 @@ VALID_SCHEDULES = (
 
 def _target_dates_month_mid(first_ts: pd.Timestamp, last_ts: pd.Timestamp) -> pd.DatetimeIndex:
     """15th of each month in range."""
+    tz = first_ts.tz
     dates: list[pd.Timestamp] = []
     y, m = first_ts.year, first_ts.month
     end_y, end_m = last_ts.year, last_ts.month
     while (y, m) <= (end_y, end_m):
-        d = pd.Timestamp(year=y, month=m, day=15)
+        d = pd.Timestamp(year=y, month=m, day=15, tz=tz)
         if first_ts <= d <= last_ts:
             dates.append(d)
         m += 1
@@ -45,10 +46,11 @@ def _target_dates_month_mid(first_ts: pd.Timestamp, last_ts: pd.Timestamp) -> pd
 
 def _target_dates_quarter_mid(first_ts: pd.Timestamp, last_ts: pd.Timestamp) -> pd.DatetimeIndex:
     """15th of 2nd month of each quarter: Feb 15, May 15, Aug 15, Nov 15."""
+    tz = first_ts.tz
     dates: list[pd.Timestamp] = []
     for y in range(first_ts.year, last_ts.year + 1):
         for month in (2, 5, 8, 11):
-            d = pd.Timestamp(year=y, month=month, day=15)
+            d = pd.Timestamp(year=y, month=month, day=15, tz=tz)
             if first_ts <= d <= last_ts:
                 dates.append(d)
     return pd.DatetimeIndex(dates).unique().sort_values() if dates else pd.DatetimeIndex([])
@@ -56,10 +58,11 @@ def _target_dates_quarter_mid(first_ts: pd.Timestamp, last_ts: pd.Timestamp) -> 
 
 def _target_dates_year_mid(first_ts: pd.Timestamp, last_ts: pd.Timestamp) -> pd.DatetimeIndex:
     """July 1 each year."""
+    tz = first_ts.tz
     dates = [
-        pd.Timestamp(year=y, month=7, day=1)
+        pd.Timestamp(year=y, month=7, day=1, tz=tz)
         for y in range(first_ts.year, last_ts.year + 1)
-        if first_ts <= pd.Timestamp(year=y, month=7, day=1) <= last_ts
+        if first_ts <= pd.Timestamp(year=y, month=7, day=1, tz=tz) <= last_ts
     ]
     return pd.DatetimeIndex(dates) if dates else pd.DatetimeIndex([])
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from collections.abc import Callable, Iterable
 from typing import Any
 
@@ -79,7 +79,6 @@ class BacktestEngine(ABC):
         self.initial_value = initial_value
         self.risk_free_rate = risk_free_rate
 
-    @abstractmethod
     def run(
         self,
         prices: dict[str, pd.DataFrame],
