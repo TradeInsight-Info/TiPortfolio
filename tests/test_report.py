@@ -75,11 +75,11 @@ def test_compare_strategies_scalar_leverage_adjusts_metrics():
 
     df = compare_strategies(result, names=["A"], leverages=1.5, yearly_loan_rates=0.0)
 
-    assert df.loc["max_drawdown", "A"] == pytest.approx(0.30)           # 1.5 * 0.20
-    assert df.loc["cagr", "A"] == pytest.approx(0.15)                   # 1.5 * 0.10
-    assert df.loc["mar_ratio", "A"] == pytest.approx(0.15 / 0.30)       # lev_cagr / lev_dd
-    assert df.loc["sharpe_ratio", "A"] == pytest.approx(1.0)            # unchanged
-    assert df.loc["sortino_ratio", "A"] == pytest.approx(1.5)           # unchanged
+    assert df.loc["max_drawdown", "A (L1.5x)"] == pytest.approx(0.30)           # 1.5 * 0.20
+    assert df.loc["cagr", "A (L1.5x)"] == pytest.approx(0.15)                   # 1.5 * 0.10
+    assert df.loc["mar_ratio", "A (L1.5x)"] == pytest.approx(0.15 / 0.30)       # lev_cagr / lev_dd
+    assert df.loc["sharpe_ratio", "A (L1.5x)"] == pytest.approx(1.0)            # unchanged
+    assert df.loc["sortino_ratio", "A (L1.5x)"] == pytest.approx(1.5)           # unchanged
 
 
 # ---------------------------------------------------------------------------

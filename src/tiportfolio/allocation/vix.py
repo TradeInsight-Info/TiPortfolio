@@ -1,55 +1,13 @@
-"""Allocation strategies: protocol, fixed ratio, VIX regime, and filters."""
+"""VIX-based regime allocation and rebalance filter."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any
 
 import pandas as pd
 
-
-class AllocationStrategy(Protocol):
-    """Protocol for allocation strategies: provide symbols and target weights at a point in time."""
-
-    def get_symbols(self) -> list[str]:
-        """Return the list of symbols this strategy allocates to."""
-        ...
-
-    def get_target_weights(
-        self,
-        date: pd.Timestamp,
-        total_equity: float,
-        positions_dollars: dict[str, float],
-        prices_row: pd.Series,
-        **context: Any,
-    ) -> dict[str, float]:
-        """Return target weights (symbol -> weight) that sum to 1.0."""
-        ...
-
-
-@dataclass
-class FixRatio:
-    """Fixed weight allocation; implements AllocationStrategy. Keys must match prices dict keys."""
-
-    weights: dict[str, float]
-
-    def __post_init__(self) -> None:
-        total = sum(self.weights.values())
-        if not (0.99 <= total <= 1.01):
-            raise ValueError(f"weights must sum to 1.0; got sum={total}")
-
-    def get_symbols(self) -> list[str]:
-        return list(self.weights.keys())
-
-    def get_target_weights(
-        self,
-        date: pd.Timestamp,
-        total_equity: float,
-        positions_dollars: dict[str, float],
-        prices_row: pd.Series,
-        **context: Any,
-    ) -> dict[str, float]:
-        return dict(self.weights)
+from tiportfolio.allocation.base import AllocationStrategy
 
 
 def validate_vix_regime_bounds(
@@ -69,7 +27,7 @@ class VixRegimeAllocation:
     """AllocationStrategy that switches between high-vol and low-vol allocations based on engine decision.
 
     The engine determines whether to use high_vol_allocation or low_vol_allocation and passes
-    this decision via the 'use_high_vol_allocation' context parameter. Both sub-strategies 
+    this decision via the 'use_high_vol_allocation' context parameter. Both sub-strategies
     must use the same symbols.
     """
 
@@ -96,7 +54,7 @@ class VixRegimeAllocation:
         **context: Any,
     ) -> dict[str, float]:
         use_high_vol = context.get("use_high_vol_allocation", False)
-        
+
         if use_high_vol:
             return self.high_vol_allocation.get_target_weights(
                 date, total_equity, positions_dollars, prices_row, **context
