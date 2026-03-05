@@ -347,18 +347,24 @@ class BacktestResult:
         asset_curves = self.asset_curves.copy()
         benchmark_prices = benchmark_prices.copy()
 
-        # Convert to tz-naive if needed
+        # Convert to tz-naive midnight dates for alignment.
+        # Use tz_localize(None) to strip tz, then normalize() to zero out any
+        # time-of-day offset (e.g. Alpaca returns 05:00:00 UTC for market open).
         try:
             if asset_curves.index.tz is not None:
-                asset_curves.index = asset_curves.index.tz_localize(None)
+                asset_curves.index = asset_curves.index.tz_localize(None).normalize()
         except TypeError:
             pass  # Already tz-naive
 
         try:
             if benchmark_prices.index.tz is not None:
-                benchmark_prices.index = benchmark_prices.index.tz_localize(None)
+                benchmark_prices.index = benchmark_prices.index.tz_localize(None).normalize()
         except TypeError:
             pass  # Already tz-naive
+
+        # Also normalize tz-naive indices that may carry a time component
+        asset_curves.index = asset_curves.index.normalize()
+        benchmark_prices.index = benchmark_prices.index.normalize()
 
         # Find common dates between asset_curves and benchmark_prices
         # Use intersection instead of reindex to handle potential date mismatches

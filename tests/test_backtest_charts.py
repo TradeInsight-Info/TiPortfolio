@@ -155,6 +155,44 @@ class TestPlotPortfolioBeta:
         # Check hover template
         assert "Beta" in fig.data[0].hovertemplate
 
+    def test_plot_portfolio_beta_alpaca_style_timestamps(self, sample_equity_curve):
+        """Alpaca returns timestamps with 05:00:00+00:00 (midnight Eastern in UTC).
+
+        After tz_localize(None), these become 05:00:00 which does NOT match
+        YFinance's midnight dates (00:00:00). The fix must normalize to midnight.
+        """
+        np.random.seed(42)
+        # Simulate Alpaca-style index: market open time = 05:00 UTC (= midnight Eastern)
+        business_days = pd.bdate_range("2023-01-01", periods=252)
+        alpaca_index = pd.DatetimeIndex(
+            [d + pd.Timedelta(hours=5) for d in business_days], tz="UTC"
+        )
+        asset_curves = pd.DataFrame(
+            {"AAPL": 150 * (1 + np.cumsum(np.random.randn(252) * 0.008))},
+            index=alpaca_index,
+        )
+        equity_curve = pd.Series(
+            10000 * (1 + np.cumsum(np.random.randn(252) * 0.01)),
+            index=alpaca_index,
+        )
+        result = BacktestResult(
+            equity_curve=equity_curve,
+            metrics={"sharpe_ratio": 1.0, "cagr": 0.10, "max_drawdown": 0.10},
+            asset_curves=asset_curves,
+        )
+
+        # Benchmark uses midnight tz-naive dates (YFinance-style)
+        yf_index = pd.DatetimeIndex(business_days)
+        benchmark = pd.DataFrame(
+            {"SPY": 400 * (1 + np.cumsum(np.random.randn(252) * 0.007))},
+            index=yf_index,
+        )
+
+        # Without the fix this raises: "Not enough overlapping dates. Need at least 61, got 0"
+        fig = result.plot_portfolio_beta(benchmark_prices=benchmark, lookback_days=60)
+        assert fig is not None
+        assert len(fig.data) > 0
+
     def test_plot_portfolio_beta_zero_benchmark_variance(self, sample_equity_curve, sample_asset_curves):
         """Handles edge case where benchmark has zero variance."""
         # Create benchmark with constant value (zero variance)
