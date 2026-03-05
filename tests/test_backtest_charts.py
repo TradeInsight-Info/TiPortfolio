@@ -215,39 +215,59 @@ class TestPlotPortfolioBeta:
 
 # === Tests for plot_rolling_book_composition() ===
 
+@pytest.fixture
+def sample_decisions():
+    dates = pd.date_range("2023-01-15", periods=3, freq="MS", tz="UTC")
+    decisions = []
+    for i, date in enumerate(dates):
+        weights = {"AAPL": 0.3, "GOOGL": -0.2, "MSFT": 0.0} if i % 2 == 0 else {"AAPL": 0.0, "GOOGL": 0.4, "MSFT": -0.3}
+        decisions.append(
+            RebalanceDecision(
+                date=date,
+                equity_before=10000.0,
+                equity_after=10000.0,
+                target_weights=weights,
+                trades_dollars={},
+                fee_paid=0.0,
+                prices_at_rebalance={"AAPL": 150.0, "GOOGL": 100.0, "MSFT": 300.0},
+            )
+        )
+    return decisions
+
+
 class TestPlotRollingBookComposition:
     """Test suite for plot_rolling_book_composition() method."""
 
-    def test_plot_rolling_book_composition_missing_column(self, sample_result):
-        """Raises KeyError when column doesn't exist."""
-        with pytest.raises(KeyError, match="nonexistent_column"):
-            sample_result.plot_rolling_book_composition("nonexistent_column")
-
-    def test_plot_rolling_book_composition_no_asset_curves(self, sample_equity_curve):
-        """Raises ValueError when asset_curves is None."""
+    def test_raises_when_no_decisions(self, sample_equity_curve):
         result = BacktestResult(
             equity_curve=sample_equity_curve,
             metrics={"sharpe_ratio": 1.0, "cagr": 0.10, "max_drawdown": 0.10},
-            asset_curves=None,
         )
+        with pytest.raises(ValueError, match="No rebalance decisions"):
+            result.plot_rolling_book_composition(["AAPL", "GOOGL"])
 
-        with pytest.raises(ValueError, match="asset_curves is not available"):
-            result.plot_rolling_book_composition("nonexistent")
+    def test_returns_figure(self, sample_equity_curve, sample_decisions):
+        result = BacktestResult(
+            equity_curve=sample_equity_curve,
+            metrics={"sharpe_ratio": 1.0, "cagr": 0.10, "max_drawdown": 0.10},
+            rebalance_decisions=sample_decisions,
+        )
+        fig = result.plot_rolling_book_composition(["AAPL", "GOOGL", "MSFT"])
+        assert fig is not None
+        assert len(fig.data) == 1
 
-    def test_plot_rolling_book_composition_structure_note(self):
-        """Note: plot_rolling_book_composition expects book_column to contain nested position data.
-
-        The method iterates over (asset, value) pairs in each row, treating the column values
-        as Series or dict-like objects. This is used for long/short book visualization where
-        the asset_curves contains structured position data, not simple price series.
-
-        For full testing, we would need either:
-        1. A properly structured asset_curves with nested Series/dicts per cell
-        2. Or a refactoring of the method to work with standard DataFrames
-
-        Current tests focus on error handling and method existence.
-        """
-        pass
+    def test_heatmap_values_correct(self, sample_equity_curve, sample_decisions):
+        result = BacktestResult(
+            equity_curve=sample_equity_curve,
+            metrics={"sharpe_ratio": 1.0, "cagr": 0.10, "max_drawdown": 0.10},
+            rebalance_decisions=sample_decisions,
+        )
+        fig = result.plot_rolling_book_composition(["AAPL", "GOOGL", "MSFT"])
+        z = fig.data[0].z
+        # Row 0 (even): AAPL=Long(1), GOOGL=Short(-1), MSFT=Out(0)
+        assert z[0] == [1, -1, 0]
+        # Row 1 (odd): AAPL=Out(0), GOOGL=Long(1), MSFT=Short(-1)
+        assert z[1] == [0, 1, -1]
 
 
 if __name__ == "__main__":
