@@ -17,12 +17,14 @@ from tiportfolio.engine import (
     VolatilityBasedEngine,
 )
 from tiportfolio.report import compare_strategies, plot_strategy_comparison_interactive, rebalance_decisions_table
+from tiportfolio.utils.beta_screener import BetaScreenerStrategy
 
 __all__ = [
     "AllocationStrategy",
     "BacktestEngine",
     "BacktestResult",
     "BetaNeutral",
+    "BetaScreenerStrategy",
     "compare_strategies",
     "DollarNeutral",
     "FixRatio",
