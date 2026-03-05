@@ -83,7 +83,7 @@ Always use `uv run python` when running Python code directly, not just `python`.
 - **Functions/methods**: `snake_case` (e.g., `get_symbols`, `run_backtest`)
 - **Constants**: `UPPER_SNAKE_CASE`
 - **Modules**: `snake_case`
-- **Private methods**: Avoid using `_` prefix (e.g., `_internal_method`)
+- **Private methods**: using `_` prefix (e.g., `_internal_method`)
 
 ### Imports
 
