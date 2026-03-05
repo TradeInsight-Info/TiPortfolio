@@ -1,0 +1,26 @@
+schema: spec-driven
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+
+
+context: |
+    Tech stack: Python, pandas, numpy, matplotlib, plotly, 
+    Domain: Portfolio Asset Allocation Rebalance Library in Python
+    More: Check files at `docs/1 about.md` for more details
+
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+rules:
+    proposal:
+        - Keep proposals under 500 words
+    tasks:
+        - Break tasks into chunks of max 2 hours

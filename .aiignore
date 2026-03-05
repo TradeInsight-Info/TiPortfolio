@@ -1,3 +1,9 @@
 .venv/
 .env
 .pytest_cache/
+.cache/
+.clause/
+.gemini/
+.ocx/
+.opencode/
+.windsurf/

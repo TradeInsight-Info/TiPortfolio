@@ -1,1 +1,3 @@
-BASIC_REQUIRED_COLUMNS = ['open', 'high', 'low', 'close']  # OHLC
+from __future__ import annotations
+
+VOLATILITY_INDEX_SYMBOLS = ("VIX", "VVIX", "RVX", "VXD")
