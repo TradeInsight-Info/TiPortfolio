@@ -192,24 +192,55 @@ class BacktestResult:
         )
         return fig
 
-    def plot_rolling_book_composition(self, book_column: str):
-        """Visualize long/short book composition over time.
+    def book_composition_table(self, universe: list[str]) -> pd.DataFrame:
+        """Return a DataFrame showing Long/Short/Out for each symbol at each rebalance.
 
         Args:
-            book_column: Column name in asset_curves representing the book to visualize.
+            universe: Ordered list of symbols to include as columns.
 
         Returns:
-            Plotly Figure object showing heatmap of book composition over time.
+            DataFrame with rebalance dates as index and symbols as columns,
+            values are "Long", "Short", or "-".
 
         Raises:
-            KeyError: If book_column does not exist in asset_curves.
-            ValueError: If asset_curves is None or empty.
+            ValueError: If there are no rebalance decisions.
         """
-        if self.asset_curves is None or self.asset_curves.empty:
-            raise ValueError("asset_curves is not available")
+        if not self.rebalance_decisions:
+            raise ValueError("No rebalance decisions available")
 
-        if book_column not in self.asset_curves.columns:
-            raise KeyError(f"Column '{book_column}' not found in asset_curves")
+        rows = []
+        for d in self.rebalance_decisions:
+            row: dict[str, object] = {"date": d.date.date()}
+            for s in universe:
+                w = d.target_weights.get(s, 0.0)
+                if w > 0.01:
+                    row[s] = "Long"
+                elif w < -0.01:
+                    row[s] = "Short"
+                else:
+                    row[s] = "-"
+            rows.append(row)
+
+        return pd.DataFrame(rows).set_index("date")
+
+    def plot_rolling_book_composition(self, universe: list[str]):
+        """Visualize long/short book composition over rebalance dates.
+
+        Reads directly from rebalance_decisions.target_weights. Each cell is
+        coloured green (Long), red (Short), or grey (Out) based on the signed
+        weight at that rebalance.
+
+        Args:
+            universe: Ordered list of symbols to display as columns.
+
+        Returns:
+            Plotly Figure object showing the heatmap.
+
+        Raises:
+            ValueError: If there are no rebalance decisions.
+        """
+        if not self.rebalance_decisions:
+            raise ValueError("No rebalance decisions available")
 
         try:
             import plotly.graph_objects as go
@@ -218,62 +249,39 @@ class BacktestResult:
                 "Plotly is required for interactive charts. Install with: uv add --dev plotly"
             ) from None
 
-        book_data = self.asset_curves[book_column]
-        rebalance_dates = [d.date for d in self.rebalance_decisions]
-        if not rebalance_dates:
-            rebalance_dates = list(book_data.index)
-
-        # Extract assets with non-zero positions at any point
-        assets = set()
-        for date in rebalance_dates:
-            if date in book_data.index:
-                row = book_data.loc[date]
-                # Ensure row is a Series for consistent iteration
-                if isinstance(row, pd.Series):
-                    for asset, value in row.items():
-                        if pd.notna(value) and value > 0:
-                            assets.add(asset)
-
-        asset_list = sorted(list(assets))
-        if not asset_list:
-            raise ValueError("No assets found in book column")
-
-        dates = sorted(rebalance_dates)
-        matrix = []
-        for date in dates:
-            if date in book_data.index:
-                row = book_data.loc[date]
-                if isinstance(row, pd.Series):
-                    matrix.append(
-                        [
-                            (
-                                1
-                                if pd.notna(row.get(asset)) and row.get(asset, 0) > 0
-                                else 0
-                            )
-                            for asset in asset_list
-                        ]
-                    )
+        encode = {"Long": 1, "Short": -1, "-": 0}
+        rows = []
+        dates = []
+        for d in self.rebalance_decisions:
+            dates.append(str(d.date.date()))
+            row = []
+            for s in universe:
+                w = d.target_weights.get(s, 0.0)
+                if w > 0.01:
+                    row.append(encode["Long"])
+                elif w < -0.01:
+                    row.append(encode["Short"])
                 else:
-                    # If row is scalar, treat as single value
-                    matrix.append([0] * len(asset_list))
-            else:
-                matrix.append([0] * len(asset_list))
+                    row.append(encode["-"])
+            rows.append(row)
 
         fig = go.Figure(
-            data=go.Heatmap(
-                z=matrix,
-                x=dates,
-                y=assets,
-                colorscale="Blues",
-                showscale=False,
+            go.Heatmap(
+                z=rows,
+                x=universe,
+                y=dates,
+                colorscale=[[0, "#EF553B"], [0.5, "#EEEEEE"], [1, "#00CC96"]],
+                zmin=-1,
+                zmax=1,
+                colorbar=dict(tickvals=[-1, 0, 1], ticktext=["Short", "Out", "Long"]),
+                hoverongaps=False,
             )
         )
         fig.update_layout(
-            title=f"Rolling Book Composition: {book_column}",
-            xaxis_title="Rebalance Date",
-            yaxis_title="Asset",
-            xaxis=dict(type="date"),
+            title="Rolling Book Composition (Long=green, Short=red, Out=grey)",
+            xaxis_title="Stock",
+            yaxis_title="Rebalance Date",
+            height=max(300, 30 * len(dates) + 80),
         )
         return fig
 
