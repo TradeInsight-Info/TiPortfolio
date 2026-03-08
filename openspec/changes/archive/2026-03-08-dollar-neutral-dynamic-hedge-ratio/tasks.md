@@ -23,14 +23,14 @@
 
 ## 3. Backtesting and Analysis
 
-- [ ] 3.1 Run dynamic ratio backtest using `ScheduleBasedEngine`
-- [ ] 3.2 Calculate performance metrics (Sharpe, CAGR, Max Drawdown)
-- [ ] 3.3 Generate comparison plots
-  - [ ] 3.3.1 Equity curves: Fixed vs Dynamic ratio
-  - [ ] 3.3.2 Dynamic ratio time series visualization
-  - [ ] 3.3.3 Volatility comparison of both assets over time
-- [ ] 3.4 Analyze rebalance decisions and allocation changes
-- [ ] 3.5 Compare key metrics: Sharpe Ratio improvement, beta reduction effectiveness
+- [X] 3.1 Run dynamic ratio backtest using `ScheduleBasedEngine`
+- [X] 3.2 Calculate performance metrics (Sharpe, CAGR, Max Drawdown)
+- [X] 3.3 Generate comparison plots
+  - [X] 3.3.1 Equity curves: Fixed vs Dynamic ratio
+  - [X] 3.3.2 Dynamic ratio time series visualization
+  - [X] 3.3.3 Volatility comparison of both assets over time
+- [X] 3.4 Analyze rebalance decisions and allocation changes
+- [X] 3.5 Compare key metrics: Sharpe Ratio improvement, beta reduction effectiveness
 
 ## 4. Validation and Testing
 
