@@ -1,25 +1,25 @@
 ## 1. Notebook Setup and Data Preparation
 
-- [ ] 1.1 Create `notebooks/dollar_neutral_dynamic_v_ma.ipynb` notebook
-- [ ] 1.2 Import required libraries (pandas, numpy, matplotlib, tiportfolio)
-- [ ] 1.3 Load historical price data for V (Long) and MA (Short) assets
-- [ ] 1.4 Set up backtest parameters (start date, end date, rebalance frequency)
-- [ ] 1.5 Create baseline fixed 50/50 ratio backtest for comparison
+- [X] 1.1 Create `notebooks/dollar_neutral_dynamic_v_ma.ipynb` notebook
+- [X] 1.2 Import required libraries (pandas, numpy, matplotlib, tiportfolio)
+- [X] 1.3 Load historical price data for V (Long) and MA (Short) assets
+- [X] 1.4 Set up backtest parameters (start date, end date, rebalance frequency)
+- [X] 1.5 Create baseline fixed 50/50 ratio backtest for comparison
 
 ## 2. Dynamic Ratio Implementation
 
-- [ ] 2.1 Implement rolling volatility calculation function
-  - [ ] 2.1.1 Use 60-day rolling window with `.rolling(window=60).std()`
-  - [ ] 2.1.2 Calculate separate volatility series for Long and Short assets
-  - [ ] 2.1.3 Handle edge cases (insufficient data, NaN values)
-- [ ] 2.2 Implement dynamic hedge ratio formula
-  - [ ] 2.2.1 Calculate `Target Ratio = Volatility(Long) / Volatility(Short)`
-  - [ ] 2.2.2 Convert ratio to portfolio weights (normalize to sum to 1.0)
-  - [ ] 2.2.3 Add ratio bounds/clamping to prevent extreme allocations
-- [ ] 2.3 Create custom allocation logic for dynamic weights
-  - [ ] 2.3.1 Implement function to generate weights on each rebalance date
-  - [ ] 2.3.2 Integrate with existing `ScheduleBasedEngine` interface
-  - [ ] 2.3.3 Test weight calculation and validation
+- [X] 2.1 Implement rolling volatility calculation function
+  - [X] 2.1.1 Use 60-day rolling window with `.rolling(window=60).std()`
+  - [X] 2.1.2 Calculate separate volatility series for Long and Short assets
+  - [X] 2.1.3 Handle edge cases (insufficient data, NaN values)
+- [X] 2.2 Implement dynamic hedge ratio formula
+  - [X] 2.2.1 Calculate `Target Ratio = Volatility(Long) / Volatility(Short)`
+  - [X] 2.2.2 Convert ratio to portfolio weights (normalize to sum to 1.0)
+  - [X] 2.2.3 Add ratio bounds/clamping to prevent extreme allocations
+- [X] 2.3 Create custom allocation logic for dynamic weights
+  - [X] 2.3.1 Implement function to generate weights on each rebalance date
+  - [X] 2.3.2 Integrate with existing `ScheduleBasedEngine` interface
+  - [X] 2.3.3 Test weight calculation and validation
 
 ## 3. Backtesting and Analysis
 
