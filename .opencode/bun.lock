@@ -1,0 +1,23 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "dependencies": {
+        "@opencode-ai/plugin": "1.2.21",
+      },
+      "devDependencies": {
+        "unique-names-generator": "4.7.1",
+      },
+    },
+  },
+  "packages": {
+    "@opencode-ai/plugin": ["@opencode-ai/plugin@1.2.21", "", { "dependencies": { "@opencode-ai/sdk": "1.2.21", "zod": "4.1.8" } }, "sha512-2/JhdD19bu9fxPIzZun2x57KA4Q4EsY/yRQZO54GTsVugZ+T0b5GZkFFYIyOVE6bU4PCoSYBK5MAU+VCEyxvEA=="],
+
+    "@opencode-ai/sdk": ["@opencode-ai/sdk@1.2.21", "", {}, "sha512-7XF7QlXDP5iAbGcAsxsrmKlIjRtSzKgbwuDHPPuZbILkhGOfCo05XwPidAZrVWucZ/re44oc/psw2zDECaZOpQ=="],
+
+    "unique-names-generator": ["unique-names-generator@4.7.1", "", {}, "sha512-lMx9dX+KRmG8sq6gulYYpKWZc9RlGsgBR6aoO8Qsm3qvkSJ+3rAymr+TnV8EDMrIrwuFJ4kruzMWM/OpYzPoow=="],
+
+    "zod": ["zod@4.1.8", "", {}, "sha512-5R1P+WwQqmmMIEACyzSvo4JXHY5WiAFHRMg+zBZKgKS+Q1viRa0C1hmUKtHltoIFKtIdki3pRxkmpP74jnNYHQ=="],
+  }
+}
