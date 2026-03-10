@@ -18,7 +18,7 @@ from tiportfolio.allocation.dynamic import VolatilityTargeting
 from tiportfolio.allocation.vix import VixRegimeAllocation
 from tiportfolio.backtest import run_backtest
 from tiportfolio.calendar import get_rebalance_dates, _vix_regime_rebalance_dates
-from tiportfolio.engine import BacktestEngine, VolatilityBasedEngine
+from tiportfolio.engine import VolatilityBasedEngine
 from tiportfolio.calendar import Schedule
 
 
@@ -65,28 +65,33 @@ class TestSignalDelayParameter:
         assert result is not None
 
     def test_signal_delay_zero_reproduces_legacy_behavior(self, simple_prices_df: pd.DataFrame):
-        """signal_delay=0 reproduces legacy (biased) behavior."""
+        """signal_delay=0 executes rebalance on the schedule date with no offset.
+
+        simple_prices_df starts 2020-01-02 (Thursday).
+        First Monday (weekly_monday schedule) is index[2] = 2020-01-06.
+        With signal_delay=0, the decision date should be 2020-01-06 itself.
+        """
         allocation = FixRatio(weights={"SPY": 0.6, "BIL": 0.4})
-        result_legacy = run_backtest(
+        result = run_backtest(
             simple_prices_df,
             allocation,
-            "month_end",
+            "weekly_monday",
             fee_per_share=0.0,
             start=None,
             end=None,
             signal_delay=0,
         )
-        assert result_legacy is not None
+        decision_dates = {d.date for d in result.rebalance_decisions}
+        expected_monday = simple_prices_df.index[2]  # 2020-01-06
+        assert expected_monday in decision_dates, (
+            f"Expected rebalance on {expected_monday} with signal_delay=0. "
+            f"Got decisions on: {sorted(decision_dates)}"
+        )
 
-    def test_backtest_engine_accepts_signal_delay(self, simple_prices_df: pd.DataFrame):
-        """BacktestEngine accepts signal_delay in constructor."""
+    def test_backtest_engine_accepts_signal_delay(self):
+        """BacktestEngine stores signal_delay from constructor."""
         allocation = FixRatio(weights={"SPY": 0.6, "BIL": 0.4})
-        
-        class TestEngine(BacktestEngine):
-            def run(self, prices, start, end):
-                return super()._run_with_prices(prices, start, end)
-        
-        engine = TestEngine(
+        engine = VolatilityBasedEngine(
             allocation=allocation,
             rebalance=Schedule("month_end"),
             signal_delay=2,
@@ -250,63 +255,70 @@ class TestVixContextUsesSignalDate:
     """Test that VIX context is computed from signal_date, not execution date."""
 
     def test_vix_regime_allocation_receives_signal_date_context(self, simple_prices_df: pd.DataFrame):
-        """VixRegimeAllocation receives VIX context from signal_date."""
-        # Create a VIX series where value differs between signal and execution days
+        """VixRegimeAllocation receives VIX context from signal_date, not execution_date.
+
+        VIX crosses above 30 at index[2] (VIX=31.0).
+        With signal_delay=1: signal_date=index[2], execution_date=index[3].
+        VIX at signal_date=31.0, VIX at execution_date=28.0 — they differ.
+        The fix ensures allocation sees 31.0 (signal-date VIX), not 28.0.
+        """
+        # VIX crosses above 30 at index[2] (31.0), then drops to 28.0 at index[3]
+        # signal_date=index[2] (VIX=31.0), execution_date=index[3] (VIX=28.0)
         vix_series = pd.Series(
-            [15.0, 15.0, 25.0, 35.0, 35.0, 35.0, 35.0, 35.0, 35.0, 35.0],  # Crosses 30 on day 3
+            [15.0, 15.0, 31.0, 28.0, 28.0, 28.0, 28.0, 28.0, 28.0, 28.0],
             index=simple_prices_df.index,
             name="VIX",
         )
-        
-        received_vix_values = []
-        
+
+        received_calls: list[dict] = []
+
         low_vol = FixRatio(weights={"SPY": 0.8, "BIL": 0.2})
         high_vol = FixRatio(weights={"SPY": 0.4, "BIL": 0.6})
-        
+
         class TrackingVixRegime(VixRegimeAllocation):
             def get_target_weights(self, date, total_equity, positions_dollars, prices_row, **kwargs):
-                if "vix_at_date" in kwargs:
-                    received_vix_values.append(kwargs["vix_at_date"])
+                received_calls.append({"date": date, "vix_at_date": kwargs.get("vix_at_date")})
                 return super().get_target_weights(date, total_equity, positions_dollars, prices_row, **kwargs)
-        
+
         allocation = TrackingVixRegime(
             low_vol_allocation=low_vol,
             high_vol_allocation=high_vol,
         )
-        
-        # Use vix_regime schedule with signal_delay=1
-        # VIX crosses above 30 on day 3 (index 2) -> execute on day 4 (index 3)
-        # At signal_date (day 3), VIX = 25
-        # At execution_date (day 4), VIX = 35
-        
-        # The allocation should see VIX=25 (signal date), not VIX=35 (execution date)
-        # This test verifies the context_for_date fix is working
-        
-        # Build a VIX DataFrame for the engine
+
         vix_df = pd.DataFrame({"Close": vix_series.values}, index=vix_series.index)
-        
+
         engine = VolatilityBasedEngine(
             allocation=allocation,
             rebalance=Schedule("vix_regime"),
             signal_delay=1,
         )
-        
-        result = engine.run(
+
+        engine.run(
             symbols=["SPY", "BIL"],
             start=None,
             end=None,
-            prices_df={"SPY": pd.DataFrame({"Close": simple_prices_df["SPY"].values}, index=simple_prices_df.index),
-                       "BIL": pd.DataFrame({"Close": simple_prices_df["BIL"].values}, index=simple_prices_df.index)},
+            prices_df={
+                "SPY": pd.DataFrame({"Close": simple_prices_df["SPY"].values}, index=simple_prices_df.index),
+                "BIL": pd.DataFrame({"Close": simple_prices_df["BIL"].values}, index=simple_prices_df.index),
+            },
             vix_df=vix_df,
             volatility_symbol="VIX",
             target_vix=20.0,
             lower_bound=-1.0,
             upper_bound=10.0,
         )
-        
-        # Should have executed at least one rebalance
-        assert len(received_vix_values) > 0
-        # VIX context should be from signal_date (25), not execution_date (35)
-        # Note: First rebalance may use day 0 VIX due to signal_delay edge case
-        # Check that at least one value matches signal-date expectation
-        assert any(v < 30 for v in received_vix_values) or len(received_vix_values) == 0
+
+        # VIX crosses above 30 at index[2] → execution_date is index[3]
+        execution_date = simple_prices_df.index[3]
+        rebalance_call = next((c for c in received_calls if c["date"] == execution_date), None)
+
+        assert rebalance_call is not None, (
+            f"Expected rebalance call at execution_date={execution_date}. "
+            f"Got calls at: {[c['date'] for c in received_calls]}"
+        )
+        # signal_date VIX = 31.0 (index[2]), execution_date VIX = 28.0 (index[3])
+        # The fix ensures signal_date VIX is used, not execution_date VIX
+        assert rebalance_call["vix_at_date"] == 31.0, (
+            f"Expected VIX=31.0 (signal-date), got {rebalance_call['vix_at_date']}. "
+            "Should NOT be 28.0 (execution-date VIX)."
+        )

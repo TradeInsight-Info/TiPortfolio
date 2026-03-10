@@ -74,6 +74,8 @@ class BacktestEngine(ABC):
         risk_free_rate: float = 0.04,
         signal_delay: int = 1,
     ) -> None:
+        if signal_delay < 0:
+            raise ValueError(f"signal_delay must be >= 0; got {signal_delay}")
         self.allocation = allocation
         self.rebalance = rebalance
         self.fee_per_share = fee_per_share
@@ -243,8 +245,6 @@ class VolatilityBasedEngine(BacktestEngine):
                     "vix_at_date": vix_value,
                     "use_high_vol_allocation": use_high_vol
                 }
-
-            context_for_date = context_for_date
 
         allocation_strategy = self.allocation
         rebalance_dates_for_backtest = None
