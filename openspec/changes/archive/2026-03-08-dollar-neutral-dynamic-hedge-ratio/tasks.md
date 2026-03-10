@@ -42,12 +42,12 @@
 
 ## 5. Documentation and Code Organization
 
-- [ ] 5.1 Document the dynamic ratio methodology and formulas
-- [ ] 5.2 Add inline comments explaining volatility calculations
-- [ ] 5.3 Create summary of findings and performance improvements
-- [ ] 5.4 Evaluate if separate allocation strategy class is needed
-  - [ ] 5.4.1 If yes, create `DollarNeutralDynamic` class in `src/tiportfolio/allocation/`
-  - [ ] 5.4.2 If no, document notebook-based approach for future reference
+- [X] 5.1 Document the dynamic ratio methodology and formulas
+- [X] 5.2 Add inline comments explaining volatility calculations
+- [X] 5.3 Create summary of findings and performance improvements
+- [X] 5.4 Evaluate if separate allocation strategy class is needed
+  - [X] 5.4.1 If yes, create `DollarNeutralDynamic` class in `src/tiportfolio/allocation/`
+  - [X] 5.4.2 If no, document notebook-based approach for future reference
 
 ## 6. Final Review and Integration
 

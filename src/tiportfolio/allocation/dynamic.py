@@ -59,7 +59,7 @@ class VolatilityTargeting(AllocationStrategy):
             return equal
 
         # Annualized realized volatility
-        vols: pd.Series = returns.std(ddof=1) * np.sqrt(252)
+        vols: pd.Series = returns.std(ddof=1) * np.sqrt(252)  # type: ignore[arg-type]
         if (vols <= 0).any() or vols.isna().any():
             warnings.warn("VolatilityTargeting: zero or NaN volatility; using equal weights", UserWarning)
             return equal
@@ -276,7 +276,7 @@ class BetaNeutral(AllocationStrategy):
             warnings.warn("BetaNeutral: insufficient aligned returns; using equal weights", UserWarning)
             return self._equal_weight_fallback()
 
-        bench_var = float(bench_aligned.var(ddof=1))
+        bench_var = float(bench_aligned.var(ddof=1))  # type: ignore[arg-type]
         if bench_var == 0.0:
             warnings.warn("BetaNeutral: zero benchmark variance; using equal weights", UserWarning)
             return self._equal_weight_fallback()
@@ -315,3 +315,246 @@ class BetaNeutral(AllocationStrategy):
         net = sum(weights.values())
         weights[self.cash_symbol] = 1.0 - net
         return weights
+
+
+@dataclass
+class DollarNeutralDynamic(DollarNeutral):
+    """Dollar-neutral long/short strategy with dynamic hedge ratio based on rolling volatility.
+    
+    This strategy extends the base DollarNeutral class by dynamically adjusting the
+    long and short book sizes based on relative volatility between the two assets.
+    The goal is to equalize risk contribution from both positions, improving
+    risk-adjusted returns while maintaining market neutrality.
+    
+    **Rolling Volatility Calculation**:
+    
+    The strategy uses a rolling window of daily returns to compute annualized volatility:
+    
+    1. Daily returns: r_t = (P_t / P_{t-1}) - 1
+    2. Rolling std: σ_rolling = std(r_t, window=N) for N trading days
+    3. Annualized volatility: σ_ann = σ_rolling × √252
+    
+    where 252 is the typical number of trading days per year.
+    
+    **Dynamic Hedge Ratio Formula**:
+    
+    The hedge ratio is computed as the ratio of volatilities:
+    
+        ratio = σ_long / σ_short
+    
+    This ratio is then clamped to [min_ratio, max_ratio] to prevent extreme allocations.
+    
+    **Book Size Derivation**:
+    
+    From the hedge ratio, book sizes are derived to ensure equal risk contribution:
+    
+        long_book_size = 1 / (1 + ratio)
+        short_book_size = ratio / (1 + ratio)
+    
+    When ratio = 1.0 (equal volatility), this yields 50/50 allocation.
+    When ratio > 1.0 (long is more volatile), short book is larger to compensate.
+    When ratio < 1.0 (short is more volatile), long book is larger to compensate.
+    
+    **Weight Calculation**:
+    
+    Final portfolio weights (summing to 1.0):
+    
+        w_long = long_book_size × long_intra_weight
+        w_short = -short_book_size × short_intra_weight
+        w_cash = 1.0 - (w_long + w_short)
+    
+    Attributes:
+        dynamic_long_symbol: Symbol for the long position.
+        dynamic_short_symbol: Symbol for the short position.
+        prices_dict: Dictionary mapping symbols to OHLCV DataFrames.
+        volatility_window: Rolling window size in trading days (default: 60).
+        min_ratio: Minimum allowed hedge ratio (default: 0.5).
+        max_ratio: Maximum allowed hedge ratio (default: 2.0).
+        long_vol: Series of annualized rolling volatility for long asset.
+        short_vol: Series of annualized rolling volatility for short asset.
+        dynamic_ratio: Series of clamped hedge ratios over time.
+    
+    Example:
+        >>> strategy = DollarNeutralDynamic(
+        ...     long_weights={"V": 1.0},
+        ...     short_weights={"MA": 1.0},
+        ...     cash_symbol="BIL",
+        ...     dynamic_long_symbol="V",
+        ...     dynamic_short_symbol="MA",
+        ...     prices_dict=prices,
+        ...     volatility_window=60,
+        ... )
+        >>> weights = strategy.get_target_weights(date, equity, positions, prices_row)
+    """
+    
+    dynamic_long_symbol: str
+    dynamic_short_symbol: str
+    prices_dict: dict[str, pd.DataFrame]
+    volatility_window: int = 60
+    min_ratio: float = 0.5
+    max_ratio: float = 2.0
+    long_vol: pd.Series | None = field(default=None, init=False, repr=False)
+    short_vol: pd.Series | None = field(default=None, init=False, repr=False)
+    dynamic_ratio: pd.Series | None = field(default=None, init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        # Validate inputs similar to DollarNeutral
+        long_sum = sum(self.long_weights.values())
+        if not (0.99 <= long_sum <= 1.01):
+            raise ValueError(f"DollarNeutralDynamic: long_weights must sum to 1.0; got {long_sum:.4f}")
+        short_sum = sum(self.short_weights.values())
+        if not (0.99 <= short_sum <= 1.01):
+            raise ValueError(f"DollarNeutralDynamic: short_weights must sum to 1.0; got {short_sum:.4f}")
+        
+        long_syms = set(self.long_weights)
+        short_syms = set(self.short_weights)
+        overlap = long_syms & short_syms
+        if overlap:
+            raise ValueError(f"DollarNeutralDynamic: long_weights and short_weights share symbols: {sorted(overlap)}")
+        if self.cash_symbol in long_syms:
+            raise ValueError(f"DollarNeutralDynamic: cash_symbol {self.cash_symbol!r} is in long_weights")
+        if self.cash_symbol in short_syms:
+            raise ValueError(f"DollarNeutralDynamic: cash_symbol {self.cash_symbol!r} is in short_weights")
+        
+        # Pre-calculate volatility and ratio series
+        self.long_vol, self.short_vol = self._calculate_volatility()
+        self.dynamic_ratio = self._calculate_dynamic_ratio()
+        
+    def get_symbols(self) -> list[str]:
+        return list(self.long_weights) + list(self.short_weights) + [self.cash_symbol]
+
+    def _target_weights(self) -> dict[str, float]:
+        lbs = self.long_book_size if self.long_book_size is not None else self.book_size
+        sbs = self.short_book_size if self.short_book_size is not None else self.book_size
+        weights: dict[str, float] = {}
+        for s, w in self.long_weights.items():
+            weights[s] = lbs * w
+        for s, w in self.short_weights.items():
+            weights[s] = -sbs * w
+        net = sum(weights.values())
+        weights[self.cash_symbol] = 1.0 - net
+        return weights
+        
+    def _calculate_volatility(self) -> tuple[pd.Series, pd.Series]:
+        """Calculate annualized rolling volatility for both assets.
+        
+        Computes the rolling standard deviation of daily returns, annualized
+        by multiplying by √252 (trading days per year).
+        
+        Formula:
+            σ_annualized = std(daily_returns, window=N) × √252
+        
+        Returns:
+            tuple: (long_volatility, short_volatility) as pandas Series
+                indexed by date. First `volatility_window` values are NaN
+                due to insufficient data for rolling calculation.
+        """
+        # Extract close prices and calculate daily returns
+        long_prices = self.prices_dict[self.dynamic_long_symbol]['close']
+        short_prices = self.prices_dict[self.dynamic_short_symbol]['close']
+        
+        long_returns = long_prices.pct_change()
+        short_returns = short_prices.pct_change()
+        
+        # Calculate rolling volatility (annualized)
+        long_vol = long_returns.rolling(window=self.volatility_window).std() * np.sqrt(252)
+        short_vol = short_returns.rolling(window=self.volatility_window).std() * np.sqrt(252)
+        
+        return long_vol, short_vol
+    
+    def _calculate_dynamic_ratio(self) -> pd.Series:
+        """Calculate dynamic hedge ratio from volatility series.
+        
+        The hedge ratio represents the relative volatility of the long asset
+        to the short asset. It is clamped to [min_ratio, max_ratio] bounds
+        to prevent extreme allocations during volatility spikes.
+        
+        Formula:
+            raw_ratio = σ_long / σ_short
+            ratio = clamp(raw_ratio, min_ratio, max_ratio)
+        
+        Returns:
+            pandas Series: Clamped hedge ratio for each date. NaN values
+                (from insufficient data) are preserved and handled in
+                get_target_weights() by defaulting to 1.0.
+        """
+        raw_ratio = self.long_vol / self.short_vol
+        return raw_ratio.clip(lower=self.min_ratio, upper=self.max_ratio)
+    
+    def get_target_weights(
+        self,
+        date: pd.Timestamp,
+        total_equity: float,
+        positions_dollars: dict[str, float],
+        prices_row: pd.Series,
+        **context: Any,
+    ) -> dict[str, float]:
+        """Compute target weights based on dynamic hedge ratio at the given date.
+        
+        On each rebalance date, this method:
+        1. Looks up the pre-computed hedge ratio for the signal date
+        2. Converts ratio to book sizes using inverse-volatility weighting
+        3. Calculates final weights using DollarNeutral logic
+        
+        The signal_date from context (if provided) is used instead of the
+        current date to allow for look-ahead bias prevention in backtests.
+        
+        Book Size Formulas:
+            long_book_size = 1 / (1 + ratio)
+            short_book_size = ratio / (1 + ratio)
+        
+        These formulas ensure that when ratio > 1 (long is more volatile),
+        the short book is larger, and vice versa.
+        
+        Args:
+            date: Current rebalance date (pd.Timestamp).
+            total_equity: Total portfolio equity in dollars.
+            positions_dollars: Current positions as {symbol: dollar_value}.
+            prices_row: Current prices as pandas Series (unused here).
+            **context: Additional context including:
+                - signal_date: Date to look up ratio (defaults to `date`).
+        
+        Returns:
+            dict: Target weights {symbol: weight} summing to 1.0.
+                Long positions have positive weights, short positions
+                have negative weights, cash absorbs the residual.
+        """
+        self._update_book_sizes_from_ratio(date, context)
+        return super().get_target_weights(
+            date, total_equity, positions_dollars, prices_row, **context
+        )
+    
+    def _update_book_sizes_from_ratio(self, date: pd.Timestamp, context: dict[str, Any]) -> None:
+        """Update long_book_size and short_book_size based on dynamic ratio.
+        
+        Args:
+            date: Current date for ratio lookup.
+            context: Context dictionary that may contain signal_date.
+        """
+        # Use signal_date from context if available, otherwise use current date
+        signal_date = context.get('signal_date', date)
+        
+        # Handle timezone alignment for lookup
+        lookup_date = signal_date.replace(tzinfo=None)
+        
+        # Find the ratio for the signal date
+        if lookup_date in self.dynamic_ratio.index:
+            ratio = self.dynamic_ratio.loc[lookup_date]
+        else:
+            # Ensure index is sorted for asof lookup
+            if not self.dynamic_ratio.index.is_monotonic_increasing:
+                self.dynamic_ratio = self.dynamic_ratio.sort_index()
+            try:
+                ratio = self.dynamic_ratio.asof(lookup_date)
+            except Exception:
+                ratio = 1.0
+        
+        # Handle NaN values by defaulting to equal allocation
+        if pd.isna(ratio):
+            ratio = 1.0
+        
+        # Update book sizes based on dynamic ratio
+        # These formulas ensure proper risk contribution balancing
+        self.long_book_size = 1.0 / (1.0 + ratio)
+        self.short_book_size = ratio / (1.0 + ratio)
