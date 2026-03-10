@@ -34,11 +34,11 @@
 
 ## 4. Validation and Testing
 
-- [ ] 4.1 Validate dynamic ratio calculations against manual computations
-- [ ] 4.2 Test edge cases (market crashes, volatility spikes)
-- [ ] 4.3 Verify dollar-neutral properties are maintained (beta near zero)
-- [ ] 4.4 Test different volatility windows (30, 60, 90 days) for optimization
-- [ ] 4.5 Ensure backward compatibility with existing fixed ratio approach
+- [X] 4.1 Validate dynamic ratio calculations against manual computations
+- [X] 4.2 Test edge cases (market crashes, volatility spikes)
+- [X] 4.3 Verify dollar-neutral properties are maintained (beta near zero)
+- [X] 4.4 Test different volatility windows (30, 60, 90 days) for optimization
+- [X] 4.5 Ensure backward compatibility with existing fixed ratio approach
 
 ## 5. Documentation and Code Organization
 
