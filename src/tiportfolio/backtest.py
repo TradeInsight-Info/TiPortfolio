@@ -452,6 +452,7 @@ def run_backtest(
     initial_value: float = 10000.0,
     rebalance_dates: pd.DatetimeIndex | None = None,
     risk_free_rate: float = 0.0,
+    signal_delay: int = 1,
 ) -> BacktestResult:
     """Core backtest: prices_df has date index and one column per symbol.
 
@@ -519,12 +520,20 @@ def run_backtest(
 
             if date in rebalance_set:
                 equity_before = total_equity
+                # Compute signal_date: the date when the signal was generated
+                # For signal_delay=1, if we execute on day T+1, signal was on day T
+                # Clamp to first trading date to handle edge case at start
+                signal_idx = max(0, i - signal_delay)
+                signal_date = trading_dates[signal_idx]
+                # prices_history ends at signal_date (not execution date) to avoid look-ahead bias
+                prices_history = prices_df.loc[:signal_date]
                 weights = allocation.get_target_weights(
                     date,
                     total_equity,
                     positions_dollars,
-                    row,
-                    prices_history=prices_df.loc[:date],
+                    row,  # prices_row remains execution day's close prices
+                    prices_history=prices_history,
+                    signal_date=signal_date,
                 )
                 target_dollars = {
                     s: total_equity * weights.get(s, 0.0) for s in symbols

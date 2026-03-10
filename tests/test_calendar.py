@@ -97,9 +97,10 @@ def test_get_rebalance_dates_vix_regime_crosses():
     )
     # Cross above 30 on 2020-01-07 (prev 25 < 30, curr 31 >= 30)
     # Cross below 19 on 2020-01-09 (prev 28 > 19, curr 18 <= 19)
+    # With signal_delay=1 (default), execution dates are shifted by 1 trading day
     assert len(dates) == 2
-    assert pd.Timestamp("2020-01-07") in dates
-    assert pd.Timestamp("2020-01-09") in dates
+    assert pd.Timestamp("2020-01-08") in dates  # Signal 2020-01-07 → Execute 2020-01-08
+    assert pd.Timestamp("2020-01-10") in dates  # Signal 2020-01-09 → Execute 2020-01-10
 
 
 def test_get_rebalance_dates_vix_regime_requires_params():
