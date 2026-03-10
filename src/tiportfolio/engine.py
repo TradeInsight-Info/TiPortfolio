@@ -72,12 +72,14 @@ class BacktestEngine(ABC):
         fee_per_share: float = 0.0035,
         initial_value: float = 10000.0,
         risk_free_rate: float = 0.04,
+        signal_delay: int = 1,
     ) -> None:
         self.allocation = allocation
         self.rebalance = rebalance
         self.fee_per_share = fee_per_share
         self.initial_value = initial_value
         self.risk_free_rate = risk_free_rate
+        self.signal_delay = signal_delay
 
     def run(
         self,
@@ -108,6 +110,7 @@ class BacktestEngine(ABC):
             end=end,
             initial_value=self.initial_value,
             risk_free_rate=self.risk_free_rate,
+            signal_delay=self.signal_delay,
         )
 
 
@@ -251,7 +254,10 @@ class VolatilityBasedEngine(BacktestEngine):
 
             def filtered_get_target_weights(date, total_equity, positions_dollars, prices, **kwargs):
                 last_rebalance_date = kwargs.get('last_rebalance_date')
-                if not rebalance_filter(date, vix_series, last_rebalance_date):
+                # Use signal_date for filter check to avoid look-ahead bias
+                # (filter should see VIX at signal time, not execution time)
+                filter_date = kwargs.get('signal_date', date)
+                if not rebalance_filter(filter_date, vix_series, last_rebalance_date):
                     return {sym: positions_dollars.get(sym, 0) / total_equity for sym in allocation_strategy.get_symbols()}
                 return _orig_weights(date, total_equity, positions_dollars, prices, **kwargs)
 
@@ -266,7 +272,8 @@ class VolatilityBasedEngine(BacktestEngine):
                 vix_series=vix_series,
                 target_vix=target_vix,
                 lower_bound=lower_bound,
-                upper_bound=upper_bound
+                upper_bound=upper_bound,
+                signal_delay=self.signal_delay,
             )
 
             if self.freezing_days > 0:
@@ -281,7 +288,10 @@ class VolatilityBasedEngine(BacktestEngine):
             _orig_weights = allocation_strategy.get_target_weights
 
             def context_aware_get_target_weights(date, total_equity, positions_dollars, prices, **kwargs):
-                context = context_for_date(date)
+                # Use signal_date for VIX context to avoid look-ahead bias
+                # (context should be based on signal time, not execution time)
+                context_date = kwargs.get('signal_date', date)
+                context = context_for_date(context_date)
                 kwargs.update(context)
                 return _orig_weights(date, total_equity, positions_dollars, prices, **kwargs)
 
@@ -297,4 +307,5 @@ class VolatilityBasedEngine(BacktestEngine):
             initial_value=self.initial_value,
             rebalance_dates=rebalance_dates_for_backtest,
             risk_free_rate=self.risk_free_rate,
+            signal_delay=self.signal_delay,
         )

@@ -73,13 +73,19 @@ def _vix_regime_rebalance_dates(
     target_vix: float,
     lower_bound: float,
     upper_bound: float,
+    signal_delay: int = 1,
 ) -> list[pd.Timestamp]:
-    """Return rebalance dates when VIX crosses above (target+upper) or below (target+lower)."""
+    """Return rebalance dates when VIX crosses above (target+upper) or below (target+lower).
+    
+    When signal_delay > 0, the execution date is shifted forward by signal_delay trading days
+    from the signal (crossing) date. Dates that fall outside trading_dates are discarded.
+    """
     vix_aligned = vix_series.reindex(trading_dates).ffill().bfill()
     upper_thresh = target_vix + upper_bound
     lower_thresh = target_vix + lower_bound
     
-    rebalance_list: list[pd.Timestamp] = []
+    # Collect signal dates (where crossings occur)
+    signal_dates_indices: list[int] = []
     for i, date in enumerate(trading_dates):
         v = vix_aligned.loc[date]
         if pd.isna(v):
@@ -92,10 +98,27 @@ def _vix_regime_rebalance_dates(
             continue
         # Cross above upper: prev < upper_thresh and now >= upper_thresh
         if prev_v < upper_thresh and v >= upper_thresh:
-            rebalance_list.append(date)
+            signal_dates_indices.append(i)
         # Cross below lower: prev > lower_thresh and now <= lower_thresh
         if prev_v > lower_thresh and v <= lower_thresh:
-            rebalance_list.append(date)
+            signal_dates_indices.append(i)
+    
+    # Shift each signal date by signal_delay trading days forward
+    # Discard dates that fall outside the trading_dates range
+    rebalance_list: list[pd.Timestamp] = []
+    max_idx = len(trading_dates) - 1
+    seen_execution_dates: set[pd.Timestamp] = set()
+    
+    for signal_idx in signal_dates_indices:
+        execution_idx = signal_idx + signal_delay
+        if execution_idx > max_idx:
+            # Signal on last trading day(s) - execution date falls outside range, discard
+            continue
+        execution_date = trading_dates[execution_idx]
+        # Deduplicate: consecutive crossings may map to same execution day
+        if execution_date not in seen_execution_dates:
+            rebalance_list.append(execution_date)
+            seen_execution_dates.add(execution_date)
     
     return rebalance_list
 
@@ -110,6 +133,7 @@ def get_rebalance_dates(
     target_vix: float | None = None,
     lower_bound: float | None = None,
     upper_bound: float | None = None,
+    signal_delay: int = 1,
     **kwargs: Any,
 ) -> pd.DatetimeIndex:
     """Return rebalance dates aligned to trading_dates for the given schedule.
@@ -189,7 +213,8 @@ def get_rebalance_dates(
                 "schedule 'vix_regime' requires vix_series, target_vix, lower_bound, upper_bound"
             )
         rebalance_list = _vix_regime_rebalance_dates(
-            trading_dates, vix_series, target_vix, lower_bound, upper_bound
+            trading_dates, vix_series, target_vix, lower_bound, upper_bound,
+            signal_delay=signal_delay,
         )
         return pd.DatetimeIndex(rebalance_list).unique().sort_values()
     elif schedule == "never":
