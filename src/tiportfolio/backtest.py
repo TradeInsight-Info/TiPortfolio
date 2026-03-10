@@ -482,6 +482,10 @@ def run_backtest(
     if rebalance_dates is not None:
         rebalance_set = set(rebalance_dates)
     else:
+        # signal_delay is intentionally NOT forwarded here for calendar schedules.
+        # Calendar rebalance dates (month_end, weekly_monday, etc.) are fixed by the
+        # schedule and do not shift with signal_delay. Only prices_history slicing
+        # (below, in the main loop) respects signal_delay for calendar schedules.
         rebalance_dates = get_rebalance_dates(
             trading_dates, schedule_spec, start=start, end=end
         )
