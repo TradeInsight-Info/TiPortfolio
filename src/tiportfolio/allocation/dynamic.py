@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, KW_ONLY
 from typing import Any
 
 import numpy as np
@@ -387,6 +387,7 @@ class DollarNeutralDynamic(DollarNeutral):
         >>> weights = strategy.get_target_weights(date, equity, positions, prices_row)
     """
     
+    _: KW_ONLY
     dynamic_long_symbol: str
     dynamic_short_symbol: str
     prices_dict: dict[str, pd.DataFrame]
