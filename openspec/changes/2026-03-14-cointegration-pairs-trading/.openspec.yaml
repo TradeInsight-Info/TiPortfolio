@@ -1,0 +1,12 @@
+title: Cointegration Pairs Trading
+description: Market Neutral Pairs Trading strategy using Johansen cointegration test for hedge ratio calculation
+type: feature
+author: cascade
+created: 2026-03-14
+status: proposed
+tags:
+  - pairs-trading
+  - cointegration
+  - market-neutral
+  - statistical-arbitrage
+  - johansen-test
