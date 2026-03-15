@@ -8,18 +8,18 @@
 
 ## 2. Johansen Cointegration Implementation
 
-- [ ] 2.1 Implement cointegration testing function
-  - [ ] 2.1.1 Use `statsmodels.tsa.vector_ar.vecm.coint_johansen`
-  - [ ] 2.1.2 Set appropriate det_order and k_ar_diff parameters
-  - [ ] 2.1.3 Handle test results and extract eigenvectors
-- [ ] 2.2 Calculate hedge ratio from eigenvectors
-  - [ ] 2.2.1 Extract first eigenvector: `hedge_ratio = eigenvector[0] / eigenvector[1]`
-  - [ ] 2.2.2 Validate hedge ratio reasonableness (e.g., 0.5-2.0 range)
-  - [ ] 2.2.3 Document mathematical derivation
-- [ ] 2.3 Calculate and analyze spread
-  - [ ] 2.3.1 Spread formula: `spread = log_price_KO - hedge_ratio * log_price_PEP`
-  - [ ] 2.3.2 Test spread stationarity using ADF test
-  - [ ] 2.3.3 Visualize spread time series and distribution
+- [X] 2.1 Implement cointegration testing function
+  - [X] 2.1.1 Use `statsmodels.tsa.vector_ar.vecm.coint_johansen`
+  - [X] 2.1.2 Set appropriate det_order and k_ar_diff parameters
+  - [X] 2.1.3 Handle test results and extract eigenvectors
+- [x] 2.2 Calculate hedge ratio from eigenvectors
+  - [x] 2.2.1 Extract first eigenvector: `hedge_ratio = eigenvector[0] / eigenvector[1]`
+  - [x] 2.2.2 Validate hedge ratio reasonableness (e.g., 0.5-2.0 range)
+  - [x] 2.2.3 Document mathematical derivation
+- [x] 2.3 Calculate and analyze spread
+  - [x] 2.3.1 Spread formula: `spread = log_price_KO - hedge_ratio * log_price_PEP`
+  - [x] 2.3.2 Test spread stationarity using ADF test
+  - [x] 2.3.3 Visualize spread time series and distribution
 
 ## 3. Z-Score Signal Generation
 
