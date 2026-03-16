@@ -31,10 +31,10 @@
   - [X] 3.2.1 Entry signals: `z_score > 2.0` (short spread) or `z_score < -2.0` (long spread)
   - [X] 3.2.2 Exit signals: `z_score crosses 0` (mean reversion)
   - [X] 3.2.3 Position sizing: fixed allocation or volatility-based
-- [ ] 3.3 Visualize signals and performance
-  - [ ] 3.3.1 Plot Z-score time series with threshold lines
-  - [ ] 3.3.2 Mark entry/exit points on price charts
-  - [ ] 3.3.3 Calculate signal statistics (win rate, avg hold period)
+- [X] 3.3 Visualize signals and performance
+  - [X] 3.3.1 Plot Z-score time series with threshold lines
+  - [X] 3.3.2 Mark entry/exit points on price charts
+  - [X] 3.3.3 Calculate signal statistics (win rate, avg hold period)
 
 ## 4. Backtesting Architecture Evaluation
 
