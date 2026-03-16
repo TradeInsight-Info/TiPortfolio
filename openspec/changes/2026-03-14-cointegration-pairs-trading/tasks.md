@@ -23,14 +23,14 @@
 
 ## 3. Z-Score Signal Generation
 
-- [ ] 3.1 Implement rolling Z-score calculation
-  - [ ] 3.1.1 Calculate rolling mean and std of spread (default 252-day window)
-  - [ ] 3.1.2 Z-score formula: `(spread - rolling_mean) / rolling_std`
-  - [ ] 3.1.3 Handle edge cases (insufficient data, NaN values)
-- [ ] 3.2 Implement signal logic
-  - [ ] 3.2.1 Entry signals: `z_score > 2.0` (short spread) or `z_score < -2.0` (long spread)
-  - [ ] 3.2.2 Exit signals: `z_score crosses 0` (mean reversion)
-  - [ ] 3.2.3 Position sizing: fixed allocation or volatility-based
+- [X] 3.1 Implement rolling Z-score calculation
+  - [X] 3.1.1 Calculate rolling mean and std of spread (default 252-day window)
+  - [X] 3.1.2 Z-score formula: `(spread - rolling_mean) / rolling_std`
+  - [X] 3.1.3 Handle edge cases (insufficient data, NaN values)
+- [X] 3.2 Implement signal logic
+  - [X] 3.2.1 Entry signals: `z_score > 2.0` (short spread) or `z_score < -2.0` (long spread)
+  - [X] 3.2.2 Exit signals: `z_score crosses 0` (mean reversion)
+  - [X] 3.2.3 Position sizing: fixed allocation or volatility-based
 - [ ] 3.3 Visualize signals and performance
   - [ ] 3.3.1 Plot Z-score time series with threshold lines
   - [ ] 3.3.2 Mark entry/exit points on price charts
