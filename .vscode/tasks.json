@@ -1,0 +1,52 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Test: all",
+      "type": "shell",
+      "command": "uv run python -m pytest",
+      "group": { "kind": "test", "isDefault": true },
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: current file",
+      "type": "shell",
+      "command": "uv run python -m pytest ${relativeFile} -v",
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: by pattern",
+      "type": "shell",
+      "command": "uv run python -m pytest -k \"${input:pattern}\" -v",
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Lint: mypy",
+      "type": "shell",
+      "command": "uv run python -m mypy src/",
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Format: black",
+      "type": "shell",
+      "command": "uv run python -m black src/ tests/",
+      "group": "build",
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "pattern",
+      "type": "promptString",
+      "description": "pytest -k pattern"
+    }
+  ]
+}

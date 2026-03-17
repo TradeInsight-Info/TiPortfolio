@@ -3,15 +3,26 @@
 - notebook dependency is not included in the pyproject.toml, please install it manually if you want to run the notebook examples.
 
 
-## Report Structure
-- TiPortfolio library [CLAUDE.md](src/tiportfolio/CLAUDE.md), a Python library and CLI tool for portfolio management and backtesting trading strategies, with built-in portfolio optimization algorithms.
+## Commands
 
-- [notebooks](src/notebooks) directory with Jupyter notebooks demonstrating how to use the TiPortfolio library for various portfolio management tasks, including backtesting and optimization.
+```bash
+uv sync                        # install all dependencies
+uv run python -m pytest                  # run all tests
+uv run python -m pytest tests/file.py -v # run single file
+uv run python -m pytest -k "pattern"     # run matching tests
+uv run python -m mypy src/               # type check
+uv run python -m black src/ tests/       # format
+uv run python                  # always use uv run python, not python directly
+```
 
 
-- [docs](docs) directory with documentation for the TiPortfolio library, including installation instructions, API reference, and usage examples. [openspec](openspec) directory with TiPortfolio specifications for design and implmentation details.
+## Structure
 
-
+- src/tiportfolio/, the main library code.
+- notebooks/, Jupyter notebooks demonstrating usage.
+- docs/, documentation for the library.
+    - openspec/, design and implementation specifications.
+- tests/, unit tests with fixtures for offline testing.
 
 
 
@@ -26,11 +37,8 @@
 We user pytest for testing. To run the tests, use the following command:
 
 ```bash
-pytest tests/
+uv run python -m pytest 
 ```
-
-
-
 
 
 
