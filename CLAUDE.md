@@ -1,6 +1,3 @@
-- Follow [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines and project structure details.
-
-
 ## Code Style
 
 ### General Principles
@@ -58,3 +55,10 @@ from tiportfolio.calendar import Schedule
 
 - Test files: `test_<module>.py`; use fixtures from `conftest.py` to avoid network calls
 - Use local CSV files in `tests/data/` for offline testing; key fixtures: `prices_three`, `prices_dict`
+
+
+
+## More
+
+- Follow [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines and project structure details.
+- More about this project, if need go to check [README](../../README.md)

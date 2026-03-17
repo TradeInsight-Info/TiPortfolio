@@ -3,17 +3,8 @@
 
 TiPortfolio is a portfolio management tool with built-in portfolio optimization algorithms for backtesting trading strategies. It supports different allocation strategies, rebalancing schedules, and volatility-based engines.
 
-## Commands
+In addition, it provide a CLI for running backtests and generating result reports.
 
-```bash
-uv sync                        # install all dependencies
-uv run pytest                  # run all tests
-uv run pytest tests/file.py -v # run single file
-uv run pytest -k "pattern"     # run matching tests
-uv run mypy src/               # type check
-uv run black src/ tests/       # format
-uv run python                  # always use uv run python, not python directly
-```
 
 ## Project Architecture
 
