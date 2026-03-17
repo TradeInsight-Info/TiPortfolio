@@ -2,7 +2,20 @@
 
 - notebook dependency is not included in the pyproject.toml, please install it manually if you want to run the notebook examples.
 
-## Structure
+
+## Report Structure
+- TiPortfolio library [CLAUDE.md](src/tiportfolio/CLAUDE.md), a Python library and CLI tool for portfolio management and backtesting trading strategies, with built-in portfolio optimization algorithms.
+
+- [notebooks](src/notebooks) directory with Jupyter notebooks demonstrating how to use the TiPortfolio library for various portfolio management tasks, including backtesting and optimization.
+
+
+- [docs](docs) directory with documentation for the TiPortfolio library, including installation instructions, API reference, and usage examples. [openspec](openspec) directory with TiPortfolio specifications for design and implmentation details.
+
+
+
+
+
+## TiPortfolio Structure
 
 - Modular Architecture: The project is organized into distinct modules, each responsible for specific functionalities such as data handling, strategy implementation, risk management, and performance analysis.
 - Simplicity: If a single file can effectively encapsulate a module's functionality without compromising clarity, we prefer that approach to maintain simplicity, fancy class or structure should be avoided unless necessary.
@@ -15,6 +28,10 @@ We user pytest for testing. To run the tests, use the following command:
 ```bash
 pytest tests/
 ```
+
+
+
+
 
 
 ## FAQ
