@@ -19,13 +19,13 @@ uv run python                  # always use uv run python, not python directly
 
 Three core concepts:
 
-1. **Engines** (`engine.py`): `BacktestEngine` (abstract base), `ScheduleBasedEngine`, `VolatilityBasedEngine`
+1. **Engines** (`engine/`): `BacktestEngine` (base), `ScheduleBasedEngine`, `VolatilityBasedEngine`
 2. **Allocation Strategies** (`allocation/`): `FixRatio`, `VixRegimeAllocation`, `VolatilityTargeting`, `DollarNeutral`, `BetaNeutral`
 3. **Schedules** (`calendar.py`): control rebalancing frequency
 
 ### Key Modules (`src/tiportfolio/`)
 
-- **`engine.py`** — `BacktestEngine` (validates OHLC, normalizes index), `ScheduleBasedEngine` (fetches by symbol), `VolatilityBasedEngine` (adds VIX series, supports `vix_regime` schedule and `rebalance_filter`)
+- **`engine/`** — `BacktestEngine` (validates OHLC, normalizes index), `ScheduleBasedEngine` (fetches by symbol), `VolatilityBasedEngine` (adds VIX series, supports `vix_regime` schedule and `rebalance_filter`)
 - **`allocation/`** — `AllocationStrategy` (ABC); `FixRatio` (static weights); `VixRegimeAllocation` (high/low vol switching via `use_high_vol_allocation` context); `VolatilityTargeting`, `DollarNeutral`, `BetaNeutral`
 - **`backtest.py`** — `run_backtest()`: daily mark-to-market, rebalance on schedule dates, returns `BacktestResult` (equity curve, metrics, rebalance decisions)
 - **`calendar.py`** — `Schedule`; valid values: `month_end`, `month_start`, `month_mid`, `quarter_*`, `year_*`, `weekly_monday/wednesday/friday`, `vix_regime`, `never`

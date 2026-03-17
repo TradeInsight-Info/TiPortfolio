@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from abc import ABC
-
 import pandas as pd
 
 from tiportfolio.allocation import AllocationStrategy, FixRatio
@@ -12,8 +10,14 @@ from tiportfolio.calendar import Schedule, normalize_price_index
 from tiportfolio.data import normalize_prices
 
 
-class BacktestEngine(ABC):
-    """Engine for running backtests with AllocationStrategy and scheduled rebalance."""
+class BacktestEngine:
+    """Concrete base class for backtest engines.
+
+    Accepts a pre-fetched prices dict and runs the backtest loop directly.
+    Subclasses (ScheduleBasedEngine, VolatilityBasedEngine) override run()
+    to accept symbols/date ranges and handle data fetching before delegating
+    to super().run().
+    """
 
     def __init__(
         self,
