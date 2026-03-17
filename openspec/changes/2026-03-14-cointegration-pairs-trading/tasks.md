@@ -38,10 +38,10 @@
 
 ## 4. Backtesting Architecture Evaluation
 
-- [ ] 4.1 Test with existing ScheduleBasedEngine
-  - [ ] 4.1.1 Create custom allocation strategy with signal logic
-  - [ ] 4.1.2 Evaluate if schedule-based approach works for signal trading
-  - [ ] 4.1.3 Identify limitations and requirements for event-driven approach
+- [X] 4.1 Test with existing ScheduleBasedEngine
+  - [X] 4.1.1 Create custom allocation strategy with signal logic
+  - [X] 4.1.2 Evaluate if schedule-based approach works for signal trading
+  - [X] 4.1.3 Identify limitations and requirements for event-driven approach
 - [ ] 4.2 Design SignalBasedEngine (if needed)
   - [ ] 4.2.1 Define signal-driven backtesting interface
   - [ ] 4.2.2 Implement event-driven simulation loop
