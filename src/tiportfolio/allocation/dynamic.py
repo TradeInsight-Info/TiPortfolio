@@ -9,9 +9,11 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from tiportfolio.allocation.base import AllocationStrategy
+
 
 @dataclass
-class VolatilityTargeting:
+class VolatilityTargeting(AllocationStrategy):
     """Long-only strategy: weights ∝ 1/realized_vol per asset, normalized to sum to 1.0.
 
     Optionally applies a target_vol scaling step that de-levers when portfolio
@@ -78,7 +80,7 @@ class VolatilityTargeting:
 
 
 @dataclass
-class DollarNeutral:
+class DollarNeutral(AllocationStrategy):
     """Long-short strategy with fixed intra-book ratios and tolerance-band rebalancing.
 
     Maintains net dollar exposure near zero by keeping long and short books of
@@ -164,7 +166,7 @@ class DollarNeutral:
 
 
 @dataclass
-class BetaNeutral:
+class BetaNeutral(AllocationStrategy):
     """Long-short strategy targeting zero portfolio beta vs a benchmark.
 
     Uses OLS rolling beta: β_i = Cov(r_i, r_bench) / Var(r_bench).

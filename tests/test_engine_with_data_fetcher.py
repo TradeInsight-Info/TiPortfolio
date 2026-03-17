@@ -9,7 +9,7 @@ from tiportfolio import FixRatio, Schedule, ScheduleBasedEngine
 
 def test_schedule_based_engine_run_returns_result(prices_three):
     """ScheduleBasedEngine.run(symbols=...) returns BacktestResult when fetch succeeds."""
-    with patch("tiportfolio.engine.fetch_prices", return_value=prices_three):
+    with patch("tiportfolio.engine.schedule.fetch_prices", return_value=prices_three):
         engine = ScheduleBasedEngine(
             allocation=FixRatio(weights={"SPY": 0.5, "QQQ": 0.3, "GLD": 0.2}),
             rebalance=Schedule("month_end"),
@@ -42,7 +42,7 @@ def test_schedule_based_engine_requires_start_end():
 def test_schedule_based_engine_raises_on_fetch_failure():
     """When fetch fails, run() raises RuntimeError with message containing 'Failed to fetch data'."""
     with patch(
-        "tiportfolio.engine.fetch_prices",
+        "tiportfolio.engine.schedule.fetch_prices",
         side_effect=RuntimeError("Failed to fetch data: connection refused"),
     ):
         engine = ScheduleBasedEngine(
