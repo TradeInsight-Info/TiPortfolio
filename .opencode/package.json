@@ -1,8 +1,0 @@
-{
-  "dependencies": {
-    "@opencode-ai/plugin": "1.2.21"
-  },
-  "devDependencies": {
-    "unique-names-generator": "4.7.1"
-  }
-}
