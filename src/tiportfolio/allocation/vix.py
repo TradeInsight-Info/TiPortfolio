@@ -23,7 +23,7 @@ def validate_vix_regime_bounds(
 
 
 @dataclass
-class VixRegimeAllocation:
+class VixRegimeAllocation(AllocationStrategy):
     """AllocationStrategy that switches between high-vol and low-vol allocations based on engine decision.
 
     The engine determines whether to use high_vol_allocation or low_vol_allocation and passes

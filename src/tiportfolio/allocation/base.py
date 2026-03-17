@@ -1,20 +1,27 @@
-"""Base allocation protocol and fixed-ratio strategy."""
+"""Base allocation ABC and fixed-ratio strategy."""
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any
 
 import pandas as pd
 
 
-class AllocationStrategy(Protocol):
-    """Protocol for allocation strategies: provide symbols and target weights at a point in time."""
+class AllocationStrategy(ABC):
+    """
+    To tell allocation of portfolio. Is it just fixed weights? Or something more complex like risk parity or mean-variance optimization?
+    
+    Abstract base class for allocation strategies: provide symbols and target weights at a point in time.
+    """
 
+    @abstractmethod
     def get_symbols(self) -> list[str]:
         """Return the list of symbols this strategy allocates to."""
         ...
 
+    @abstractmethod
     def get_target_weights(
         self,
         date: pd.Timestamp,
@@ -28,7 +35,7 @@ class AllocationStrategy(Protocol):
 
 
 @dataclass
-class FixRatio:
+class FixRatio(AllocationStrategy):
     """Fixed weight allocation; implements AllocationStrategy. Keys must match prices dict keys."""
 
     weights: dict[str, float]
