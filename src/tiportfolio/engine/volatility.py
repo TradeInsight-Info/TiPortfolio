@@ -140,6 +140,8 @@ class VolatilityBasedEngine(BacktestEngine):
         if vix_df is not None:
             vix_df = normalize_price_index(vix_df, tz=tz)
             vix_series = _vix_series_from_prices(vix_df, vol_sym, trading_dates)
+        elif vol_sym in prices:
+            vix_series = _vix_series_from_prices(prices, vol_sym, trading_dates)
         else:
             vix_data = fetch_volatility_index(vol_sym, start=start, end=end)
             vix_series = _vix_series_from_prices(vix_data, vol_sym, trading_dates)

@@ -145,10 +145,10 @@ def test_volatility_based_engine_vix_regime_synthetic():
     )
     assert result.equity_curve is not None
     assert len(result.equity_curve) == n
-    # One rebalance (cross above 30 on day 5)
+    # One rebalance (cross above 30 on day 5) → enters high_vol regime → high_vol_allocation
     assert len(result.rebalance_decisions) >= 1
     first_dec = result.rebalance_decisions[0]
-    assert first_dec.target_weights["SPY"] == pytest.approx(0.5, abs=0.01)
+    assert first_dec.target_weights["SPY"] == pytest.approx(0.33, abs=0.01)
 
 
 def test_volatility_based_engine_vix_regime_freezing():
