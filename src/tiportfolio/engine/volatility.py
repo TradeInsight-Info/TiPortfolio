@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Callable, Iterable
 from typing import Any
 
 import pandas as pd
 
-from tiportfolio.allocation import validate_vix_regime_bounds
+from tiportfolio.allocation import AllocationStrategy, validate_vix_regime_bounds
 from tiportfolio.backtest import BacktestResult, run_backtest
 from tiportfolio.calendar import get_rebalance_dates, normalize_price_index
 from tiportfolio.data import fetch_prices, fetch_volatility_index, normalize_prices
@@ -45,10 +46,10 @@ def _vix_series_from_prices(
     return ser
 
 
-class _AllocationWrapper:
-    """Local wrapper that overrides get_target_weights without mutating the original allocation."""
+class _AllocationWrapper(AllocationStrategy):
+    """Internal wrapper that overrides get_target_weights without mutating the original allocation."""
 
-    def __init__(self, wrapped: Any, get_target_weights_fn: Any) -> None:
+    def __init__(self, wrapped: AllocationStrategy, get_target_weights_fn: Any) -> None:
         self._wrapped = wrapped
         self._get_target_weights_fn = get_target_weights_fn
 
@@ -60,12 +61,23 @@ class _AllocationWrapper:
 
 
 class VolatilityBasedEngine(BacktestEngine):
-    """Engine for VIX-based rebalance (vix_regime) or combined trigger.
+    """Backtest engine for volatility-aware rebalancing.
 
-    run() takes symbols and start/end (or prices_df); requires volatility_symbol.
-    For schedule vix_regime also requires target_vix, lower_bound, upper_bound.
-    Fetches data (or uses prices_df), builds vix_series, and passes vix_at_date
-    in context so VixRegimeAllocation can choose high vs low allocation.
+    Use this engine when you need VIX data in the allocation loop — either to
+    gate rebalances via a rebalance_filter callable (e.g. VixChangeFilter) or
+    to drive regime switching via VixRegimeAllocation with schedule='vix_regime'.
+
+    For simple schedule-based strategies that don't need VIX data, prefer
+    ScheduleBasedEngine.
+
+    VIX-regime-specific parameters (target_vix, lower_bound, upper_bound) are
+    only meaningful when rebalance='vix_regime'. Passing them with other
+    schedules has no effect and will raise a warning.
+
+    rebalance_filter: optional callable with signature
+        (date: pd.Timestamp, vix_series: pd.Series, last_rebalance_date: pd.Timestamp | None) -> bool
+    Returns True to allow rebalancing, False to skip. See VixChangeFilter for a
+    ready-made implementation.
     """
 
     def __init__(self, *, freezing_days: int = 0, **kwargs: Any) -> None:
@@ -92,11 +104,19 @@ class VolatilityBasedEngine(BacktestEngine):
         """Run backtest by fetching prices (or using prices_df); volatility_symbol required.
 
         If prices_df is provided and non-empty, use it as prices and do not fetch.
-        If vix_df is provided, use it as the VIX data source instead of extracting from prices_df.
-        Otherwise start and end are required and data is fetched (with volatility_symbol
-        added to the symbol list if needed). For vix_regime, either vix_df or prices_df
-        must contain the volatility symbol.
+        If vix_df is provided, use it as the VIX data source instead of fetching.
+        Otherwise start and end are required and data is fetched via Alpaca or Yahoo Finance.
+        For vix_regime schedule, target_vix, lower_bound, and upper_bound are required.
         """
+        if self.rebalance.spec != "vix_regime" and any(
+            p is not None for p in [target_vix, lower_bound, upper_bound]
+        ):
+            warnings.warn(
+                "target_vix, lower_bound, upper_bound have no effect when schedule is not 'vix_regime'",
+                UserWarning,
+                stacklevel=2,
+            )
+
         vol_sym = normalize_volatility_symbol(volatility_symbol) if volatility_symbol else "VIX"
         if prices_df is not None and len(prices_df) > 0:
             prices = prices_df
@@ -124,7 +144,6 @@ class VolatilityBasedEngine(BacktestEngine):
             vix_data = fetch_volatility_index(vol_sym, start=start, end=end)
             vix_series = _vix_series_from_prices(vix_data, vol_sym, trading_dates)
 
-        schedule_kwargs: dict[str, Any] = {}
         context_for_date: Callable[[pd.Timestamp], dict[str, Any]] | None = None
 
         if self.rebalance.spec == "vix_regime":
@@ -133,22 +152,12 @@ class VolatilityBasedEngine(BacktestEngine):
                     "schedule vix_regime requires target_vix, lower_bound, upper_bound"
                 )
             validate_vix_regime_bounds(target_vix, lower_bound, upper_bound)
-            schedule_kwargs = {
-                "vix_series": vix_series,
-                "target_vix": target_vix,
-                "lower_bound": lower_bound,
-                "upper_bound": upper_bound,
-            }
             vix_ser = vix_series
 
             def context_for_date(d: pd.Timestamp) -> dict[str, Any]:
                 v = vix_ser.asof(d)
                 vix_value = None if pd.isna(v) else float(v)
-                use_high_vol = False
-                if vix_value is not None:
-                    upper_thresh = target_vix + upper_bound
-                    lower_thresh = target_vix + lower_bound
-                    use_high_vol = vix_value >= upper_thresh
+                use_high_vol = vix_value is not None and vix_value >= target_vix + upper_bound
                 return {
                     "vix_at_date": vix_value,
                     "use_high_vol_allocation": use_high_vol,

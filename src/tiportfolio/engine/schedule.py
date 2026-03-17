@@ -12,10 +12,12 @@ from tiportfolio.engine.base import BacktestEngine
 
 
 class ScheduleBasedEngine(BacktestEngine):
-    """Backtest engine that fetches price data by symbols (Alpaca or Yahoo Finance).
+    """Backtest engine that fetches price data by symbol name.
 
-    Same constructor as BacktestEngine. run() takes symbols and start/end
-    instead of prices; fetches data internally then runs the backtest.
+    Use this engine when you want to pass a list of ticker symbols and a date
+    range; it fetches OHLC data via Alpaca (if credentials are set) or Yahoo
+    Finance, then runs the backtest.  For custom strategies that need VIX data
+    or volatility-based rebalancing, use VolatilityBasedEngine instead.
     """
 
     def run(

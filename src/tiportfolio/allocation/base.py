@@ -10,10 +10,23 @@ import pandas as pd
 
 
 class AllocationStrategy(ABC):
-    """
-    To tell allocation of portfolio. Is it just fixed weights? Or something more complex like risk parity or mean-variance optimization?
+    """Abstract base class for allocation strategies.
     
-    Abstract base class for allocation strategies: provide symbols and target weights at a point in time.
+    To tell allocation of portfolio. Is it just fixed weights? Or something more complex like risk parity or mean-variance optimization?
+
+    Subclasses implement get_symbols() and get_target_weights() to define how
+    capital is allocated across assets at each rebalance date.
+
+    Context keys injected by the backtest engine into ``**context``:
+
+    Always available:
+        prices_history (pd.DataFrame): Close-price history up to the signal date.
+        signal_date (pd.Timestamp): Date the signal was generated (respects signal_delay).
+        last_rebalance_date (pd.Timestamp | None): Date of the previous rebalance, or None.
+
+    Only when using VolatilityBasedEngine:
+        vix_at_date (float | None): VIX value at the signal date.
+        use_high_vol_allocation (bool): True when VIX is in the high-volatility regime.
     """
 
     @abstractmethod

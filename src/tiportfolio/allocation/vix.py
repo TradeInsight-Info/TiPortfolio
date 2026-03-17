@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass
 from typing import Any
 
@@ -26,9 +27,10 @@ def validate_vix_regime_bounds(
 class VixRegimeAllocation(AllocationStrategy):
     """AllocationStrategy that switches between high-vol and low-vol allocations based on engine decision.
 
-    The engine determines whether to use high_vol_allocation or low_vol_allocation and passes
-    this decision via the 'use_high_vol_allocation' context parameter. Both sub-strategies
-    must use the same symbols.
+    Requires VolatilityBasedEngine. The engine injects 'use_high_vol_allocation' into context
+    based on the VIX regime. When used with ScheduleBasedEngine (which never injects this key),
+    a warning is emitted and low_vol_allocation is always used. Both sub-strategies must use
+    the same symbols.
     """
 
     high_vol_allocation: AllocationStrategy
@@ -53,6 +55,14 @@ class VixRegimeAllocation(AllocationStrategy):
         prices_row: pd.Series,
         **context: Any,
     ) -> dict[str, float]:
+        if "use_high_vol_allocation" not in context:
+            warnings.warn(
+                "VixRegimeAllocation: 'use_high_vol_allocation' not in context; "
+                "use VolatilityBasedEngine to enable regime switching. "
+                "Defaulting to low_vol_allocation.",
+                UserWarning,
+                stacklevel=2,
+            )
         use_high_vol = context.get("use_high_vol_allocation", False)
 
         if use_high_vol:
