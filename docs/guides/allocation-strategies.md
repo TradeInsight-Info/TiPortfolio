@@ -10,6 +10,7 @@
 
 
 ```python
+import pandas as pd
 import tiportfolio as ti
 
 tickers = [
@@ -76,8 +77,9 @@ dollar_neutral_portfolio = ti.Portfolio(
     'dollar_neutral',
     [
         ti.algo.ScheduleMonthly(),
-        ti.algo.SelectAll(),
-        ti.algo.WeighEqually(),
+        ti.algo.SelectAll(),    # selects child portfolio names: ["long", "short"]
+        ti.algo.WeighEqually(), # 50% capital to each child
+        ti.algo.Rebalance(),    # allocates capital to children
     ],
     children=[long, short],
 )
@@ -157,22 +159,6 @@ result.plot_security_weights()  # shows how weights shift as correlations change
 
 The weights update every month as the covariance matrix is re-estimated. During equity sell-offs, SPY and TLT often decorrelate, so TLT's weight rises automatically — no manual regime switch needed.
 
-**Comparing ERC to equal-weight:**
-
-```python
-erc = ti.Backtest(
-    ti.Portfolio('erc', [ti.algo.ScheduleMonthly(), ti.algo.SelectAll(), ti.algo.WeighERC(lookback=pd.DateOffset(months=3)), ti.algo.Rebalance()], children=tickers),
-    data,
-)
-eq = ti.Backtest(
-    ti.Portfolio('equal_weight', [ti.algo.ScheduleMonthly(), ti.algo.SelectAll(), ti.algo.WeighEqually(), ti.algo.Rebalance()], children=tickers),
-    data,
-)
-
-result = ti.run(erc, eq)
-result.plot()        # overlaid equity curves
-result.summary()     # side-by-side metrics table
-```
 
 
 ### Beta Neutral Strategy

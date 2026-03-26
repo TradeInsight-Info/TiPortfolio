@@ -42,7 +42,7 @@ ti.fetch_data(
 ) -> pd.DataFrame
 ```
 
-Fetches OHLCV price data for the given tickers. Returns a DataFrame with a MultiIndex of `(date, symbol)` normalized to UTC.
+Fetches OHLCV price data for the given tickers. Returns a DataFrame with a MultiIndex of `(date, symbol)` and columns `open`, `high`, `low`, `close`, `volume` — normalized to UTC. `context.prices` inside algos uses the same format, sliced to the current evaluation date.
 
 ---
 
@@ -69,6 +69,10 @@ ti.Portfolio("regime", [...algos...], children=[low_vol_portfolio, high_vol_port
 ```
 
 The `algos` list is wrapped internally in an `AlgoStack`. Each algo runs in order, returning `True` to continue or `False` to abort the rebalance for this node. For tree portfolios, the parent stack runs first; if it returns `True`, the engine forks a `Context` for the selected child and evaluates it recursively.
+
+In **parent portfolios** (children are `Portfolio` objects), `SelectAll()` and other select algos populate `context.selected` with child portfolio names rather than ticker strings. `WeighEqually()` and `WeighFixedRatio()` operate on those names the same way — writing `{"long": 0.5, "short": 0.5}` to `context.weights`. `Rebalance()` at the parent level then proportionally allocates capital across children before each child's own stack runs.
+
+Child portfolios do not need a schedule algo — the parent controls when evaluation happens.
 
 ---
 
@@ -214,6 +218,8 @@ When called with multiple backtests, all `BacktestResult` methods adapt automati
 - `plot_histogram()` overlays all return distributions
 - `plot_security_weights()` shows weights per portfolio in separate panels
 - Individual results are accessible via `result["portfolio_name"]` or `result[0]`
+
+`result[0]` and `result["name"]` work for **single-backtest results too**, so you can always write `result[0]` and add more backtests later without changing the rest of your code.
 
 ---
 

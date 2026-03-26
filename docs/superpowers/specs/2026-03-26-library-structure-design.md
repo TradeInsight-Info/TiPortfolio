@@ -251,7 +251,7 @@ portfolio = ti.Portfolio(
 )
 
 # 3. Run
-result = ti.run_backtest(ti.Backtest(portfolio, data))
+result = ti.run(ti.Backtest(portfolio, data))
 
 # 4. Inspect
 result.summary()
