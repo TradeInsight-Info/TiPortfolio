@@ -45,42 +45,44 @@ lag = pd.DateOffset(days=1) # 1 day lag to avoid lookahead bias
 long = ti.Portfolio(
     'long',
     [
-        ti.algos.SelectMomentum(
-            n=3, 
+        ti.algo.SelectMomentum(
+            n=3,
             lookback=lookback,
             lag=lag,
-            sort_descending=True
-        ), # select top 3 momentum stocks based on last month prices, with 1 bar lag bydefault 
-        ti.algo.WeighEqualy(),
-        ti.algo.Rebalance() # Action
+            sort_descending=True,
+        ),
+        ti.algo.WeighEqually(),
+        ti.algo.Rebalance(),
     ],
-    tickers
+    children=tickers,
 )
 
 short = ti.Portfolio(
     'short',
     [
-        ti.algos.SelectMomentum(
-            n=3, 
-            lookback=lookback,                                               sort_descending=False
-        ), # select bottom 3 momentum stocks based on last month prices
-        ti.algo.WeighEqualy(-1),
-        ti.algo.Rebalance() # Action
-    ]
+        ti.algo.SelectMomentum(
+            n=3,
+            lookback=lookback,
+            lag=lag,
+            sort_descending=False,
+        ),
+        ti.algo.WeighEqually(sign=-1),
+        ti.algo.Rebalance(),
+    ],
+    children=tickers,
 )
 
 dollar_neutral_portfolio = ti.Portfolio(
     'dollar_neutral',
     [
-        bt.algo.ScheduleMonthly(),
-        bt.algo.SelectAll(),
-        bt.algo.WeighEqually(),
+        ti.algo.ScheduleMonthly(),
+        ti.algo.SelectAll(),
+        ti.algo.WeighEqually(),
     ],
-    [long, short]
+    children=[long, short],
 )
 
-test = ti.Backtest(dollar_neutral_portfolio, data)
-result = ti.run_backtest(test)
+result = ti.run(ti.Backtest(dollar_neutral_portfolio, data))
 ```
 
 
@@ -103,15 +105,73 @@ portfolio = ti.Portfolio(
     [
         ti.algo.ScheduleMonthly(),
         ti.algo.SelectAll(),
-        ti.algo.WeighBasedOnHV(initial_ratio={"QQQ":0.7, "BIL":0.2, "GLD":0.1}, target_hv=60, lookback=pd.DateOffset(months=1)),  
-        ti.algo.Rebalance()
+        ti.algo.WeighBasedOnHV(
+            initial_ratio={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1},
+            target_hv=60,
+            lookback=pd.DateOffset(months=1),
+        ),
+        ti.algo.Rebalance(),
     ],
-    tickers # match tickers
+    children=tickers,
 )
 
+result = ti.run(ti.Backtest(portfolio, data))
+```
 
-test = ti.Backtest(portfolio, data)
-result = ti.run_backtest(test)
+
+### Equal Risk Contribution (ERC)
+
+ERC — also known as Risk Parity — sizes each asset so that every position contributes the same amount of risk to the total portfolio, rather than equal capital weight. Compared to a minimum-variance portfolio it is more diversified; compared to an equal-weight portfolio it is less volatile. It sits between the two.
+
+Unlike `WeighBasedOnHV` (which ignores correlation) or `WeighBasedOnBeta` (which targets a single factor), ERC accounts for the full covariance structure of returns, so correlated assets naturally receive smaller allocations.
+
+```python
+import pandas as pd
+import tiportfolio as ti
+
+tickers = ["SPY", "TLT", "GLD", "BIL"]
+
+data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
+
+portfolio = ti.Portfolio(
+    'erc_monthly',
+    [
+        ti.algo.ScheduleMonthly(),
+        ti.algo.SelectAll(),
+        ti.algo.WeighERC(
+            lookback=pd.DateOffset(months=3),  # covariance estimation window
+            covar_method="ledoit-wolf",         # shrinkage estimator (default)
+            risk_parity_method="ccd",           # cyclical coordinate descent (default)
+            maximum_iterations=100,
+            tolerance=1e-8,
+        ),
+        ti.algo.Rebalance(),
+    ],
+    children=tickers,
+)
+
+result = ti.run(ti.Backtest(portfolio, data))
+result.plot()
+result.plot_security_weights()  # shows how weights shift as correlations change
+```
+
+The weights update every month as the covariance matrix is re-estimated. During equity sell-offs, SPY and TLT often decorrelate, so TLT's weight rises automatically — no manual regime switch needed.
+
+**Comparing ERC to equal-weight:**
+
+```python
+erc = ti.Backtest(
+    ti.Portfolio('erc', [ti.algo.ScheduleMonthly(), ti.algo.SelectAll(), ti.algo.WeighERC(lookback=pd.DateOffset(months=3)), ti.algo.Rebalance()], children=tickers),
+    data,
+)
+eq = ti.Backtest(
+    ti.Portfolio('equal_weight', [ti.algo.ScheduleMonthly(), ti.algo.SelectAll(), ti.algo.WeighEqually(), ti.algo.Rebalance()], children=tickers),
+    data,
+)
+
+result = ti.run(erc, eq)
+result.plot()        # overlaid equity curves
+result.summary()     # side-by-side metrics table
 ```
 
 
@@ -133,13 +193,15 @@ portfolio = ti.Portfolio(
     [
         ti.algo.ScheduleMonthly(),
         ti.algo.SelectAll(),
-        ti.algo.WeighBasedOnBeta(initial_ratio={"QQQ":0.7, "BIL":0.2, "GLD":0.1}, target_beta=0, lookback=pd.DateOffset(months=1)),  
-        ti.algo.Rebalance()
+        ti.algo.WeighBasedOnBeta(
+            initial_ratio={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1},
+            target_beta=0,
+            lookback=pd.DateOffset(months=1),
+        ),
+        ti.algo.Rebalance(),
     ],
-    tickers # match tickers
+    children=tickers,
 )
 
-
-test = ti.Backtest(portfolio, data)
-result = ti.run_backtest(test)
+result = ti.run(ti.Backtest(portfolio, data))
 ```

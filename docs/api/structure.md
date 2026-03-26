@@ -96,7 +96,7 @@ All concrete algos. Internal files are organized by the *role* each algo plays i
 |---|---|---|
 | `schedule.py` | **When** to rebalance | `ScheduleMonthly`, `ScheduleQuarterly`, `Schedule` |
 | `select.py` | **What** to include | `SelectAll`, `SelectMomentum` |
-| `weigh.py` | **How much** to allocate | `WeighEqually`, `WeighFixedRatio`, `WeighBasedOnHV`, `WeighBasedOnBeta` |
+| `weigh.py` | **How much** to allocate | `WeighEqually`, `WeighFixedRatio`, `WeighBasedOnHV`, `WeighBasedOnBeta`, `WeighERC` |
 | `rebalance.py` | **Action** — execute trades | `Rebalance`, `PrintInfo` |
 | `signal.py` | **Route** between child portfolios | `VixSignal`, `WeighSelected` |
 

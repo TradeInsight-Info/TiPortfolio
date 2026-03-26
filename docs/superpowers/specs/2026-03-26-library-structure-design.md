@@ -291,6 +291,7 @@ Namespaces exposed:
 | `WeighFixedRatio(weights: dict[str, float])` | Fixed target weights |
 | `WeighBasedOnHV(initial_ratio, target_hv, lookback)` | Volatility targeting |
 | `WeighBasedOnBeta(initial_ratio, target_beta, lookback)` | Beta neutral |
+| `WeighERC(lookback, covar_method="ledoit-wolf", risk_parity_method="ccd", maximum_iterations=100, tolerance=1e-8)` | Equal Risk Contribution (Risk Parity) |
 
 ### Action algos (`algos/rebalance.py`)
 

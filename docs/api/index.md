@@ -110,6 +110,7 @@ Control *how much* to allocate. Reads `context.selected`, writes `context.weight
 | `WeighFixedRatio` | `(weights: dict[str, float])` | Fixed target weights |
 | `WeighBasedOnHV` | `(initial_ratio, target_hv, lookback)` | Volatility-targeting weights |
 | `WeighBasedOnBeta` | `(initial_ratio, target_beta, lookback)` | Beta-neutral weights |
+| `WeighERC` | `(lookback, covar_method="ledoit-wolf", risk_parity_method="ccd", maximum_iterations=100, tolerance=1e-8)` | Equal Risk Contribution (Risk Parity) weights |
 
 #### Action Algos
 
