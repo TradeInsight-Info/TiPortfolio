@@ -17,7 +17,7 @@ portfolio = ti.Portfolio(
         ti.algo.WeighEqually(),
         ti.algo.Rebalance(),
     ],
-    tickers=["QQQ", "BIL", "GLD"],
+    children=["QQQ", "BIL", "GLD"],
 )
 
 result = ti.run_backtest(ti.Backtest(portfolio, data))
@@ -48,12 +48,19 @@ Fetches OHLCV price data for the given tickers. Returns a DataFrame with a Multi
 ti.Portfolio(
     name: str,
     algos: list[Algo],
-    tickers: list[str],
-    children: list[Portfolio] | None = None,
+    children: list[str | Portfolio],
 )
 ```
 
-A portfolio node in the strategy tree. `algos` defines the sequential pipeline that runs on each evaluation date. `children` enables tree-based regime switching (e.g., `[low_vol_portfolio, high_vol_portfolio]`).
+A portfolio node in the strategy tree. `children` accepts either ticker strings (leaf nodes) or nested `Portfolio` objects (sub-strategies). Both are children in the same tree — a leaf portfolio's children are its tradeable symbols.
+
+```python
+# Leaf portfolio — children are ticker strings
+ti.Portfolio("monthly", [...algos...], children=["QQQ", "BIL", "GLD"])
+
+# Parent portfolio — children are sub-portfolios (regime switching)
+ti.Portfolio("regime", [...algos...], children=[low_vol_portfolio, high_vol_portfolio])
+```
 
 The `algos` list is internally wrapped in an `AlgoStack` — each algo runs in order and returns `True` to continue or `False` to abort the rebalance for this node.
 
@@ -196,30 +203,34 @@ Used in tree-structured portfolios to route between child portfolios.
 
 | Algo | Signature | Description |
 |---|---|---|
-| `VixSignal` | `(high: float, low: float, signal: pd.Series)` | Selects child portfolio based on VIX regime; `signal` is a pre-fetched VIX series |
+| `VixSignal` | `(high: float, low: float, signal: pd.DataFrame)` | Selects child portfolio based on VIX regime; `signal` is a pre-fetched OHLCV DataFrame for VIX |
 | `WeighSelected` | `(weight: float)` | Assigns weight to `context.selected_child` in `context.weights` |
 
 ---
 
 ## `branching` Namespace
 
-Combinators for composing algos with conditional logic. `Or` and `Not` are defined in `algo.py` and re-exported through `branching.py`, making `ti.branching` a distinct namespace while keeping the implementation in one place.
+Combinators for composing algos with conditional logic. `Or`, `And`, and `Not` are defined in `algo.py` and re-exported through `branching.py`, making `ti.branching` a distinct namespace while keeping the implementation in one place.
 
 ```python
-ti.branching.Or(branches: list[Algo])   # runs first branch that returns True
-ti.branching.Not(algo: Algo)            # inverts result of wrapped algo
+ti.branching.Or(*algos: Algo)    # runs branches in order; returns True on first True
+ti.branching.And(*algos: Algo)   # explicit AND; all must return True (same as AlgoStack)
+ti.branching.Not(algo: Algo)     # inverts result of wrapped algo
 ```
 
-`AlgoStack` is implicit AND — combine with `Or`/`Not` for complex logic:
+`AlgoStack` is implicit `And` — use explicit `And` when nesting inside `Or` or `Not`:
 
 ```python
 # Trigger on month 2 OR month 5 OR month 8 OR month 11
-ti.branching.Or([
+ti.branching.Or(
     ti.algo.Schedule(month=2),
     ti.algo.Schedule(month=5),
     ti.algo.Schedule(month=8),
     ti.algo.Schedule(month=11),
-])
+)
+
+# Trigger only when NOT in high-volatility regime
+ti.branching.Not(ti.algo.VixSignal(high=30, low=20, signal=vix_data))
 ```
 
 ---

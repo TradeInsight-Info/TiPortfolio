@@ -42,8 +42,8 @@ src/tiportfolio/
   __init__.py         # Public API: fetch_data, Portfolio, Backtest, BacktestResult, run_backtest, algo, branching
   config.py           # TiConfig dataclass with defaults
   algo.py             # Algo ABC + AlgoStack + Or/Not (Or and Not also re-exported via branching.py)
-  branching.py        # Thin re-export shim: "from tiportfolio.algo import Or, Not"
-                      # Makes ti.branching.Or / ti.branching.Not work as a distinct namespace
+  branching.py        # Thin re-export shim: "from tiportfolio.algo import Or, And, Not"
+                      # Makes ti.branching.Or / ti.branching.And / ti.branching.Not work as a distinct namespace
   algos/
     __init__.py       # Re-exports all concrete algos → accessible as ti.algo.*
     schedule.py       # ScheduleMonthly, ScheduleQuarterly, Schedule
@@ -123,8 +123,12 @@ class AlgoStack(Algo):
 
 ```python
 class Or(Algo):
-    """Runs each branch in order; returns True on first branch that returns True."""
-    def __init__(self, branches: list[Algo]): ...
+    """Runs each algo in order; returns True on first that returns True."""
+    def __init__(self, *algos: Algo): ...
+
+class And(Algo):
+    """All algos must return True. Explicit version of AlgoStack for use inside Or/Not."""
+    def __init__(self, *algos: Algo): ...
 
 class Not(Algo):
     """Inverts the result of a wrapped Algo."""
@@ -141,14 +145,13 @@ class Portfolio:
         self,
         name: str,
         algos: list[Algo],
-        tickers: list[str],
-        children: list[Portfolio] | None = None,
+        children: list[str | Portfolio],
     ): ...
 ```
 
-- `tickers`: universe of symbols this portfolio operates on
-- `children`: sub-portfolios for tree-based regime switching (empty list for leaf nodes)
+- `children`: accepts ticker strings (leaf node) or nested `Portfolio` objects (parent node)
 - `algos` is internally wrapped in `AlgoStack`
+- The engine distinguishes leaf vs parent by inspecting whether `children` contains strings or `Portfolio` objects
 
 ---
 
@@ -225,7 +228,7 @@ portfolio = ti.Portfolio(
         ti.algo.WeighEqually(),
         ti.algo.Rebalance(),
     ],
-    tickers=["QQQ", "BIL", "GLD"],
+    children=["QQQ", "BIL", "GLD"],
 )
 
 # 3. Run
@@ -280,10 +283,10 @@ Namespaces exposed:
 
 | Class | Description |
 |---|---|
-| `VixSignal(high: float, low: float, signal: pd.Series)` | Selects child portfolio based on VIX regime |
+| `VixSignal(high: float, low: float, signal: pd.DataFrame)` | Selects child portfolio based on VIX regime; `signal` is a pre-fetched OHLCV DataFrame for VIX |
 | `WeighSelected(weight: float)` | Assigns weight to the selected child |
 
-`VixSignal` takes `signal: pd.Series` (a pre-fetched VIX time series indexed by date, fetched separately via `ti.fetch_data`). This keeps algos stateless and testable — they never fetch data internally. When VIX > `high`, the second child is selected (high-volatility portfolio); when VIX < `low`, the first child is selected (low-volatility); between the thresholds, the previous selection persists.
+`VixSignal` takes `signal: pd.DataFrame` (a pre-fetched OHLCV DataFrame for VIX, fetched separately via `ti.fetch_data`). This keeps algos stateless and testable — they never fetch data internally. The algo reads the `close` column from the DataFrame to compare against `high`/`low` thresholds. When VIX > `high`, the second child is selected (high-volatility portfolio); when VIX < `low`, the first child is selected (low-volatility); between the thresholds, the previous selection persists.
 
 `WeighSelected` reads `context.selected_child` and writes a `{child.name: weight}` entry to `context.weights`, which the parent's `Rebalance` algo then uses to allocate capital to the child.
 

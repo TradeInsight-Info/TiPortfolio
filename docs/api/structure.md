@@ -74,8 +74,9 @@ Contains the stable interface layer. Should not import from `algos/`.
 | `Context` | Dataclass passed to every algo — holds `portfolio`, `prices`, `date`, `config` (read-only) and `selected`, `weights`, `selected_child` (mutable, inter-algo communication) |
 | `Algo` | Abstract base class; one method: `__call__(context) -> bool` |
 | `AlgoStack` | Runs algos sequentially; stops on first `False` (logical AND) |
-| `Or` | Runs branches until one returns `True` (logical OR) |
-| `Not` | Inverts result of wrapped algo |
+| `Or` | `Or(*algos)` — runs branches until one returns `True` (logical OR) |
+| `And` | `And(*algos)` — all must return `True`; explicit version of `AlgoStack` |
+| `Not` | `Not(algo)` — inverts result of wrapped algo |
 
 **Inter-algo communication contract via `Context`:**
 
@@ -110,12 +111,15 @@ A tree node that owns an `AlgoStack` and optionally child `Portfolio` nodes. Rep
 ```python
 class Portfolio:
     name: str
-    algos: AlgoStack           # built from the list passed to __init__
-    tickers: list[str]         # universe in scope for this node
-    children: list[Portfolio]  # sub-portfolios (empty for leaf nodes)
+    algos: AlgoStack                      # built from the list passed to __init__
+    children: list[str | Portfolio]       # ticker strings (leaf) or sub-portfolios (parent)
 ```
 
-A leaf portfolio has no children. A parent portfolio uses signal algos (e.g., `VixSignal`) to route weight to exactly one child on each evaluation date. Children can have different `tickers` from the parent — the engine uses each node's own `tickers` when building its `Context`.
+`children` unifies the two cases in the tree:
+- **Leaf node**: `children = ["QQQ", "BIL", "GLD"]` — tradeable symbols
+- **Parent node**: `children = [low_vol_portfolio, high_vol_portfolio]` — sub-strategies
+
+The engine detects whether a node is a leaf (all children are `str`) or a parent (children contain `Portfolio`). A parent uses signal algos to select one child portfolio on each date; a leaf runs its stack directly against its ticker symbols.
 
 ---
 
