@@ -193,8 +193,22 @@ class BacktestResult:
                             # {TICKER}_qty_after, {TICKER}_value_after
 
     def summary(self) -> dict[str, float]:
-        """Returns: sharpe, sortino, mar, cagr, max_drawdown, kelly, mean_excess_return,
+        """Quick overview. Returns: start, end, risk_free_rate, total_return, cagr,
+           daily_sharpe, daily_sortino, max_drawdown, calmar, kelly,
            final_value, total_fee, rebalance_count"""
+
+    def full_summary(self) -> dict[str, float]:
+        """Complete performance report. Includes all summary() fields plus:
+           Period returns: mtd, 3m, 6m, ytd, 1y, 3y_ann, 5y_ann, 10y_ann, incep_ann
+           Daily stats:    daily_mean_ann, daily_vol_ann, daily_skew, daily_kurt,
+                           best_day, worst_day
+           Monthly stats:  monthly_sharpe, monthly_sortino, monthly_mean_ann,
+                           monthly_vol_ann, monthly_skew, monthly_kurt,
+                           best_month, worst_month
+           Yearly stats:   yearly_sharpe, yearly_sortino, yearly_mean, yearly_vol,
+                           yearly_skew, yearly_kurt, best_year, worst_year
+           Drawdown:       avg_drawdown, avg_drawdown_days, avg_up_month,
+                           avg_down_month, win_year_pct, win_12m_pct"""
 
     def plot(self) -> None:
         """Equity curve with interactive hover (performance) and click (trade records)."""

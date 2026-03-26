@@ -97,6 +97,7 @@ Runs the backtest simulation. Iterates over trading days, evaluates the portfoli
 
 ```python
 result.summary() -> dict[str, float]
+result.full_summary() -> dict[str, float]
 result.plot() -> None
 result.plot_histogram() -> None
 result.plot_security_weights() -> None
@@ -105,20 +106,89 @@ result.trades  # pd.DataFrame
 
 ### `summary()`
 
-Returns a dict with these keys:
+Quick overview — the most-used metrics:
 
 | Key | Description |
 |---|---|
-| `sharpe` | Sharpe Ratio |
-| `sortino` | Sortino Ratio |
-| `mar` | MAR Ratio (CAGR / Max Drawdown) |
+| `start` | Backtest start date |
+| `end` | Backtest end date |
+| `risk_free_rate` | Risk-free rate used |
+| `total_return` | Total return over the full period |
 | `cagr` | Compound Annual Growth Rate |
+| `daily_sharpe` | Daily Sharpe Ratio |
+| `daily_sortino` | Daily Sortino Ratio |
 | `max_drawdown` | Maximum Drawdown (%) |
+| `calmar` | Calmar Ratio (CAGR / Max Drawdown) |
 | `kelly` | Kelly Leverage |
-| `mean_excess_return` | Mean return above risk-free rate |
 | `final_value` | Final portfolio value |
 | `total_fee` | Total fees paid |
 | `rebalance_count` | Number of rebalances executed |
+
+### `full_summary()`
+
+Complete performance report — includes all fields from `summary()` plus:
+
+**Period Returns**
+
+| Key | Description |
+|---|---|
+| `mtd` | Month-to-date return |
+| `3m` | 3-month return |
+| `6m` | 6-month return |
+| `ytd` | Year-to-date return |
+| `1y` | 1-year return |
+| `3y_ann` | 3-year annualised return |
+| `5y_ann` | 5-year annualised return |
+| `10y_ann` | 10-year annualised return |
+| `incep_ann` | Since inception annualised return |
+
+**Daily Statistics**
+
+| Key | Description |
+|---|---|
+| `daily_mean_ann` | Daily mean return (annualised) |
+| `daily_vol_ann` | Daily volatility (annualised) |
+| `daily_skew` | Skewness of daily returns |
+| `daily_kurt` | Excess kurtosis of daily returns |
+| `best_day` | Best single-day return |
+| `worst_day` | Worst single-day return |
+
+**Monthly Statistics**
+
+| Key | Description |
+|---|---|
+| `monthly_sharpe` | Monthly Sharpe Ratio |
+| `monthly_sortino` | Monthly Sortino Ratio |
+| `monthly_mean_ann` | Monthly mean return (annualised) |
+| `monthly_vol_ann` | Monthly volatility (annualised) |
+| `monthly_skew` | Skewness of monthly returns |
+| `monthly_kurt` | Excess kurtosis of monthly returns |
+| `best_month` | Best single-month return |
+| `worst_month` | Worst single-month return |
+
+**Yearly Statistics**
+
+| Key | Description |
+|---|---|
+| `yearly_sharpe` | Yearly Sharpe Ratio |
+| `yearly_sortino` | Yearly Sortino Ratio |
+| `yearly_mean` | Mean annual return |
+| `yearly_vol` | Annual return volatility |
+| `yearly_skew` | Skewness of annual returns |
+| `yearly_kurt` | Excess kurtosis of annual returns |
+| `best_year` | Best single-year return |
+| `worst_year` | Worst single-year return |
+
+**Drawdown Analysis**
+
+| Key | Description |
+|---|---|
+| `avg_drawdown` | Average drawdown depth |
+| `avg_drawdown_days` | Average drawdown duration (days) |
+| `avg_up_month` | Average positive monthly return |
+| `avg_down_month` | Average negative monthly return |
+| `win_year_pct` | % of calendar years with positive return |
+| `win_12m_pct` | % of rolling 12-month windows with positive return |
 
 ### `trades` DataFrame
 
