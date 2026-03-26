@@ -46,11 +46,10 @@ src/tiportfolio/
                       # Makes ti.branching.Or / ti.branching.And / ti.branching.Not work as a distinct namespace
   algos/
     __init__.py       # Re-exports all concrete algos → accessible as ti.algo.*
-    schedule.py       # ScheduleMonthly, ScheduleQuarterly, Schedule
+    signal.py         # All signal algos: Schedule, ScheduleMonthly, ScheduleQuarterly, VixSignal, WeighSelected
     select.py         # SelectAll, SelectMomentum
-    weigh.py          # WeighEqually, WeighFixedRatio, WeighBasedOnHV, WeighBasedOnBeta
+    weigh.py          # WeighEqually, WeighFixedRatio, WeighBasedOnHV, WeighBasedOnBeta, WeighERC
     rebalance.py      # Rebalance, PrintInfo
-    signal.py         # VixSignal, WeighSelected
   portfolio.py        # Portfolio tree node
   backtest.py         # Backtest, BacktestResult, run_backtest()
   helpers/            # Data layer (existing — Alpaca, YFinance, cache, log)
@@ -267,22 +266,33 @@ Namespaces exposed:
 
 ## Concrete Algo Catalogue
 
-### Schedule algos (`algos/schedule.py`)
+### Signal algos (`algos/signal.py`)
 
-`Schedule` is the primitive. `ScheduleMonthly` and `ScheduleQuarterly` are thin convenience wrappers that construct the appropriate `Schedule` (or `Or`-wrapped `Schedule`) internally.
+Signal algos are the first step in any `AlgoQueue` — they control *when* to proceed and *which branch* receives capital. Two sub-types live in the same file:
+
+**Time-based signals** — `Schedule` is the primitive; `ScheduleMonthly` and `ScheduleQuarterly` are thin wrappers:
 
 | Class | Description |
 |---|---|
-| `Schedule(month=None, day="end", next_trading_day=True)` | Primitive trigger — fires on `day` of `month`; if `month=None`, fires every month |
-| `ScheduleMonthly(day="end", next_trading_day=True)` | Convenience wrapper: `Schedule(day=day, next_trading_day=next_trading_day)` |
-| `ScheduleQuarterly(months=[2,5,8,11], day="end")` | Convenience wrapper: `Or(Schedule(month=m, day=day) for m in months)` |
+| `Schedule(month=None, day="end", next_trading_day=True)` | Primitive trigger — fires on `day` of `month`; every month if `month=None` |
+| `ScheduleMonthly(day="end", next_trading_day=True)` | Wrapper: `Schedule(day=day, next_trading_day=next_trading_day)` |
+| `ScheduleQuarterly(months=[2,5,8,11], day="end")` | Wrapper: `Or(Schedule(month=m) for m in months)` |
+
+**Market-based signals** — fire based on market data; route capital to child portfolios:
+
+| Class | Description |
+|---|---|
+| `VixSignal(high: float, low: float, signal: pd.DataFrame)` | Sets `context.selected_child` based on VIX regime; reads `close` from `signal` DataFrame |
+| `WeighSelected(weight: float)` | Writes `{selected_child.name: weight}` to `context.weights` |
+
+`VixSignal` takes a pre-fetched OHLCV DataFrame (via `ti.fetch_data`). When VIX > `high`, second child selected; when VIX < `low`, first child selected; between thresholds, previous selection persists.
 
 ### Select algos (`algos/select.py`)
 
 | Class | Description |
 |---|---|
-| `SelectAll()` | Selects entire universe |
-| `SelectMomentum(n, lookback, lag, sort_descending=True)` | Selects top/bottom n by momentum |
+| `SelectAll()` | Select all tickers |
+| `SelectMomentum(n, lookback, lag, sort_descending=True)` | Select top/bottom n by momentum |
 
 ### Weigh algos (`algos/weigh.py`)
 
@@ -300,17 +310,6 @@ Namespaces exposed:
 |---|---|
 | `Rebalance()` | Executes trades to reach target weights |
 | `PrintInfo()` | Debug: logs current context state |
-
-### Signal algos (`algos/signal.py`)
-
-| Class | Description |
-|---|---|
-| `VixSignal(high: float, low: float, signal: pd.DataFrame)` | Selects child portfolio based on VIX regime; `signal` is a pre-fetched OHLCV DataFrame for VIX |
-| `WeighSelected(weight: float)` | Assigns weight to the selected child |
-
-`VixSignal` takes `signal: pd.DataFrame` (a pre-fetched OHLCV DataFrame for VIX, fetched separately via `ti.fetch_data`). This keeps algos stateless and testable — they never fetch data internally. The algo reads the `close` column from the DataFrame to compare against `high`/`low` thresholds. When VIX > `high`, the second child is selected (high-volatility portfolio); when VIX < `low`, the first child is selected (low-volatility); between the thresholds, the previous selection persists.
-
-`WeighSelected` reads `context.selected_child` and writes a `{child.name: weight}` entry to `context.weights`, which the parent's `Rebalance` algo then uses to allocate capital to the child.
 
 ### Tree Portfolio Execution Protocol
 

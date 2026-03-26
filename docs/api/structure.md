@@ -8,11 +8,10 @@ src/tiportfolio/
 ├── branching.py            # Re-export shim: exposes Or/Not as ti.branching.*
 ├── algos/                  # Concrete algo implementations
 │   ├── __init__.py         # Re-exports all algos → accessible as ti.algo.*
-│   ├── schedule.py         # Time-based trigger algos
+│   ├── signal.py           # All signal algos: time-based (Schedule*) + market-based (VixSignal)
 │   ├── select.py           # Universe selection algos
 │   ├── weigh.py            # Weight calculation algos
-│   ├── rebalance.py        # Trade execution + debug algos
-│   └── signal.py           # Regime signal algos
+│   └── rebalance.py        # Trade execution + debug algos
 ├── portfolio.py            # Portfolio tree node
 ├── backtest.py             # Backtest, BacktestResult, run_backtest()
 └── helpers/                # Data layer (YFinance, Alpaca, cache, logging)
@@ -94,11 +93,10 @@ All concrete algos. Internal files are organized by the *role* each algo plays i
 
 | File | Role in stack | Algos |
 |---|---|---|
-| `schedule.py` | **When** to rebalance | `ScheduleMonthly`, `ScheduleQuarterly`, `Schedule` |
-| `select.py` | **What** to include | `SelectAll` (select all tickers), `SelectMomentum` |
+| `signal.py` | **When / which branch** — time-based and market-based signals | `Schedule`, `ScheduleMonthly`, `ScheduleQuarterly`, `VixSignal`, `WeighSelected` |
+| `select.py` | **What** to include | `SelectAll`, `SelectMomentum` |
 | `weigh.py` | **How much** to allocate | `WeighEqually`, `WeighFixedRatio`, `WeighBasedOnHV`, `WeighBasedOnBeta`, `WeighERC` |
 | `rebalance.py` | **Action** — execute trades | `Rebalance`, `PrintInfo` |
-| `signal.py` | **Route** between child portfolios | `VixSignal`, `WeighSelected` |
 
 `algos/__init__.py` re-exports everything so `ti.algo.ScheduleMonthly` resolves correctly.
 

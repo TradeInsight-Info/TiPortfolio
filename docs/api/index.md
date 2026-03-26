@@ -82,15 +82,19 @@ In **parent portfolios**, `SelectAll()` populates `context.selected` with child 
 All concrete algos live under `ti.algo.*`. A typical stack follows four roles in order:
 
 ```
-Schedule → Select → Weigh → Rebalance
-  When?    What?   How much?  Execute
+Signal → Select → Weigh → Rebalance
+  When?   What?  How much?  Execute
 ```
 
-#### Schedule Algos
+#### Signal Algos
 
-Control *when* a rebalance is triggered. Return `False` on non-trigger dates.
+Control *when* and *which branch* the queue proceeds through. All signal algos return `False` to halt the queue when their condition is not met.
 
-`Schedule` is the primitive; `ScheduleMonthly` and `ScheduleQuarterly` are convenience wrappers that pre-configure it:
+Signal algos fall into two sub-types:
+
+**Time-based signals** — fire on a calendar schedule:
+
+`Schedule` is the primitive; `ScheduleMonthly` and `ScheduleQuarterly` are convenience wrappers:
 
 | Algo | Equivalent `Schedule` configuration |
 |---|---|
@@ -100,9 +104,16 @@ Control *when* a rebalance is triggered. Return `False` on non-trigger dates.
 
 | Algo | Signature | Description |
 |---|---|---|
-| `Schedule` | `(month=None, day="end", next_trading_day=True)` | Primitive trigger — fires on `day` of `month` (or every month if `month=None`) |
+| `Schedule` | `(month=None, day="end", next_trading_day=True)` | Primitive — fires on `day` of `month` (or every month if `month=None`) |
 | `ScheduleMonthly` | `(day="end", next_trading_day=True)` | `Schedule` preset for monthly rebalance |
 | `ScheduleQuarterly` | `(months=[2,5,8,11], day="end")` | `Or`-wrapped `Schedule` preset for quarterly rebalance |
+
+**Market-based signals** — fire based on market data; used in parent portfolios to route capital to child portfolios:
+
+| Algo | Signature | Description |
+|---|---|---|
+| `VixSignal` | `(high: float, low: float, signal: pd.DataFrame)` | Sets `context.selected_child` based on VIX regime; `signal` is a pre-fetched OHLCV DataFrame |
+| `WeighSelected` | `(weight: float)` | Writes `{selected_child.name: weight}` to `context.weights` |
 
 #### Select Algos
 
@@ -133,15 +144,6 @@ Execute trades or side effects.
 |---|---|---|
 | `Rebalance` | `()` | Executes trades to reach target weights in `context.weights` |
 | `PrintInfo` | `()` | Debug: prints current context to stdout |
-
-#### Signal Algos
-
-Used in parent portfolios to route between child portfolios.
-
-| Algo | Signature | Description |
-|---|---|---|
-| `VixSignal` | `(high: float, low: float, signal: pd.DataFrame)` | Sets `context.selected_child` based on VIX regime; `signal` is a pre-fetched OHLCV DataFrame |
-| `WeighSelected` | `(weight: float)` | Writes `{selected_child.name: weight}` to `context.weights` |
 
 ---
 
