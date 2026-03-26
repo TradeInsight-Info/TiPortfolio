@@ -11,9 +11,7 @@ When a portfolio's `children` are other `Portfolio` objects (not ticker strings)
 
 1. The parent's algo stack runs first
 2. A signal algo (e.g. `VixSignal`) sets `context.selected_child`
-3. `Weigh.Selected(1)` records 100% weight for that child
-4. `Rebalance()` at the parent level allocates capital to the selected child
-5. The engine then evaluates the selected child's own algo stack with a fresh context
+3. The engine automatically routes 100% of capital to `selected_child` and evaluates it with a fresh context
 
 Child portfolios **do not need a schedule algo** — the parent controls when evaluation happens. Children just describe *how* to allocate when they are active.
 
@@ -56,8 +54,7 @@ portfolio = ti.Portfolio(
     [
         ti.algo.ScheduleMonthly(),
         ti.algo.VixSignal(high=30, low=20, signal=vix_data),
-        ti.algo.Weigh.Selected(1),   # give 100% of capital to selected child
-        ti.algo.Rebalance(),
+        # engine automatically routes capital to selected_child
     ],
     [low_vol_portfolio, high_vol_portfolio],
 )

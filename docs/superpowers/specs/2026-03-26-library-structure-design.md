@@ -46,9 +46,9 @@ src/tiportfolio/
                       # Makes ti.branching.Or / ti.branching.And / ti.branching.Not work as a distinct namespace
   algos/
     __init__.py       # Re-exports all concrete algos → accessible as ti.algo.*
-    signal.py         # All signal algos: Schedule, ScheduleMonthly, ScheduleQuarterly, VixSignal, WeighSelected
+    signal.py         # All signal algos: Schedule, ScheduleMonthly, ScheduleQuarterly, VixSignal
     select.py         # SelectAll, SelectMomentum
-    weigh.py          # WeighEqually, WeighFixedRatio, WeighBasedOnHV, WeighBasedOnBeta, WeighERC
+    weigh.py          # Weigh (base) + proxy subclasses: Weigh.Equally, Weigh.FixedRatio, Weigh.BasedOnHV, Weigh.BasedOnBeta, Weigh.ERC
     rebalance.py      # Rebalance, PrintInfo
   portfolio.py        # Portfolio tree node
   backtest.py         # Backtest, BacktestResult, run_backtest()
@@ -81,7 +81,7 @@ class Context:
     weights: dict[str, float] = field(default_factory=dict)
     # target weights written by a Weigh algo; read by Rebalance
     selected_child: Portfolio | None = None
-    # child portfolio chosen by a signal algo (e.g. VixSignal); read by WeighSelected
+    # child portfolio chosen by a signal algo (e.g. VixSignal); read by the engine
 ```
 
 The three mutable fields (`selected`, `weights`, `selected_child`) form the inter-algo communication contract:
@@ -89,7 +89,7 @@ The three mutable fields (`selected`, `weights`, `selected_child`) form the inte
 - **Weigh algos** read `context.selected`, write `context.weights`
 - **Rebalance** reads `context.weights` to execute trades
 - **Signal algos** write `context.selected_child`
-- **WeighSelected** reads `context.selected_child` to assign parent weight
+- **Engine** reads `context.selected_child` to fork and evaluate the selected child
 
 ### `Algo` ABC (in `algo.py`)
 
@@ -297,16 +297,16 @@ Signal algos are the first step in any `AlgoQueue` — they control *when* to pr
 
 ### Weigh algos (`algos/weigh.py`)
 
-All weigh algos are nested under the `Weigh` namespace class. Flat aliases (`WeighEqually`, etc.) are re-exported for convenience — both forms are identical.
+`Weigh` is the base class — it accepts an explicit `weights` dict. The named subclasses are **proxy classes**: each computes its specific weight scheme and delegates to `Weigh`.
 
-| Class | Alias | Description |
-|---|---|---|
-| `Weigh.Equally(sign=1)` | `WeighEqually` | Equal weight; sign=-1 for short leg |
-| `Weigh.FixedRatio(weights: dict[str, float])` | `WeighFixedRatio` | Fixed target weights |
-| `Weigh.BasedOnHV(initial_ratio, target_hv, lookback)` | `WeighBasedOnHV` | Volatility targeting |
-| `Weigh.BasedOnBeta(initial_ratio, target_beta, lookback)` | `WeighBasedOnBeta` | Beta neutral |
-| `Weigh.ERC(lookback, covar_method="ledoit-wolf", risk_parity_method="ccd", maximum_iterations=100, tolerance=1e-8)` | `WeighERC` | Equal Risk Contribution (Risk Parity) |
-| `Weigh.Selected(weight: float)` | `WeighSelected` | Writes `{selected_child.name: weight}` to `context.weights`; used after signal algos in parent portfolios |
+| Class | Description |
+|---|---|
+| `Weigh(weights: dict[str, float])` | Base — applies explicit weights directly |
+| `Weigh.Equally(sign=1)` | Proxy: equal weight; sign=-1 for short leg |
+| `Weigh.FixedRatio(weights: dict[str, float])` | Proxy: normalises provided weights before applying |
+| `Weigh.BasedOnHV(initial_ratio, target_hv, lookback)` | Proxy: volatility targeting |
+| `Weigh.BasedOnBeta(initial_ratio, target_beta, lookback)` | Proxy: beta neutral |
+| `Weigh.ERC(lookback, covar_method="ledoit-wolf", risk_parity_method="ccd", maximum_iterations=100, tolerance=1e-8)` | Proxy: Equal Risk Contribution (Risk Parity) |
 
 ### Action algos (`algos/rebalance.py`)
 
@@ -321,8 +321,7 @@ For a parent portfolio with children, the simulation evaluates depth-first:
 
 1. Parent's `AlgoQueue` runs on the current `Context`
 2. A signal algo (e.g. `VixSignal`) sets `context.selected_child` to one of `portfolio.children`
-3. `WeighSelected` writes the child's weight to `context.weights`
-4. If the parent stack returns `True`, the engine evaluates the selected child with a **forked `Context`** (same `prices`/`date`/`config`, fresh `selected`/`weights`/`selected_child`, `portfolio` = child)
+3. If the parent stack returns `True`, the engine automatically routes capital to `selected_child` and evaluates it with a **forked `Context`** (same `prices`/`date`/`config`, fresh `selected`/`weights`/`selected_child`, `portfolio` = child)
 5. The child's `AlgoQueue` runs normally (schedule → select → weigh → rebalance)
 6. The child may itself have children, enabling arbitrarily deep nesting
 

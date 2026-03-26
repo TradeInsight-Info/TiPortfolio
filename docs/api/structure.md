@@ -83,8 +83,8 @@ Contains the stable interface layer. Should not import from `algos/`.
 | Field | Written by | Read by |
 |---|---|---|
 | `selected: list[str]` | Select algos | Weigh algos, Rebalance |
-| `weights: dict[str, float]` | Weigh algos (incl. `Weigh.Selected`) | Rebalance |
-| `selected_child: Portfolio \| None` | Signal algos (VixSignal) | `Weigh.Selected`, engine |
+| `weights: dict[str, float]` | Weigh algos | Rebalance |
+| `selected_child: Portfolio \| None` | Signal algos (VixSignal) | engine (routes capital to selected child automatically) |
 
 ---
 
@@ -96,7 +96,7 @@ All concrete algos. Internal files are organized by the *role* each algo plays i
 |---|---|---|
 | `signal.py` | **When / which branch** — time-based and market-based signals | `Schedule`, `ScheduleMonthly`, `ScheduleQuarterly`, `VixSignal` |
 | `select.py` | **What** to include | `SelectAll`, `SelectMomentum` |
-| `weigh.py` | **How much** to allocate | `Weigh` namespace: `Weigh.Equally`, `Weigh.FixedRatio`, `Weigh.BasedOnHV`, `Weigh.BasedOnBeta`, `Weigh.ERC`, `Weigh.Selected`; flat aliases re-exported for each |
+| `weigh.py` | **How much** to allocate | `Weigh` (base) + proxy subclasses: `Weigh.Equally`, `Weigh.FixedRatio`, `Weigh.BasedOnHV`, `Weigh.BasedOnBeta`, `Weigh.ERC` |
 | `rebalance.py` | **Action** — execute trades | `Rebalance`, `PrintInfo` |
 
 `algos/__init__.py` re-exports everything so `ti.algo.ScheduleMonthly` resolves correctly.
@@ -137,7 +137,7 @@ The simulation loop:
 2. Evaluate the `Portfolio` tree (root first, depth-first)
 3. Each node runs its `AlgoQueue` with a `Context` scoped to that node's `tickers`
 4. For a **leaf** node: if the stack returns `True`, execute trades toward `context.weights`; record the event in `trades`
-5. For a **parent** node: a signal algo sets `context.selected_child`; `WeighSelected` records the weight; if the stack returns `True`, the engine forks a new `Context` for the selected child and evaluates it recursively
+5. For a **parent** node: a signal algo sets `context.selected_child`; if the stack returns `True`, the engine automatically forks a new `Context` for the selected child and evaluates it recursively
 6. If any node's stack returns `False`, the entire subtree is skipped
 
 ---

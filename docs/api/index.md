@@ -127,21 +127,16 @@ Control *which* tickers are included. Writes to `context.selected`.
 
 Control *how much* to allocate. Reads `context.selected`, writes `context.weights`.
 
-All weigh algos are nested under the `Weigh` namespace class. The flat names (`WeighEqually`, `WeighFixedRatio`, etc.) are aliases that resolve to the same classes — both forms work:
+`Weigh` is the base class — it accepts an explicit `weights` dict. All named variants (`Weigh.Equally`, `Weigh.FixedRatio`, etc.) are **proxy subclasses**: they compute their specific weight scheme and delegate to `Weigh`. This means every weigh algo produces the same `context.weights` structure regardless of which variant is used.
 
-```python
-ti.algo.Weigh.Equally()           # namespace form
-ti.algo.WeighEqually()            # alias — identical
-```
-
-| Algo | Alias | Signature | Description |
-|---|---|---|---|
-| `Weigh.Equally` | `WeighEqually` | `(sign=1)` | Equal weight; `sign=-1` for short leg |
-| `Weigh.FixedRatio` | `WeighFixedRatio` | `(weights: dict[str, float])` | Fixed target weights |
-| `Weigh.BasedOnHV` | `WeighBasedOnHV` | `(initial_ratio, target_hv, lookback)` | Volatility-targeting weights |
-| `Weigh.BasedOnBeta` | `WeighBasedOnBeta` | `(initial_ratio, target_beta, lookback)` | Beta-neutral weights |
-| `Weigh.ERC` | `WeighERC` | `(lookback, covar_method="ledoit-wolf", risk_parity_method="ccd", maximum_iterations=100, tolerance=1e-8)` | Equal Risk Contribution (Risk Parity) weights |
-| `Weigh.Selected` | `WeighSelected` | `(weight: float)` | Writes `{selected_child.name: weight}` to `context.weights`; used in parent portfolios after a signal algo sets `context.selected_child` |
+| Algo | Signature | Description |
+|---|---|---|
+| `Weigh` | `(weights: dict[str, float])` | Base — applies explicit weights directly |
+| `Weigh.Equally` | `(sign=1)` | Proxy: divides capital equally; `sign=-1` for short leg |
+| `Weigh.FixedRatio` | `(weights: dict[str, float])` | Proxy: normalises provided weights before applying |
+| `Weigh.BasedOnHV` | `(initial_ratio, target_hv, lookback)` | Proxy: volatility-targeting weights |
+| `Weigh.BasedOnBeta` | `(initial_ratio, target_beta, lookback)` | Proxy: beta-neutral weights |
+| `Weigh.ERC` | `(lookback, covar_method="ledoit-wolf", risk_parity_method="ccd", maximum_iterations=100, tolerance=1e-8)` | Proxy: Equal Risk Contribution (Risk Parity) weights |
 
 #### Action Algos
 
