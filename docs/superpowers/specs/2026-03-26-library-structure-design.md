@@ -163,6 +163,7 @@ class Portfolio:
 class TiConfig:
     fee_per_share: float = 0.0035
     risk_free_rate: float = 0.04
+    loan_rate: float = 0.0514
     initial_capital: float = 10_000
     bars_per_year: int = 252
 ```
@@ -283,7 +284,6 @@ Signal algos are the first step in any `AlgoQueue` — they control *when* to pr
 | Class | Description |
 |---|---|
 | `VixSignal(high: float, low: float, signal: pd.DataFrame)` | Sets `context.selected_child` based on VIX regime; reads `close` from `signal` DataFrame |
-| `WeighSelected(weight: float)` | Writes `{selected_child.name: weight}` to `context.weights` |
 
 `VixSignal` takes a pre-fetched OHLCV DataFrame (via `ti.fetch_data`). When VIX > `high`, second child selected; when VIX < `low`, first child selected; between thresholds, previous selection persists.
 
@@ -296,13 +296,16 @@ Signal algos are the first step in any `AlgoQueue` — they control *when* to pr
 
 ### Weigh algos (`algos/weigh.py`)
 
-| Class | Description |
-|---|---|
-| `WeighEqually(sign=1)` | Equal weight; sign=-1 for short leg |
-| `WeighFixedRatio(weights: dict[str, float])` | Fixed target weights |
-| `WeighBasedOnHV(initial_ratio, target_hv, lookback)` | Volatility targeting |
-| `WeighBasedOnBeta(initial_ratio, target_beta, lookback)` | Beta neutral |
-| `WeighERC(lookback, covar_method="ledoit-wolf", risk_parity_method="ccd", maximum_iterations=100, tolerance=1e-8)` | Equal Risk Contribution (Risk Parity) |
+All weigh algos are nested under the `Weigh` namespace class. Flat aliases (`WeighEqually`, etc.) are re-exported for convenience — both forms are identical.
+
+| Class | Alias | Description |
+|---|---|---|
+| `Weigh.Equally(sign=1)` | `WeighEqually` | Equal weight; sign=-1 for short leg |
+| `Weigh.FixedRatio(weights: dict[str, float])` | `WeighFixedRatio` | Fixed target weights |
+| `Weigh.BasedOnHV(initial_ratio, target_hv, lookback)` | `WeighBasedOnHV` | Volatility targeting |
+| `Weigh.BasedOnBeta(initial_ratio, target_beta, lookback)` | `WeighBasedOnBeta` | Beta neutral |
+| `Weigh.ERC(lookback, covar_method="ledoit-wolf", risk_parity_method="ccd", maximum_iterations=100, tolerance=1e-8)` | `WeighERC` | Equal Risk Contribution (Risk Parity) |
+| `Weigh.Selected(weight: float)` | `WeighSelected` | Writes `{selected_child.name: weight}` to `context.weights`; used after signal algos in parent portfolios |
 
 ### Action algos (`algos/rebalance.py`)
 

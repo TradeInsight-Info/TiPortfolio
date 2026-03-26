@@ -57,9 +57,9 @@ A `dataclass` holding global defaults passed to every `Backtest`. Values can be 
 class TiConfig:
     fee_per_share: float = 0.0035
     risk_free_rate: float = 0.04
+    loan_rate: float = 0.0514
     initial_capital: float = 10_000
     bars_per_year: int = 252
-    benchmark: str = "SPY"
 ```
 
 ---
@@ -82,8 +82,8 @@ Contains the stable interface layer. Should not import from `algos/`.
 | Field | Written by | Read by |
 |---|---|---|
 | `selected: list[str]` | Select algos | Weigh algos, Rebalance |
-| `weights: dict[str, float]` | Weigh algos, WeighSelected | Rebalance |
-| `selected_child: Portfolio \| None` | Signal algos (VixSignal) | WeighSelected, engine |
+| `weights: dict[str, float]` | Weigh algos (incl. `Weigh.Selected`) | Rebalance |
+| `selected_child: Portfolio \| None` | Signal algos (VixSignal) | `Weigh.Selected`, engine |
 
 ---
 
@@ -93,9 +93,9 @@ All concrete algos. Internal files are organized by the *role* each algo plays i
 
 | File | Role in stack | Algos |
 |---|---|---|
-| `signal.py` | **When / which branch** — time-based and market-based signals | `Schedule`, `ScheduleMonthly`, `ScheduleQuarterly`, `VixSignal`, `WeighSelected` |
+| `signal.py` | **When / which branch** — time-based and market-based signals | `Schedule`, `ScheduleMonthly`, `ScheduleQuarterly`, `VixSignal` |
 | `select.py` | **What** to include | `SelectAll`, `SelectMomentum` |
-| `weigh.py` | **How much** to allocate | `WeighEqually`, `WeighFixedRatio`, `WeighBasedOnHV`, `WeighBasedOnBeta`, `WeighERC` |
+| `weigh.py` | **How much** to allocate | `Weigh` namespace: `Weigh.Equally`, `Weigh.FixedRatio`, `Weigh.BasedOnHV`, `Weigh.BasedOnBeta`, `Weigh.ERC`, `Weigh.Selected`; flat aliases re-exported for each |
 | `rebalance.py` | **Action** — execute trades | `Rebalance`, `PrintInfo` |
 
 `algos/__init__.py` re-exports everything so `ti.algo.ScheduleMonthly` resolves correctly.

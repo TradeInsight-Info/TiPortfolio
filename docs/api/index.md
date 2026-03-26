@@ -113,7 +113,6 @@ Signal algos fall into two sub-types:
 | Algo | Signature | Description |
 |---|---|---|
 | `VixSignal` | `(high: float, low: float, signal: pd.DataFrame)` | Sets `context.selected_child` based on VIX regime; `signal` is a pre-fetched OHLCV DataFrame |
-| `WeighSelected` | `(weight: float)` | Writes `{selected_child.name: weight}` to `context.weights` |
 
 #### Select Algos
 
@@ -128,13 +127,21 @@ Control *which* tickers are included. Writes to `context.selected`.
 
 Control *how much* to allocate. Reads `context.selected`, writes `context.weights`.
 
-| Algo | Signature | Description |
-|---|---|---|
-| `WeighEqually` | `(sign=1)` | Equal weight; `sign=-1` for short leg |
-| `WeighFixedRatio` | `(weights: dict[str, float])` | Fixed target weights |
-| `WeighBasedOnHV` | `(initial_ratio, target_hv, lookback)` | Volatility-targeting weights |
-| `WeighBasedOnBeta` | `(initial_ratio, target_beta, lookback)` | Beta-neutral weights |
-| `WeighERC` | `(lookback, covar_method="ledoit-wolf", risk_parity_method="ccd", maximum_iterations=100, tolerance=1e-8)` | Equal Risk Contribution (Risk Parity) weights |
+All weigh algos are nested under the `Weigh` namespace class. The flat names (`WeighEqually`, `WeighFixedRatio`, etc.) are aliases that resolve to the same classes — both forms work:
+
+```python
+ti.algo.Weigh.Equally()           # namespace form
+ti.algo.WeighEqually()            # alias — identical
+```
+
+| Algo | Alias | Signature | Description |
+|---|---|---|---|
+| `Weigh.Equally` | `WeighEqually` | `(sign=1)` | Equal weight; `sign=-1` for short leg |
+| `Weigh.FixedRatio` | `WeighFixedRatio` | `(weights: dict[str, float])` | Fixed target weights |
+| `Weigh.BasedOnHV` | `WeighBasedOnHV` | `(initial_ratio, target_hv, lookback)` | Volatility-targeting weights |
+| `Weigh.BasedOnBeta` | `WeighBasedOnBeta` | `(initial_ratio, target_beta, lookback)` | Beta-neutral weights |
+| `Weigh.ERC` | `WeighERC` | `(lookback, covar_method="ledoit-wolf", risk_parity_method="ccd", maximum_iterations=100, tolerance=1e-8)` | Equal Risk Contribution (Risk Parity) weights |
+| `Weigh.Selected` | `WeighSelected` | `(weight: float)` | Writes `{selected_child.name: weight}` to `context.weights`; used in parent portfolios after a signal algo sets `context.selected_child` |
 
 #### Action Algos
 
@@ -188,6 +195,7 @@ ti.branching.Not(ti.algo.VixSignal(high=30, low=20, signal=vix_data))
 ti.TiConfig(
     fee_per_share: float = 0.0035,
     risk_free_rate: float = 0.04,
+    loan_rate: float = 0.0514,
     initial_capital: float = 10_000,
     bars_per_year: int = 252,
 )

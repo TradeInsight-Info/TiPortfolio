@@ -9,9 +9,9 @@ import tiportfolio as ti
 config = ti.TiConfig(
     fee_per_share=0.0035,    # commission per share traded
     risk_free_rate=0.04,     # annualised, used for Sharpe/Sortino calculation
+    loan_rate=0.0514,        # annualised borrowing cost applied to short/leveraged positions
     initial_capital=10_000,  # starting portfolio value
     bars_per_year=252,       # trading days per year (adjust for intraday data)
-    benchmark="SPY",         # optional; buy-and-hold comparison shown on plot()
 )
 
 result = ti.run(ti.Backtest(portfolio, data, config=config))
@@ -70,6 +70,6 @@ These fields are the communication channel between algo stages in a stack:
 |---|---|---|---|
 | `selected` | `list[str]` | Select algos | Weigh algos, Rebalance |
 | `weights` | `dict[str, float]` | Weigh algos, WeighSelected | Rebalance |
-| `selected_child` | `Portfolio \| None` | VixSignal (and other signal algos) | WeighSelected, engine |
+| `selected_child` | `Portfolio \| None` | VixSignal (and other signal algos) | `Weigh.Selected`, engine |
 
 In **parent portfolios** (children are `Portfolio` objects), `selected` contains child portfolio names rather than ticker strings. `WeighEqually()` and `WeighFixedRatio()` work the same way — operating on names rather than tickers.
