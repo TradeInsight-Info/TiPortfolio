@@ -2,6 +2,8 @@
 
 TiPortfolio exposes a focused public API through the `tiportfolio` package (imported as `ti`).
 
+---
+
 ## Quick Example
 
 ```python
@@ -27,14 +29,16 @@ result.plot()
 
 ---
 
-## `fetch_data`
+## 1. Data
+
+### `fetch_data`
 
 ```python
 ti.fetch_data(
     tickers: list[str],
-    start: str,           # "YYYY-MM-DD"
-    end: str,             # "YYYY-MM-DD"
-    source: str = "yfinance",   # "yfinance" | "alpaca"
+    start: str,                      # "YYYY-MM-DD"
+    end: str,                        # "YYYY-MM-DD"
+    source: str = "yfinance",        # "yfinance" | "alpaca"
 ) -> pd.DataFrame
 ```
 
@@ -42,7 +46,9 @@ Fetches OHLCV price data for the given tickers. Returns a DataFrame with a Multi
 
 ---
 
-## `Portfolio`
+## 2. Strategy Building
+
+### `Portfolio`
 
 ```python
 ti.Portfolio(
@@ -52,7 +58,7 @@ ti.Portfolio(
 )
 ```
 
-A portfolio node in the strategy tree. `children` accepts either ticker strings (leaf nodes) or nested `Portfolio` objects (sub-strategies). Both are children in the same tree — a leaf portfolio's children are its tradeable symbols.
+A node in the strategy tree. `children` accepts either ticker strings (leaf) or nested `Portfolio` objects (parent/regime-switching).
 
 ```python
 # Leaf portfolio — children are ticker strings
@@ -62,51 +68,145 @@ ti.Portfolio("monthly", [...algos...], children=["QQQ", "BIL", "GLD"])
 ti.Portfolio("regime", [...algos...], children=[low_vol_portfolio, high_vol_portfolio])
 ```
 
-The `algos` list is internally wrapped in an `AlgoStack` — each algo runs in order and returns `True` to continue or `False` to abort the rebalance for this node.
-
-For tree portfolios, the parent's algos run first. A signal algo sets `context.selected_child`, then `WeighSelected` records the weight. The engine then evaluates the selected child's full algo stack with a forked context. If the parent returns `False`, the subtree is skipped entirely.
+The `algos` list is wrapped internally in an `AlgoStack`. Each algo runs in order, returning `True` to continue or `False` to abort the rebalance for this node. For tree portfolios, the parent stack runs first; if it returns `True`, the engine forks a `Context` for the selected child and evaluates it recursively.
 
 ---
 
-## `Backtest`
+### `algo` Namespace
+
+All concrete algos live under `ti.algo.*`. A typical stack follows four roles in order:
+
+```
+Schedule → Select → Weigh → Rebalance
+  When?    What?   How much?  Execute
+```
+
+#### Schedule Algos
+
+Control *when* a rebalance is triggered. Return `False` on non-trigger dates.
+
+| Algo | Signature | Description |
+|---|---|---|
+| `ScheduleMonthly` | `(day="end", next_trading_day=True)` | Triggers at month-end or a specific day |
+| `ScheduleQuarterly` | `(months=[2,5,8,11], day=15)` | Triggers on specified months |
+| `Schedule` | `(month=None, day="end", next_trading_day=True)` | Generic fixed-time trigger |
+
+#### Select Algos
+
+Control *which* tickers are included. Writes to `context.selected`.
+
+| Algo | Signature | Description |
+|---|---|---|
+| `SelectAll` | `()` | Selects the full universe |
+| `SelectMomentum` | `(n, lookback, lag=1, sort_descending=True)` | Selects top/bottom `n` by momentum score |
+
+#### Weigh Algos
+
+Control *how much* to allocate. Reads `context.selected`, writes `context.weights`.
+
+| Algo | Signature | Description |
+|---|---|---|
+| `WeighEqually` | `(sign=1)` | Equal weight; `sign=-1` for short leg |
+| `WeighFixedRatio` | `(weights: dict[str, float])` | Fixed target weights |
+| `WeighBasedOnHV` | `(initial_ratio, target_hv, lookback)` | Volatility-targeting weights |
+| `WeighBasedOnBeta` | `(initial_ratio, target_beta, lookback)` | Beta-neutral weights |
+
+#### Action Algos
+
+Execute trades or side effects.
+
+| Algo | Signature | Description |
+|---|---|---|
+| `Rebalance` | `()` | Executes trades to reach target weights in `context.weights` |
+| `PrintInfo` | `()` | Debug: prints current context to stdout |
+
+#### Signal Algos
+
+Used in parent portfolios to route between child portfolios.
+
+| Algo | Signature | Description |
+|---|---|---|
+| `VixSignal` | `(high: float, low: float, signal: pd.DataFrame)` | Sets `context.selected_child` based on VIX regime; `signal` is a pre-fetched OHLCV DataFrame |
+| `WeighSelected` | `(weight: float)` | Writes `{selected_child.name: weight}` to `context.weights` |
+
+---
+
+### `branching` Namespace
+
+Combinators for composing algos with conditional logic. Defined in `algo.py`, re-exported through `branching.py`.
+
+```python
+ti.branching.Or(*algos: Algo)    # returns True on first algo that returns True
+ti.branching.And(*algos: Algo)   # all must return True (explicit version of AlgoStack)
+ti.branching.Not(algo: Algo)     # inverts result of wrapped algo
+```
+
+```python
+# Trigger quarterly: month 2 OR 5 OR 8 OR 11
+ti.branching.Or(
+    ti.algo.Schedule(month=2),
+    ti.algo.Schedule(month=5),
+    ti.algo.Schedule(month=8),
+    ti.algo.Schedule(month=11),
+)
+
+# Trigger only when NOT in high-volatility regime
+ti.branching.Not(ti.algo.VixSignal(high=30, low=20, signal=vix_data))
+```
+
+---
+
+## 3. Running a Backtest
+
+### `TiConfig`
+
+```python
+ti.TiConfig(
+    fee_per_share: float = 0.0035,
+    risk_free_rate: float = 0.04,
+    initial_capital: float = 10_000,
+    bars_per_year: int = 252,
+    benchmark: str = "SPY",
+)
+```
+
+Global defaults for all backtests. Pass a custom instance to `Backtest(config=...)` to override.
+
+### `Backtest`
 
 ```python
 ti.Backtest(
     portfolio: Portfolio,
     data: pd.DataFrame,
-    fee_per_share: float | None = None,
+    fee_per_share: float | None = None,   # convenience override of TiConfig
     config: TiConfig | None = None,
 )
 ```
 
-Bundles a portfolio strategy with price data and configuration. `fee_per_share` overrides `TiConfig.fee_per_share` for convenience.
+Bundles a portfolio strategy with price data and configuration.
 
----
-
-## `run_backtest`
+### `run_backtest`
 
 ```python
 result = ti.run_backtest(test: Backtest) -> BacktestResult
 ```
 
-Runs the backtest simulation. Iterates over trading days, evaluates the portfolio tree on each date, and executes rebalance trades when triggered.
+Runs the simulation. Iterates over trading days, evaluates the portfolio tree on each date, and executes rebalance trades when triggered.
 
 ---
 
-## `BacktestResult`
+## 4. Analyzing Results
+
+### `BacktestResult`
+
+#### Metrics
 
 ```python
 result.summary() -> dict[str, float]
 result.full_summary() -> dict[str, float]
-result.plot() -> None
-result.plot_histogram() -> None
-result.plot_security_weights() -> None
-result.trades  # pd.DataFrame
 ```
 
-### `summary()`
-
-Quick overview — the most-used metrics:
+**`summary()`** — Quick overview of the most-used metrics:
 
 | Key | Description |
 |---|---|
@@ -124,11 +224,9 @@ Quick overview — the most-used metrics:
 | `total_fee` | Total fees paid |
 | `rebalance_count` | Number of rebalances executed |
 
-### `full_summary()`
+**`full_summary()`** — Complete performance report. Includes all `summary()` fields plus:
 
-Complete performance report — includes all fields from `summary()` plus:
-
-**Period Returns**
+*Period Returns*
 
 | Key | Description |
 |---|---|
@@ -142,7 +240,7 @@ Complete performance report — includes all fields from `summary()` plus:
 | `10y_ann` | 10-year annualised return |
 | `incep_ann` | Since inception annualised return |
 
-**Daily Statistics**
+*Daily Statistics*
 
 | Key | Description |
 |---|---|
@@ -153,7 +251,7 @@ Complete performance report — includes all fields from `summary()` plus:
 | `best_day` | Best single-day return |
 | `worst_day` | Worst single-day return |
 
-**Monthly Statistics**
+*Monthly Statistics*
 
 | Key | Description |
 |---|---|
@@ -166,7 +264,7 @@ Complete performance report — includes all fields from `summary()` plus:
 | `best_month` | Best single-month return |
 | `worst_month` | Worst single-month return |
 
-**Yearly Statistics**
+*Yearly Statistics*
 
 | Key | Description |
 |---|---|
@@ -179,7 +277,7 @@ Complete performance report — includes all fields from `summary()` plus:
 | `best_year` | Best single-year return |
 | `worst_year` | Worst single-year return |
 
-**Drawdown Analysis**
+*Drawdown Analysis*
 
 | Key | Description |
 |---|---|
@@ -190,9 +288,46 @@ Complete performance report — includes all fields from `summary()` plus:
 | `win_year_pct` | % of calendar years with positive return |
 | `win_12m_pct` | % of rolling 12-month windows with positive return |
 
-### `trades` DataFrame
+---
 
-One row per rebalance event. Columns:
+#### Charts
+
+```python
+result.plot(interactive: bool = True) -> None
+result.plot_histogram(interactive: bool = True) -> None
+result.plot_security_weights(interactive: bool = True) -> None
+```
+
+**`plot(interactive=True)`**
+
+Portfolio performance chart. Shows:
+
+- Equity curve vs benchmark (default: SPY)
+- Drawdown chart below
+
+When `interactive=True`, renders with Plotly: hover to see daily return and cumulative performance, click a date to inspect the trade record for that rebalance. When `interactive=False`, renders a static Matplotlib figure suitable for export.
+
+**`plot_histogram(interactive=True)`**
+
+Return density chart. Shows the distribution of daily (or monthly) returns as a histogram with a KDE overlay, annotated with mean and ±1σ lines. Helps visualise skew, fat tails, and the frequency of large drawdown days.
+
+When `interactive=True`, hover over each bucket to see exact count and return range.
+
+**`plot_security_weights(interactive=True)`**
+
+Asset weight chart over time. Shows a stacked area chart of each ticker's portfolio weight on every rebalance date, making allocation drift and regime shifts visually apparent.
+
+When `interactive=True`, hover to see exact weights on any date; click a ticker in the legend to isolate it.
+
+---
+
+#### Trade Records
+
+```python
+result.trades  # pd.DataFrame
+```
+
+One row per rebalance event:
 
 | Column | Description |
 |---|---|
@@ -208,104 +343,7 @@ One row per rebalance event. Columns:
 
 ---
 
-## `TiConfig`
-
-```python
-ti.TiConfig(
-    fee_per_share: float = 0.0035,
-    risk_free_rate: float = 0.04,
-    initial_capital: float = 10_000,
-    bars_per_year: int = 252,
-    benchmark: str = "SPY",
-)
-```
-
-Global defaults for all backtests. Pass a custom instance to `Backtest(config=...)` to override.
-
----
-
-## `algo` Namespace
-
-All concrete algos live under `ti.algo.*`.
-
-### Schedule Algos
-
-Control *when* a rebalance is triggered. Return `False` (skip) on non-trigger dates.
-
-| Algo | Signature | Description |
-|---|---|---|
-| `ScheduleMonthly` | `(day="end", next_trading_day=True)` | Triggers at month-end or a specific day |
-| `ScheduleQuarterly` | `(months=[2,5,8,11], day=15)` | Triggers on specific months |
-| `Schedule` | `(month=None, day="end", next_trading_day=True)` | Generic fixed-time trigger |
-
-### Select Algos
-
-Control *which* tickers are included in the rebalance. Writes to `context.selected`.
-
-| Algo | Signature | Description |
-|---|---|---|
-| `SelectAll` | `()` | Selects the full universe |
-| `SelectMomentum` | `(n, lookback, lag=1, sort_descending=True)` | Selects top/bottom `n` by momentum score |
-
-### Weigh Algos
-
-Control *how much* to allocate to each selected ticker. Writes target weights to `context.weights`.
-
-| Algo | Signature | Description |
-|---|---|---|
-| `WeighEqually` | `(sign=1)` | Equal weight; `sign=-1` for short leg |
-| `WeighFixedRatio` | `(weights: dict[str, float])` | Fixed target weights |
-| `WeighBasedOnHV` | `(initial_ratio, target_hv, lookback)` | Volatility-targeting weights |
-| `WeighBasedOnBeta` | `(initial_ratio, target_beta, lookback)` | Beta-neutral weights |
-
-### Action Algos
-
-Execute trades or side effects.
-
-| Algo | Signature | Description |
-|---|---|---|
-| `Rebalance` | `()` | Executes trades to reach target weights |
-| `PrintInfo` | `()` | Debug: prints current context to stdout |
-
-### Signal Algos
-
-Used in tree-structured portfolios to route between child portfolios.
-
-| Algo | Signature | Description |
-|---|---|---|
-| `VixSignal` | `(high: float, low: float, signal: pd.DataFrame)` | Selects child portfolio based on VIX regime; `signal` is a pre-fetched OHLCV DataFrame for VIX |
-| `WeighSelected` | `(weight: float)` | Assigns weight to `context.selected_child` in `context.weights` |
-
----
-
-## `branching` Namespace
-
-Combinators for composing algos with conditional logic. `Or`, `And`, and `Not` are defined in `algo.py` and re-exported through `branching.py`, making `ti.branching` a distinct namespace while keeping the implementation in one place.
-
-```python
-ti.branching.Or(*algos: Algo)    # runs branches in order; returns True on first True
-ti.branching.And(*algos: Algo)   # explicit AND; all must return True (same as AlgoStack)
-ti.branching.Not(algo: Algo)     # inverts result of wrapped algo
-```
-
-`AlgoStack` is implicit `And` — use explicit `And` when nesting inside `Or` or `Not`:
-
-```python
-# Trigger on month 2 OR month 5 OR month 8 OR month 11
-ti.branching.Or(
-    ti.algo.Schedule(month=2),
-    ti.algo.Schedule(month=5),
-    ti.algo.Schedule(month=8),
-    ti.algo.Schedule(month=11),
-)
-
-# Trigger only when NOT in high-volatility regime
-ti.branching.Not(ti.algo.VixSignal(high=30, low=20, signal=vix_data))
-```
-
----
-
-## Extending TiPortfolio
+## 5. Extending TiPortfolio
 
 ### Custom Algo
 
@@ -318,6 +356,12 @@ class MyTrigger(Algo):
     def __call__(self, context: Context) -> bool:
         # return True to proceed, False to skip rebalance
         return context.date.month % 3 == 0
+```
+
+Then add it to any stack:
+
+```python
+ti.Portfolio("my_strategy", [MyTrigger(), ti.algo.SelectAll(), ti.algo.WeighEqually(), ti.algo.Rebalance()], children=[...])
 ```
 
 ### Custom Data Source
