@@ -19,18 +19,11 @@ uv run python                  # always use uv run python, not python directly
 ## Structure
 
 - src/tiportfolio/, the main library code.
-- notebooks/, Jupyter notebooks demonstrating usage.
 - docs/, documentation for the library.
-    - openspec/, design and implementation specifications.
 - tests/, unit tests with fixtures for offline testing.
 
 
 
-## TiPortfolio Structure
-
-- Modular Architecture: The project is organized into distinct modules, each responsible for specific functionalities such as data handling, strategy implementation, risk management, and performance analysis.
-- Simplicity: If a single file can effectively encapsulate a module's functionality without compromising clarity, we prefer that approach to maintain simplicity, fancy class or structure should be avoided unless necessary.
-- Not reinventing the wheel: We leverage well-established libraries and frameworks to handle common tasks, allowing us to focus on the unique aspects of our project.
 
 ## Testing
 
@@ -39,7 +32,6 @@ We user pytest for testing. To run the tests, use the following command:
 ```bash
 uv run python -m pytest 
 ```
-
 
 
 ## FAQ

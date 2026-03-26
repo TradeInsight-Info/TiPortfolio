@@ -6,7 +6,6 @@
 - **Simplicity first**: prefer fewer files/classes unless complexity is justified
 - **TDD approach**: write/update tests first, then implement
 - **Keep changes simple**: reuse existing utilities before writing new ones
-- **Google style docstrings** for all public APIs; private/internal functions can have simpler docstrings or none if self-explanatory
 
 ### Type Annotations
 
@@ -40,15 +39,11 @@ import pandas as pd
 - Prefer built-in exceptions; validate inputs early
 - `ValueError` for invalid arguments, `TypeError` for wrong types
 
-### Data Classes
-
-- Use `@dataclass` for data containers; use `__post_init__` for validation
 
 ### Abstract Base Classes
 
 - Use `ABC` and `@abstractmethod` for interfaces — **no duck typing via `Protocol`**
 - All strategy implementations must explicitly inherit from their ABC
-- Name ABCs with `Strategy` suffix (e.g., `AllocationStrategy`)
 
 ### Testing Conventions
 
