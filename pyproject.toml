@@ -30,6 +30,9 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "mkdocs==1.6.1",
+    "mkdocs-material>=9.7.6",
+    "mkdocstrings[python]>=1.0.3",
     "notebook>=7.5.0",
     "plotly>=5.0.0",
     "python-dotenv>=1.2.1",

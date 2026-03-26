@@ -6,6 +6,7 @@
 - **Simplicity first**: prefer fewer files/classes unless complexity is justified
 - **TDD approach**: write/update tests first, then implement
 - **Keep changes simple**: reuse existing utilities before writing new ones
+- **Google style docstrings** for all public APIs; private/internal functions can have simpler docstrings or none if self-explanatory
 
 ### Type Annotations
 
@@ -28,8 +29,6 @@ from dataclasses import dataclass
 from typing import Any
 
 import pandas as pd
-
-from tiportfolio.calendar import Schedule
 ```
 
 ### Docstrings

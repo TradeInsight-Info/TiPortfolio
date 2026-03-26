@@ -1,11 +1,4 @@
 
-- [x] Fix Ratio
-- [ ] Dollar neutral
-- [ ] Volatility Targeting
-- [ ] Beta neutral
-
-
-
 Fix Ratio, for example, 70% QQQ, 20% BIL, 10% GLD, this is an exmaple of Fix Ratio portfolio, when time to rebalance, if QQQ portiont is biggher than 70%, sell it buy more BIL and GLD
 
 

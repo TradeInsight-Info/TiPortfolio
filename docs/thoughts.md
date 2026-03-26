@@ -1,58 +1,49 @@
 
 
-## Some Thoughts 
-**What is a real alpha?**, I often ask myself this question,
+## Some Thoughts
+
+From a question first: **what is real alpha?**.
 
 - Is a positive return alpha?
-- Is it a return above risk free rate?
+- Is it a return above the risk-free rate?
+
+A simple buy-and-hold strategy can achieve both in almost any historical window. That alone tells us neither metric is enough.
+
+**Sharpe Ratio, MAR Ratio, Annualized Return** — real alpha means at least one of these three metrics beats a simple buy-and-hold index ETF, while the other two are no worse. If we cannot clear that bar, there is no reason to build a complex strategy. The index already won.
+
+> The MAR ratio measures risk-adjusted returns by dividing the compound annual growth rate (CAGR) by the largest drawdown.
 
 
-A simple long hold strategy can easily achieve positive return and beat risk free rate in history.
+## Why We Are Building TiPortfolio
 
-**Sharpe Ratio, Mar Ratio, Annualized Return**, in these 3 metrics, the real alpha 
-should have at least 1 out of 3 metrics better than the simple long hold Index ETF, 
-and the other two not worse than the Index ETF. Otherwise, we really don't need to 
-make a complex strategy to beat a simple long hold.
+You may have noticed this library is different from other backtesting tools you can find in the market.
 
-> The MAR ratio in finance measures risk-adjusted returns by dividing the compound annual growth rate (CAGR) of an investment by its largest drawdown. 
+- It does not chase high-performance backtesting speed
+- It does not force you into a specific framework for writing strategies
+- It does not ship dozens of technical or fundamental indicators
 
+These are deliberate choices. TiPortfolio is a bridge between academic portfolio research and practical backtesting — built to seek real alpha, not to simulate every possible trade.
 
+This is not a backtesting engine in the traditional sense. We leave execution speed, indicator libraries, and signal generation to the tools that already do them well. Instead, we focus on what matters most for long-term returns:
 
+**Low-frequency portfolio optimization, cost-aware rebalancing, and systematic risk management.**
 
+No one can predict tomorrow's market. But everyone can know what their portfolio costs, what its volatility looks like, and whether their risk budget is intact. TiPortfolio is about managing what you can manage — not what you cannot.
 
-## Why we need TiPortfolio? What is the philosophy behind it?
+> "More than 90% of the variability of a portfolio's returns comes from asset allocation."
+>
+> — Brinson, Hood & Beebower, *Determinants of Portfolio Performance*
 
-You may have noticed that this library is probably different with any other backtesting libraries you can find in the market.
+Since 2024, we have researched and tested existing algorithmic trading, backtesting, and portfolio management libraries. After using many of them, we still have not found a strong open-source option that truly focuses on portfolio management. The older Pyfolio library could have been a candidate, but it is no longer maintained.
 
-- It does not focus on high performance backtesting
-- It does not force you to use specific way or library to write your strategies
-- It does not even provide many built-in technical indicators or fundamental analysis indicators
+Institutions rely on proprietary systems. Retail traders have nothing comparable. Implementing state-of-the-art portfolio optimization is not difficult from an engineering perspective — but the gap between academic papers and usable tools remains wide.
 
-Because we are trying to a bridge library between academic research and backtesting to seek real alpha.
-
-This is not a real backtesting engine, because we didn't focus on backtesting speed, having more technology analysis or fundamental analysis  indicators, 
-we give all these flexibility to end users, so yes, it is better to have more python experience.
-Instead,
-we are focusing on low frequent portfolio optimization and rebalancing to reduce cost and long term risk management, 
-because no one can predict the market tomorrow, but everyone can know what is the cost and what are the volatility of his/her portfolio,
-in another word, TiProtfolio is focusing on managing what you can manage, not what you cannot manage.
+This is why TiPortfolio exists: a portfolio management library dedicated to asset allocation, portfolio optimization, and risk management.
 
 
-> “More than 90% of the variability of a portfolio’s returns comes from asset allocation.”
-> 
-> — Brinson, Hood & Beebower, “Determinants of Portfolio Performance”
+## Thoughts in charts
 
-Since 2024, we have researched and investigated existing algorithmic trading, backtesting, and portfolio management libraries. After using many of them, we still have not found a strong option that truly focuses on portfolio management. The older Pyfolio library could have been a candidate, but it is no longer maintained.
-
-While institutions and professional traders may rely on proprietary portfolio management systems, there is still no solid open-source solution for retail traders. Although implementing state-of-the-art portfolio optimization algorithms is not difficult from an engineering perspective, this area remains underserved.
-
-We believe there is a significant gap here.
-
-This is why we are building TiPortfolio: a portfolio management library dedicated to asset allocation, portfolio optimization, and risk management.
-
-
-
-
+Concepts:
 
 ```mermaid
 mindmap
@@ -69,8 +60,8 @@ root((TiPortfolio))
 ```
 
 
+Strategy Ideas:
 ```mermaid
-
 graph TD
 
     A[Portfolio Risk Management]
@@ -90,6 +81,3 @@ graph TD
     B --independent of--> C
 
 ```
-
-
-
