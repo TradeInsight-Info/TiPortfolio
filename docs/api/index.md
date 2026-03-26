@@ -51,23 +51,27 @@ Fetches OHLCV price data for the given tickers. Returns a DataFrame with a Multi
 ### `Portfolio`
 
 ```python
-ti.Portfolio(name: str, algos: list[Algo], [str | Portfolio, ...])
+ti.Portfolio(
+    name: str,
+    algos: list[Algo],
+    children: list[str] | list[Portfolio] | list[str | Portfolio] | None = None,
+)
 ```
 
-A node in the strategy tree. The optional third argument is a list that can be:
+A node in the strategy tree. `children` is optional (`None` by default) and accepts:
 
-- **omitted or empty** — portfolio with no pre-defined universe (algos manage selection entirely)
-- **ticker strings** — leaf node; these are the tradeable symbols
-- **`Portfolio` objects** — parent node; capital is routed to child portfolios
-- **mixed** — tickers and child portfolios together
+- `None` — no pre-defined universe; algos manage selection entirely
+- `list[str]` — leaf node; tradeable ticker symbols
+- `list[Portfolio]` — parent node; capital is routed to child portfolios
+- `list[str | Portfolio]` — mixed tickers and child portfolios
 
 ```python
 ti.Portfolio("monthly", [...algos...], ["QQQ", "BIL", "GLD"])
 ti.Portfolio("regime",  [...algos...], [low_vol_portfolio, high_vol_portfolio])
-ti.Portfolio("dynamic", [...algos...])   # no fixed universe
+ti.Portfolio("dynamic", [...algos...])   # no children
 ```
 
-The `algos` list is wrapped internally in an `AlgoStack`. Each algo runs in order, returning `True` to continue or `False` to abort the rebalance for this node. For tree portfolios, the parent stack runs first; if it returns `True`, the engine forks a `Context` for the selected child and evaluates it recursively.
+The `algos` list is wrapped internally in an `AlgoQueue`. Each algo runs in order, returning `True` to continue or `False` to abort the rebalance for this node. For tree portfolios, the parent's `AlgoQueue` runs first; if it returns `True`, the engine forks a `Context` for the selected child and evaluates it recursively.
 
 In **parent portfolios**, `SelectAll()` populates `context.selected` with child portfolio names. `WeighEqually()` and `WeighFixedRatio()` operate on those names the same way — writing `{"long": 0.5, "short": 0.5}` to `context.weights`. Child portfolios do not need a schedule algo — the parent controls when evaluation happens.
 
@@ -141,13 +145,21 @@ Used in parent portfolios to route between child portfolios.
 
 ---
 
+### `AlgoQueue`
+
+`AlgoQueue` is the internal container that runs a portfolio's algo list. The name reflects its semantics: algos are processed **in order from the top**, like a queue — the first algo runs first, the second runs second, and so on. This is distinct from a "stack" (which implies LIFO/last-in-first-out). `Portfolio` wraps the `algos` list in an `AlgoQueue` automatically.
+
+`And` in the `branching` namespace is an explicit, nestable version of `AlgoQueue` for use inside `Or` or `Not`.
+
+---
+
 ### `branching` Namespace
 
 Combinators for composing algos with conditional logic. Defined in `algo.py`, re-exported through `branching.py`.
 
 ```python
 ti.branching.Or(*algos: Algo)    # returns True on first algo that returns True
-ti.branching.And(*algos: Algo)   # all must return True (explicit version of AlgoStack)
+ti.branching.And(*algos: Algo)   # all must return True (explicit version of AlgoQueue)
 ti.branching.Not(algo: Algo)     # inverts result of wrapped algo
 ```
 

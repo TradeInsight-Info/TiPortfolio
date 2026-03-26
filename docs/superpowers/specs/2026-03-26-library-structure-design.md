@@ -31,7 +31,7 @@ Selected over:
 
 ### Rationale
 
-`algo.py` stays small and stable (just the ABC + AlgoStack + branching). `algos/` holds growing concrete implementations grouped by category. Re-exports in `algos/__init__.py` keep the public namespace identical: `ti.algo.ScheduleMonthly` works regardless of internal file layout.
+`algo.py` stays small and stable (just the ABC + AlgoQueue + branching). `algos/` holds growing concrete implementations grouped by category. Re-exports in `algos/__init__.py` keep the public namespace identical: `ti.algo.ScheduleMonthly` works regardless of internal file layout.
 
 ---
 
@@ -41,7 +41,7 @@ Selected over:
 src/tiportfolio/
   __init__.py         # Public API: fetch_data, Portfolio, Backtest, BacktestResult, run_backtest, algo, branching
   config.py           # TiConfig dataclass with defaults
-  algo.py             # Algo ABC + AlgoStack + Or/Not (Or and Not also re-exported via branching.py)
+  algo.py             # Algo ABC + AlgoQueue + Or/Not (Or and Not also re-exported via branching.py)
   branching.py        # Thin re-export shim: "from tiportfolio.algo import Or, And, Not"
                       # Makes ti.branching.Or / ti.branching.And / ti.branching.Not work as a distinct namespace
   algos/
@@ -106,10 +106,10 @@ class Algo(ABC):
 
 All concrete algos — schedulers, selectors, weighers, actions, signals — implement this single interface.
 
-### `AlgoStack` (in `algo.py`)
+### `AlgoQueue` (in `algo.py`)
 
 ```python
-class AlgoStack(Algo):
+class AlgoQueue(Algo):
     """
     Sequential pipeline of Algos.
     Runs each Algo in order; stops and returns False if any returns False.
@@ -127,7 +127,7 @@ class Or(Algo):
     def __init__(self, *algos: Algo): ...
 
 class And(Algo):
-    """All algos must return True. Explicit version of AlgoStack for use inside Or/Not."""
+    """All algos must return True. Explicit version of AlgoQueue for use inside Or/Not."""
     def __init__(self, *algos: Algo): ...
 
 class Not(Algo):
@@ -145,18 +145,13 @@ class Portfolio:
         self,
         name: str,
         algos: list[Algo],
-        /,
-        *members: str | Portfolio,
+        children: list[str] | list[Portfolio] | list[str | Portfolio] | None = None,
     ): ...
 ```
 
-The third argument is positional and variadic. It accepts:
-- nothing — portfolio with no fixed universe
-- ticker strings — leaf node; tradeable symbols
-- `Portfolio` objects — parent node; children to route capital into
-- mixed — both tickers and child portfolios
-
-The engine detects node type at runtime from the members list. `algos` is internally wrapped in `AlgoStack`.
+- `children` is optional (defaults to `None`)
+- Accepts `list[str]` (tickers), `list[Portfolio]` (sub-portfolios), mixed, or `None`
+- `algos` is internally wrapped in `AlgoQueue`
 
 ---
 
@@ -321,11 +316,11 @@ Namespaces exposed:
 
 For a parent portfolio with children, the simulation evaluates depth-first:
 
-1. Parent's `AlgoStack` runs on the current `Context`
+1. Parent's `AlgoQueue` runs on the current `Context`
 2. A signal algo (e.g. `VixSignal`) sets `context.selected_child` to one of `portfolio.children`
 3. `WeighSelected` writes the child's weight to `context.weights`
 4. If the parent stack returns `True`, the engine evaluates the selected child with a **forked `Context`** (same `prices`/`date`/`config`, fresh `selected`/`weights`/`selected_child`, `portfolio` = child)
-5. The child's `AlgoStack` runs normally (schedule → select → weigh → rebalance)
+5. The child's `AlgoQueue` runs normally (schedule → select → weigh → rebalance)
 6. The child may itself have children, enabling arbitrarily deep nesting
 
 If the parent stack returns `False`, no child is evaluated (rebalance skipped for this subtree).

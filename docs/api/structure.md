@@ -4,7 +4,7 @@
 src/tiportfolio/
 ├── __init__.py             # Public API exports
 ├── config.py               # TiConfig — global backtest defaults
-├── algo.py                 # Algo ABC, AlgoStack, Context, Or, Not
+├── algo.py                 # Algo ABC, AlgoQueue, Context, Or, Not
 ├── branching.py            # Re-export shim: exposes Or/Not as ti.branching.*
 ├── algos/                  # Concrete algo implementations
 │   ├── __init__.py         # Re-exports all algos → accessible as ti.algo.*
@@ -73,9 +73,9 @@ Contains the stable interface layer. Should not import from `algos/`.
 |---|---|
 | `Context` | Dataclass passed to every algo — holds `portfolio`, `prices`, `date`, `config` (read-only) and `selected`, `weights`, `selected_child` (mutable, inter-algo communication) |
 | `Algo` | Abstract base class; one method: `__call__(context) -> bool` |
-| `AlgoStack` | Runs algos sequentially; stops on first `False` (logical AND) |
+| `AlgoQueue` | Runs algos sequentially; stops on first `False` (logical AND) |
 | `Or` | `Or(*algos)` — runs branches until one returns `True` (logical OR) |
-| `And` | `And(*algos)` — all must return `True`; explicit version of `AlgoStack` |
+| `And` | `And(*algos)` — all must return `True`; explicit version of `AlgoQueue` |
 | `Not` | `Not(algo)` — inverts result of wrapped algo |
 
 **Inter-algo communication contract via `Context`:**
@@ -106,20 +106,20 @@ All concrete algos. Internal files are organized by the *role* each algo plays i
 
 ### `portfolio.py` — `Portfolio`
 
-A tree node that owns an `AlgoStack` and optionally child `Portfolio` nodes. Represents a single strategy or a sub-strategy within a multi-regime parent.
+A tree node that owns an `AlgoQueue` and optionally child `Portfolio` nodes. Represents a single strategy or a sub-strategy within a multi-regime parent.
 
 ```python
 class Portfolio:
     name: str
-    algos: AlgoStack                      # built from the list passed to __init__
-    members: list[str | Portfolio]        # optional; ticker strings, child portfolios, or mixed
+    algos: AlgoQueue                                              # built from the list passed to __init__
+    children: list[str] | list[Portfolio] | list[str | Portfolio] | None  # optional, default None
 ```
 
-The third positional argument (no keyword) can be:
-- **omitted / empty** — no fixed universe
-- **ticker strings** — leaf node; tradeable symbols
-- **`Portfolio` objects** — parent node; sub-strategies
-- **mixed** — both tickers and child portfolios
+`children` accepts:
+- `None` (default) — no fixed universe
+- `list[str]` — leaf node; tradeable ticker symbols
+- `list[Portfolio]` — parent node; sub-strategies
+- `list[str | Portfolio]` — mixed tickers and child portfolios
 
 The engine detects node type at runtime. A parent uses signal algos to select one child on each date; a leaf runs its stack directly against its ticker symbols.
 
@@ -136,7 +136,7 @@ The engine detects node type at runtime. A parent uses signal algos to select on
 The simulation loop:
 1. For each trading day in `data`
 2. Evaluate the `Portfolio` tree (root first, depth-first)
-3. Each node runs its `AlgoStack` with a `Context` scoped to that node's `tickers`
+3. Each node runs its `AlgoQueue` with a `Context` scoped to that node's `tickers`
 4. For a **leaf** node: if the stack returns `True`, execute trades toward `context.weights`; record the event in `trades`
 5. For a **parent** node: a signal algo sets `context.selected_child`; `WeighSelected` records the weight; if the stack returns `True`, the engine forks a new `Context` for the selected child and evaluates it recursively
 6. If any node's stack returns `False`, the entire subtree is skipped
