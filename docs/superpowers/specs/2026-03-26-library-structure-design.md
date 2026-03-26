@@ -163,7 +163,8 @@ class Portfolio:
 class TiConfig:
     fee_per_share: float = 0.0035
     risk_free_rate: float = 0.04
-    loan_rate: float = 0.0514
+    loan_rate: float = 0.0514         # borrowing cost for leveraged positions
+    stock_borrow_rate: float = 0.07   # short-selling borrow fee; varies by security
     initial_capital: float = 10_000
     bars_per_year: int = 252
 ```
