@@ -22,7 +22,7 @@ portfolio = ti.Portfolio(
     children=["QQQ", "BIL", "GLD"],
 )
 
-result = ti.run_backtest(ti.Backtest(portfolio, data))
+result = ti.run(ti.Backtest(portfolio, data))
 result.summary()
 result.plot()
 ```
@@ -185,13 +185,34 @@ ti.Backtest(
 
 Bundles a portfolio strategy with price data and configuration.
 
-### `run_backtest`
+### `run`
 
 ```python
-result = ti.run_backtest(test: Backtest) -> BacktestResult
+result = ti.run(*tests: Backtest) -> BacktestResult
 ```
 
-Runs the simulation. Iterates over trading days, evaluates the portfolio tree on each date, and executes rebalance trades when triggered.
+Runs one or more backtests and returns a `BacktestResult` that is always collection-aware.
+
+```python
+# Single backtest
+result = ti.run(ti.Backtest(portfolio, data))
+
+# Multiple backtests — compare strategies side by side
+result = ti.run(
+    ti.Backtest(monthly_portfolio, data),
+    ti.Backtest(quarterly_portfolio, data),
+    ti.Backtest(buy_and_hold, data),
+)
+result.plot()           # overlaid equity curves, one line per portfolio
+result.summary()        # comparison table: rows = metrics, columns = portfolio names
+```
+
+When called with multiple backtests, all `BacktestResult` methods adapt automatically:
+- `summary()` / `full_summary()` return a `pd.DataFrame` (metrics × portfolios) instead of a dict
+- `plot()` overlays all equity curves on a single chart
+- `plot_histogram()` overlays all return distributions
+- `plot_security_weights()` shows weights per portfolio in separate panels
+- Individual results are accessible via `result["portfolio_name"]` or `result[0]`
 
 ---
 

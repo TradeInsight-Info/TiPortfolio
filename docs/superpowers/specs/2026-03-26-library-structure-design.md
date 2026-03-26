@@ -217,11 +217,16 @@ class BacktestResult:
     def plot_security_weights(self) -> None:
 ```
 
-### `run_backtest` (in `backtest.py`)
+### `run` (in `backtest.py`)
 
 ```python
-def run_backtest(test: Backtest) -> BacktestResult: ...
+def run(*tests: Backtest) -> BacktestResult: ...
 ```
+
+Accepts one or more `Backtest` objects. The returned `BacktestResult` is always collection-aware:
+- **Single test**: `summary()` returns `dict[str, float]`; charts show one portfolio
+- **Multiple tests**: `summary()` returns `pd.DataFrame` (metrics × portfolios); charts overlay all portfolios for comparison
+- Individual results accessible via `result["name"]` or `result[index]`
 
 ---
 
@@ -255,8 +260,9 @@ result.trades
 ```
 
 Namespaces exposed:
+- `ti.run` — entry point (replaces `run_backtest`)
 - `ti.algo.*` — all concrete algos (via `algos/__init__.py` re-exports)
-- `ti.branching.Or`, `ti.branching.Not`
+- `ti.branching.Or`, `ti.branching.And`, `ti.branching.Not`
 
 ---
 

@@ -39,7 +39,7 @@ from tiportfolio import (
     Backtest,
     BacktestResult,
     TiConfig,
-    run_backtest,
+    run,         # replaces run_backtest; accepts *tests for multi-backtest comparison
     algo,        # module: ti.algo.*
     branching,   # module: ti.branching.*
 )
