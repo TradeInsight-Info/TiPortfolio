@@ -11,7 +11,7 @@ config = ti.TiConfig(
     risk_free_rate=0.04,     # annualised, used for Sharpe/Sortino calculation
     initial_capital=10_000,  # starting portfolio value
     bars_per_year=252,       # trading days per year (adjust for intraday data)
-    benchmark="SPY",         # ticker shown on equity curve charts
+    benchmark="SPY",         # optional; buy-and-hold comparison shown on plot()
 )
 
 result = ti.run(ti.Backtest(portfolio, data, config=config))

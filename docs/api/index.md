@@ -89,11 +89,19 @@ Schedule → Select → Weigh → Rebalance
 
 Control *when* a rebalance is triggered. Return `False` on non-trigger dates.
 
+`Schedule` is the primitive; `ScheduleMonthly` and `ScheduleQuarterly` are convenience wrappers that pre-configure it:
+
+| Algo | Equivalent `Schedule` configuration |
+|---|---|
+| `ScheduleMonthly(day="end", next_trading_day=True)` | `Schedule(day="end", next_trading_day=True)` |
+| `ScheduleMonthly(day=15, next_trading_day=True)` | `Schedule(day=15, next_trading_day=True)` |
+| `ScheduleQuarterly(months=[2,5,8,11], day="end")` | `Or(Schedule(month=2), Schedule(month=5), Schedule(month=8), Schedule(month=11))` |
+
 | Algo | Signature | Description |
 |---|---|---|
-| `ScheduleMonthly` | `(day="end", next_trading_day=True)` | Triggers at month-end or a specific day |
-| `ScheduleQuarterly` | `(months=[2,5,8,11], day=15)` | Triggers on specified months |
-| `Schedule` | `(month=None, day="end", next_trading_day=True)` | Generic fixed-time trigger |
+| `Schedule` | `(month=None, day="end", next_trading_day=True)` | Primitive trigger — fires on `day` of `month` (or every month if `month=None`) |
+| `ScheduleMonthly` | `(day="end", next_trading_day=True)` | `Schedule` preset for monthly rebalance |
+| `ScheduleQuarterly` | `(months=[2,5,8,11], day="end")` | `Or`-wrapped `Schedule` preset for quarterly rebalance |
 
 #### Select Algos
 
@@ -171,11 +179,13 @@ ti.TiConfig(
     risk_free_rate: float = 0.04,
     initial_capital: float = 10_000,
     bars_per_year: int = 252,
-    benchmark: str = "SPY",
+    benchmark: str | None = None,   # optional — ticker for a buy-and-hold comparison
 )
 ```
 
 Global defaults for all backtests. Pass a custom instance to `Backtest(config=...)` to override.
+
+`benchmark` is optional. When provided, the engine runs a buy-and-hold (long hold, never rebalance) strategy on that ticker alongside your backtest, and `plot()` overlays its equity curve for comparison. When `None`, no benchmark is shown.
 
 ### `Backtest`
 

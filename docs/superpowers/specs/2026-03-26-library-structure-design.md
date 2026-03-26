@@ -166,7 +166,7 @@ class TiConfig:
     risk_free_rate: float = 0.04
     initial_capital: float = 10_000
     bars_per_year: int = 252
-    benchmark: str = "SPY"
+    benchmark: str | None = None   # optional; when set, runs a buy-and-hold on that ticker for comparison
 ```
 
 ### `Backtest` (in `backtest.py`)
@@ -270,11 +270,13 @@ Namespaces exposed:
 
 ### Schedule algos (`algos/schedule.py`)
 
+`Schedule` is the primitive. `ScheduleMonthly` and `ScheduleQuarterly` are thin convenience wrappers that construct the appropriate `Schedule` (or `Or`-wrapped `Schedule`) internally.
+
 | Class | Description |
 |---|---|
-| `ScheduleMonthly(day="end", next_trading_day=True)` | Triggers on month-end (or specified day) |
-| `ScheduleQuarterly(months=[2,5,8,11], day=15)` | Triggers on specific months |
-| `Schedule(month=None, day="end", next_trading_day=True)` | Generic fixed-time trigger |
+| `Schedule(month=None, day="end", next_trading_day=True)` | Primitive trigger — fires on `day` of `month`; if `month=None`, fires every month |
+| `ScheduleMonthly(day="end", next_trading_day=True)` | Convenience wrapper: `Schedule(day=day, next_trading_day=next_trading_day)` |
+| `ScheduleQuarterly(months=[2,5,8,11], day="end")` | Convenience wrapper: `Or(Schedule(month=m, day=day) for m in months)` |
 
 ### Select algos (`algos/select.py`)
 
