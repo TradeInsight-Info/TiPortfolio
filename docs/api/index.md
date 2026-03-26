@@ -19,7 +19,7 @@ portfolio = ti.Portfolio(
         ti.algo.WeighEqually(),
         ti.algo.Rebalance(),
     ],
-    children=["QQQ", "BIL", "GLD"],
+    ["QQQ", "BIL", "GLD"],
 )
 
 result = ti.run(ti.Backtest(portfolio, data))
@@ -51,28 +51,25 @@ Fetches OHLCV price data for the given tickers. Returns a DataFrame with a Multi
 ### `Portfolio`
 
 ```python
-ti.Portfolio(
-    name: str,
-    algos: list[Algo],
-    children: list[str | Portfolio],
-)
+ti.Portfolio(name: str, algos: list[Algo], [str | Portfolio, ...])
 ```
 
-A node in the strategy tree. `children` accepts either ticker strings (leaf) or nested `Portfolio` objects (parent/regime-switching).
+A node in the strategy tree. The optional third argument is a list that can be:
+
+- **omitted or empty** — portfolio with no pre-defined universe (algos manage selection entirely)
+- **ticker strings** — leaf node; these are the tradeable symbols
+- **`Portfolio` objects** — parent node; capital is routed to child portfolios
+- **mixed** — tickers and child portfolios together
 
 ```python
-# Leaf portfolio — children are ticker strings
-ti.Portfolio("monthly", [...algos...], children=["QQQ", "BIL", "GLD"])
-
-# Parent portfolio — children are sub-portfolios (regime switching)
-ti.Portfolio("regime", [...algos...], children=[low_vol_portfolio, high_vol_portfolio])
+ti.Portfolio("monthly", [...algos...], ["QQQ", "BIL", "GLD"])
+ti.Portfolio("regime",  [...algos...], [low_vol_portfolio, high_vol_portfolio])
+ti.Portfolio("dynamic", [...algos...])   # no fixed universe
 ```
 
 The `algos` list is wrapped internally in an `AlgoStack`. Each algo runs in order, returning `True` to continue or `False` to abort the rebalance for this node. For tree portfolios, the parent stack runs first; if it returns `True`, the engine forks a `Context` for the selected child and evaluates it recursively.
 
-In **parent portfolios** (children are `Portfolio` objects), `SelectAll()` and other select algos populate `context.selected` with child portfolio names rather than ticker strings. `WeighEqually()` and `WeighFixedRatio()` operate on those names the same way — writing `{"long": 0.5, "short": 0.5}` to `context.weights`. `Rebalance()` at the parent level then proportionally allocates capital across children before each child's own stack runs.
-
-Child portfolios do not need a schedule algo — the parent controls when evaluation happens.
+In **parent portfolios**, `SelectAll()` populates `context.selected` with child portfolio names. `WeighEqually()` and `WeighFixedRatio()` operate on those names the same way — writing `{"long": 0.5, "short": 0.5}` to `context.weights`. Child portfolios do not need a schedule algo — the parent controls when evaluation happens.
 
 ---
 
@@ -109,7 +106,7 @@ Control *which* tickers are included. Writes to `context.selected`.
 
 | Algo | Signature | Description |
 |---|---|---|
-| `SelectAll` | `()` | Selects the full universe |
+| `SelectAll` | `()` | Select all tickers |
 | `SelectMomentum` | `(n, lookback, lag=1, sort_descending=True)` | Selects top/bottom `n` by momentum score |
 
 #### Weigh Algos
@@ -179,13 +176,10 @@ ti.TiConfig(
     risk_free_rate: float = 0.04,
     initial_capital: float = 10_000,
     bars_per_year: int = 252,
-    benchmark: str | None = None,   # optional — ticker for a buy-and-hold comparison
 )
 ```
 
 Global defaults for all backtests. Pass a custom instance to `Backtest(config=...)` to override.
-
-`benchmark` is optional. When provided, the engine runs a buy-and-hold (long hold, never rebalance) strategy on that ticker alongside your backtest, and `plot()` overlays its equity curve for comparison. When `None`, no benchmark is shown.
 
 ### `Backtest`
 
@@ -399,7 +393,7 @@ class MyTrigger(Algo):
 Then add it to any stack:
 
 ```python
-ti.Portfolio("my_strategy", [MyTrigger(), ti.algo.SelectAll(), ti.algo.WeighEqually(), ti.algo.Rebalance()], children=[...])
+ti.Portfolio("my_strategy", [MyTrigger(), ti.algo.SelectAll(), ti.algo.WeighEqually(), ti.algo.Rebalance()], [...])
 ```
 
 ### Custom Data Source

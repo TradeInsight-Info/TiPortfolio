@@ -9,16 +9,6 @@ TiPortfolio is a portfolio management tool with built-in state-of-the-art portfo
 - Support portfolio performance metrics in the end report
 
 
-## Structure
-
-`src/tiportfolio
-
-- `__init__.py`
-- `helpers/` to handle data fetching, processing, and other helper functions
-- `algo.py` to handle different algorithms for rebalancing trigger and allocation strategy, and also the algo stack and tree structure
-- `portfolio.py` to handle the portfolio structure
-- `backtest.py` to handle the backtesting process, and also the result report generation
-
 
 ## Know more
 

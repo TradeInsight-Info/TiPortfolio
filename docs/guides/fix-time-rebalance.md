@@ -21,7 +21,7 @@ portfolio = ti.Portfolio(
         ti.algo.WeighFixedRatio(weights=target_ratio),  # fixed target weights
         ti.algo.Rebalance(),                    # execute trades
     ],
-    children=tickers,
+    tickers,
 )
 
 result = ti.run(ti.Backtest(portfolio, data))
@@ -45,7 +45,7 @@ portfolio = ti.Portfolio(
         ti.algo.WeighEqually(),
         ti.algo.Rebalance(),
     ],
-    children=tickers,
+    tickers,
 )
 
 result = ti.run(ti.Backtest(portfolio, data))
@@ -71,7 +71,7 @@ portfolio = ti.Portfolio(
         ti.algo.WeighEqually(),
         ti.algo.Rebalance(),
     ],
-    children=tickers,
+    tickers,
 )
 
 result = ti.run(ti.Backtest(portfolio, data))
@@ -95,7 +95,7 @@ portfolio = ti.Portfolio(
         ti.algo.WeighEqually(),
         ti.algo.Rebalance(),
     ],
-    children=tickers,
+    tickers,
 )
 ```
 
@@ -120,7 +120,7 @@ portfolio = ti.Portfolio(
         ti.algo.WeighEqually(),
         ti.algo.Rebalance(),
     ],
-    children=tickers,
+    tickers,
 )
 
 result = ti.run(ti.Backtest(portfolio, data))
@@ -144,7 +144,7 @@ portfolio = ti.Portfolio(
         ti.algo.WeighEqually(),
         ti.algo.Rebalance(),
     ],
-    children=tickers,
+    tickers,
 )
 
 result = ti.run(ti.Backtest(portfolio, data))

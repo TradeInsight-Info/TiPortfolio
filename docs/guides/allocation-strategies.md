@@ -55,7 +55,7 @@ long = ti.Portfolio(
         ti.algo.WeighEqually(),
         ti.algo.Rebalance(),
     ],
-    children=tickers,
+    tickers,
 )
 
 short = ti.Portfolio(
@@ -70,7 +70,7 @@ short = ti.Portfolio(
         ti.algo.WeighEqually(sign=-1),
         ti.algo.Rebalance(),
     ],
-    children=tickers,
+    tickers,
 )
 
 dollar_neutral_portfolio = ti.Portfolio(
@@ -81,7 +81,7 @@ dollar_neutral_portfolio = ti.Portfolio(
         ti.algo.WeighEqually(), # 50% capital to each child
         ti.algo.Rebalance(),    # allocates capital to children
     ],
-    children=[long, short],
+    [long, short],
 )
 
 result = ti.run(ti.Backtest(dollar_neutral_portfolio, data))
@@ -114,7 +114,7 @@ portfolio = ti.Portfolio(
         ),
         ti.algo.Rebalance(),
     ],
-    children=tickers,
+    tickers,
 )
 
 result = ti.run(ti.Backtest(portfolio, data))
@@ -149,7 +149,7 @@ portfolio = ti.Portfolio(
         ),
         ti.algo.Rebalance(),
     ],
-    children=tickers,
+    tickers,
 )
 
 result = ti.run(ti.Backtest(portfolio, data))
@@ -186,7 +186,7 @@ portfolio = ti.Portfolio(
         ),
         ti.algo.Rebalance(),
     ],
-    children=tickers,
+    tickers,
 )
 
 result = ti.run(ti.Backtest(portfolio, data))

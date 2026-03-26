@@ -95,7 +95,7 @@ All concrete algos. Internal files are organized by the *role* each algo plays i
 | File | Role in stack | Algos |
 |---|---|---|
 | `schedule.py` | **When** to rebalance | `ScheduleMonthly`, `ScheduleQuarterly`, `Schedule` |
-| `select.py` | **What** to include | `SelectAll`, `SelectMomentum` |
+| `select.py` | **What** to include | `SelectAll` (select all tickers), `SelectMomentum` |
 | `weigh.py` | **How much** to allocate | `WeighEqually`, `WeighFixedRatio`, `WeighBasedOnHV`, `WeighBasedOnBeta`, `WeighERC` |
 | `rebalance.py` | **Action** — execute trades | `Rebalance`, `PrintInfo` |
 | `signal.py` | **Route** between child portfolios | `VixSignal`, `WeighSelected` |
@@ -112,14 +112,16 @@ A tree node that owns an `AlgoStack` and optionally child `Portfolio` nodes. Rep
 class Portfolio:
     name: str
     algos: AlgoStack                      # built from the list passed to __init__
-    children: list[str | Portfolio]       # ticker strings (leaf) or sub-portfolios (parent)
+    members: list[str | Portfolio]        # optional; ticker strings, child portfolios, or mixed
 ```
 
-`children` unifies the two cases in the tree:
-- **Leaf node**: `children = ["QQQ", "BIL", "GLD"]` — tradeable symbols
-- **Parent node**: `children = [low_vol_portfolio, high_vol_portfolio]` — sub-strategies
+The third positional argument (no keyword) can be:
+- **omitted / empty** — no fixed universe
+- **ticker strings** — leaf node; tradeable symbols
+- **`Portfolio` objects** — parent node; sub-strategies
+- **mixed** — both tickers and child portfolios
 
-The engine detects whether a node is a leaf (all children are `str`) or a parent (children contain `Portfolio`). A parent uses signal algos to select one child portfolio on each date; a leaf runs its stack directly against its ticker symbols.
+The engine detects node type at runtime. A parent uses signal algos to select one child on each date; a leaf runs its stack directly against its ticker symbols.
 
 ---
 

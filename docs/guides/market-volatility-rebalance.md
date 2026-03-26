@@ -36,7 +36,7 @@ low_vol_portfolio = ti.Portfolio(
         ti.algo.WeighFixedRatio(weights={"QQQ": 0.8, "BIL": 0.15, "GLD": 0.05}),
         ti.algo.Rebalance(),
     ],
-    children=tickers,
+    tickers,
 )
 
 # Child: high-volatility regime — defensive allocation
@@ -47,7 +47,7 @@ high_vol_portfolio = ti.Portfolio(
         ti.algo.WeighFixedRatio(weights={"QQQ": 0.5, "BIL": 0.4, "GLD": 0.1}),
         ti.algo.Rebalance(),
     ],
-    children=tickers,
+    tickers,
 )
 
 # Parent: uses VIX to route capital to the right child each month
@@ -59,7 +59,7 @@ portfolio = ti.Portfolio(
         ti.algo.WeighSelected(1),    # give 100% of capital to selected child
         ti.algo.Rebalance(),
     ],
-    children=[low_vol_portfolio, high_vol_portfolio],
+    [low_vol_portfolio, high_vol_portfolio],
 )
 
 result = ti.run(ti.Backtest(portfolio, data))

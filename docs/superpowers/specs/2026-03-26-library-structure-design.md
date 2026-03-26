@@ -145,13 +145,18 @@ class Portfolio:
         self,
         name: str,
         algos: list[Algo],
-        children: list[str | Portfolio],
+        /,
+        *members: str | Portfolio,
     ): ...
 ```
 
-- `children`: accepts ticker strings (leaf node) or nested `Portfolio` objects (parent node)
-- `algos` is internally wrapped in `AlgoStack`
-- The engine distinguishes leaf vs parent by inspecting whether `children` contains strings or `Portfolio` objects
+The third argument is positional and variadic. It accepts:
+- nothing — portfolio with no fixed universe
+- ticker strings — leaf node; tradeable symbols
+- `Portfolio` objects — parent node; children to route capital into
+- mixed — both tickers and child portfolios
+
+The engine detects node type at runtime from the members list. `algos` is internally wrapped in `AlgoStack`.
 
 ---
 
@@ -166,7 +171,6 @@ class TiConfig:
     risk_free_rate: float = 0.04
     initial_capital: float = 10_000
     bars_per_year: int = 252
-    benchmark: str | None = None   # optional; when set, runs a buy-and-hold on that ticker for comparison
 ```
 
 ### `Backtest` (in `backtest.py`)
@@ -247,7 +251,7 @@ portfolio = ti.Portfolio(
         ti.algo.WeighEqually(),
         ti.algo.Rebalance(),
     ],
-    children=["QQQ", "BIL", "GLD"],
+    ["QQQ", "BIL", "GLD"],
 )
 
 # 3. Run
