@@ -71,6 +71,6 @@ These fields are the communication channel between algo stages in a stack:
 |---|---|---|---|
 | `selected` | `list[str]` | Select algos | Weigh algos, Rebalance |
 | `weights` | `dict[str, float]` | Weigh algos | Rebalance |
-| `selected_child` | `Portfolio \| None` | VixSignal (and other signal algos) | engine (routes capital to selected child automatically) |
+| `selected_child` | `Portfolio \| None` | Signal algos (e.g. `Signal.VIX`) | engine (routes capital to selected child automatically) |
 
 In **parent portfolios** (children are `Portfolio` objects), `selected` contains child portfolio names rather than ticker strings. `Weigh.Equally()` and `Weigh.Ratio()` work the same way — operating on names rather than tickers.

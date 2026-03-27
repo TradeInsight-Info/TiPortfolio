@@ -82,8 +82,7 @@ In **parent portfolios**, `Select.All()` populates `context.selected` with child
 All algo namespaces are exposed directly under `ti`. A typical stack follows four roles in order:
 
 ```
-Signal    → Select    → Weigh    → Action
-Schedule.*  Select.*    Weigh.*    Action.*
+Signal.*  → Select.*  → Weigh.*  → Action.*
   When?      What?     How much?   Execute
 ```
 
@@ -113,7 +112,7 @@ Signal algos fall into two sub-types:
 
 | Algo | Signature | Description |
 |---|---|---|
-| `Signal.VIX` | `(high: float, low: float, signal: pd.DataFrame)` | Sets `context.selected_child` based on VIX regime; `signal` is a pre-fetched OHLCV DataFrame |
+| `Signal.VIX` | `(high: float, low: float, data: pd.DataFrame)` | Sets `context.selected_child` based on VIX regime; `signal` is a pre-fetched OHLCV DataFrame |
 
 #### Select Algos
 
@@ -125,7 +124,7 @@ Control *which* tickers are included. Writes to `context.selected`.
 |---|---|---|
 | `Select.Select` | `(tickers: list[str])` | Base — writes an explicit ticker list to `context.selected` |
 | `Select.All` | `()` | Proxy: selects all tickers in the portfolio |
-| `Select.Momentum` | `(n, lookback, lag=1, sort_descending=True)` | Proxy: selects top/bottom `n` by momentum score |
+| `Select.Momentum` | `(n: int, lookback: pd.DateOffset, lag: pd.DateOffset = pd.DateOffset(days=1), sort_descending: bool = True)` | Proxy: selects top/bottom `n` by momentum score |
 
 #### Weigh Algos
 
@@ -181,7 +180,7 @@ ti.branching.Or(
 )
 
 # Trigger only when NOT in high-volatility regime
-ti.branching.Not(ti.Signal.VIX(high=30, low=20, signal=vix_data))
+ti.branching.Not(ti.Signal.VIX(high=30, low=20, data=vix_data))
 ```
 
 ---
@@ -356,7 +355,7 @@ result.plot_security_weights(interactive: bool = True) -> None
 
 Portfolio performance chart. Shows:
 
-- Equity curve vs benchmark (default: SPY)
+- Equity curve
 - Drawdown chart below
 
 When `interactive=True`, renders with Plotly: hover to see daily return and cumulative performance, click a date to inspect the trade record for that rebalance. When `interactive=False`, renders a static Matplotlib figure suitable for export.

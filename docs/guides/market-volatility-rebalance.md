@@ -53,7 +53,7 @@ portfolio = ti.Portfolio(
     'vix_based_rebalance',
     [
         ti.Signal.Monthly(),
-        ti.Signal.VIX(high=30, low=20, signal=vix_data),
+        ti.Signal.VIX(high=30, low=20, data=vix_data),
         # engine automatically routes capital to selected_child
     ],
     [low_vol_portfolio, high_vol_portfolio],

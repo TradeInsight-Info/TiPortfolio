@@ -284,7 +284,7 @@ Signal algos are the first step in any `AlgoQueue` — they control *when* to pr
 
 | Class | Description |
 |---|---|
-| `Signal.VIX(high: float, low: float, signal: pd.DataFrame)` | Sets `context.selected_child` based on VIX regime; reads `close` from `signal` DataFrame |
+| `Signal.VIX(high: float, low: float, data: pd.DataFrame)` | Sets `context.selected_child` based on VIX regime; reads `close` from `data` DataFrame |
 
 `Signal.VIX` takes a pre-fetched OHLCV DataFrame (via `ti.fetch_data`). When VIX > `high`, second child selected; when VIX < `low`, first child selected; between thresholds, previous selection persists.
 
