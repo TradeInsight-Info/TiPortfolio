@@ -113,7 +113,7 @@ Signal algos fall into two sub-types:
 
 | Algo | Signature | Description |
 |---|---|---|
-| `VixSignal` | `(high: float, low: float, signal: pd.DataFrame)` | Sets `context.selected_child` based on VIX regime; `signal` is a pre-fetched OHLCV DataFrame |
+| `Signal.VIX` | `(high: float, low: float, signal: pd.DataFrame)` | Sets `context.selected_child` based on VIX regime; `signal` is a pre-fetched OHLCV DataFrame |
 
 #### Select Algos
 
@@ -181,7 +181,7 @@ ti.branching.Or(
 )
 
 # Trigger only when NOT in high-volatility regime
-ti.branching.Not(ti.VixSignal(high=30, low=20, signal=vix_data))
+ti.branching.Not(ti.Signal.VIX(high=30, low=20, signal=vix_data))
 ```
 
 ---

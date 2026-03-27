@@ -10,7 +10,7 @@ This uses the [Tree Structure](https://pmorissette.github.io/bt/tree.html) conce
 When a portfolio's `children` are other `Portfolio` objects (not ticker strings), the engine evaluates it as a **parent node**:
 
 1. The parent's algo stack runs first
-2. A signal algo (e.g. `VixSignal`) sets `context.selected_child`
+2. A signal algo (e.g. `Signal.VIX`) sets `context.selected_child`
 3. The engine automatically routes 100% of capital to `selected_child` and evaluates it with a fresh context
 
 Child portfolios **do not need a schedule algo** — the parent controls when evaluation happens. Children just describe *how* to allocate when they are active.
@@ -53,7 +53,7 @@ portfolio = ti.Portfolio(
     'vix_based_rebalance',
     [
         ti.Signal.Monthly(),
-        ti.VixSignal(high=30, low=20, signal=vix_data),
+        ti.Signal.VIX(high=30, low=20, signal=vix_data),
         # engine automatically routes capital to selected_child
     ],
     [low_vol_portfolio, high_vol_portfolio],

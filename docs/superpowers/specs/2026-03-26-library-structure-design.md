@@ -39,7 +39,7 @@ Selected over:
 
 ```
 src/tiportfolio/
-  __init__.py         # Public API: fetch_data, Portfolio, Backtest, BacktestResult, run, Signal, Select, Weigh, Action, VixSignal, branching
+  __init__.py         # Public API: fetch_data, Portfolio, Backtest, BacktestResult, run, Signal, Select, Weigh, Action, branching
   config.py           # TiConfig dataclass with defaults
   algo.py             # Algo ABC + AlgoQueue + Or/Not (Or and Not also re-exported via branching.py)
   branching.py        # Thin re-export shim: "from tiportfolio.algo import Or, And, Not"
@@ -261,8 +261,7 @@ result.trades
 
 Namespaces exposed directly under `ti`:
 - `ti.run` — entry point
-- `ti.Schedule`, `ti.Select`, `ti.Weigh`, `ti.Action` — algo namespaces
-- `ti.VixSignal` — market-based signal algo
+- `ti.Signal`, `ti.Select`, `ti.Weigh`, `ti.Action` — algo namespaces (Signal includes both time-based and market-based algos)
 - `ti.branching.Or`, `ti.branching.And`, `ti.branching.Not`
 
 ---
@@ -285,9 +284,9 @@ Signal algos are the first step in any `AlgoQueue` — they control *when* to pr
 
 | Class | Description |
 |---|---|
-| `VixSignal(high: float, low: float, signal: pd.DataFrame)` | Sets `context.selected_child` based on VIX regime; reads `close` from `signal` DataFrame |
+| `Signal.VIX(high: float, low: float, signal: pd.DataFrame)` | Sets `context.selected_child` based on VIX regime; reads `close` from `signal` DataFrame |
 
-`VixSignal` takes a pre-fetched OHLCV DataFrame (via `ti.fetch_data`). When VIX > `high`, second child selected; when VIX < `low`, first child selected; between thresholds, previous selection persists.
+`Signal.VIX` takes a pre-fetched OHLCV DataFrame (via `ti.fetch_data`). When VIX > `high`, second child selected; when VIX < `low`, first child selected; between thresholds, previous selection persists.
 
 ### Select algos (`algos/select.py`)
 
@@ -324,7 +323,7 @@ Signal algos are the first step in any `AlgoQueue` — they control *when* to pr
 For a parent portfolio with children, the simulation evaluates depth-first:
 
 1. Parent's `AlgoQueue` runs on the current `Context`
-2. A signal algo (e.g. `VixSignal`) sets `context.selected_child` to one of `portfolio.children`
+2. A signal algo (e.g. `Signal.VIX`) sets `context.selected_child` to one of `portfolio.children`
 3. If the parent stack returns `True`, the engine automatically routes capital to `selected_child` and evaluates it with a **forked `Context`** (same `prices`/`date`/`config`, fresh `selected`/`weights`/`selected_child`, `portfolio` = child)
 5. The child's `AlgoQueue` runs normally (schedule → select → weigh → rebalance)
 6. The child may itself have children, enabling arbitrarily deep nesting

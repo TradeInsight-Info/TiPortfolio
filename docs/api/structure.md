@@ -39,11 +39,10 @@ from tiportfolio import (
     BacktestResult,
     TiConfig,
     run,         # accepts *tests for multi-backtest comparison
-    Signal,      # ti.Signal.Monthly(), ti.Signal.Quarterly(), ti.Signal.Schedule()
+    Signal,      # ti.Signal.Monthly(), ti.Signal.Quarterly(), ti.Signal.Schedule(), ti.Signal.VIX()
     Select,      # ti.Select.All(), ti.Select.Momentum(), ti.Select.Select()
     Weigh,       # ti.Weigh.Equally(), ti.Weigh.Ratio(), ti.Weigh.Weigh(), ...
     Action,      # ti.Action.Rebalance(), ti.Action.PrintInfo()
-    VixSignal,   # market-based signal algo
     branching,   # ti.branching.Or / .And / .Not
 )
 ```
@@ -98,7 +97,7 @@ All concrete algos. Internal files are organized by the *role* each algo plays i
 
 | File | Role in stack | Algos |
 |---|---|---|
-| `signal.py` | **When / which branch** — time-based and market-based signals | `Signal` namespace: `Signal.Schedule` (base), `Signal.Monthly`, `Signal.Quarterly`; `VixSignal` |
+| `signal.py` | **When / which branch** — time-based and market-based signals | `Signal` namespace: `Signal.Schedule` (base), `Signal.Monthly`, `Signal.Quarterly`; `Signal.VIX` |
 | `select.py` | **What** to include | `Select` namespace: `Select.Select` (base), `Select.All`, `Select.Momentum` |
 | `weigh.py` | **How much** to allocate | `Weigh` namespace: `Weigh.Weigh` (base) + proxies: `Weigh.Equally`, `Weigh.Ratio`, `Weigh.BasedOnHV`, `Weigh.BasedOnBeta`, `Weigh.ERC` |
 | `rebalance.py` | **Action** — execute trades | `Action` namespace: `Action.Rebalance`, `Action.PrintInfo` |
