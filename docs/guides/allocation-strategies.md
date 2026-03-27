@@ -76,7 +76,7 @@ short = ti.Portfolio(
 dollar_neutral_portfolio = ti.Portfolio(
     'dollar_neutral',
     [
-        ti.Schedule.Monthly(),
+        ti.Signal.Monthly(),
         ti.Select.All(),    # selects child portfolio names: ["long", "short"]
         ti.Weigh.Equally(), # 50% capital to each child
         ti.Action.Rebalance(),    # allocates capital to children
@@ -105,7 +105,7 @@ data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 portfolio = ti.Portfolio(
     'monthly',
     [
-        ti.Schedule.Monthly(),
+        ti.Signal.Monthly(),
         ti.Select.All(),
         ti.Weigh.BasedOnHV(
             initial_ratio={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1},
@@ -138,7 +138,7 @@ data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 portfolio = ti.Portfolio(
     'erc_monthly',
     [
-        ti.Schedule.Monthly(),
+        ti.Signal.Monthly(),
         ti.Select.All(),
         ti.Weigh.ERC(
             lookback=pd.DateOffset(months=3),  # covariance estimation window
@@ -177,7 +177,7 @@ data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 portfolio = ti.Portfolio(
     'monthly',
     [
-        ti.Schedule.Monthly(),
+        ti.Signal.Monthly(),
         ti.Select.All(),
         ti.Weigh.BasedOnBeta(
             initial_ratio={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1},

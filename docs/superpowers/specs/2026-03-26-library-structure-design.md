@@ -31,7 +31,7 @@ Selected over:
 
 ### Rationale
 
-`algo.py` stays small and stable (just the ABC + AlgoQueue + branching). `algos/` holds growing concrete implementations grouped by category. Re-exports in `algos/__init__.py` keep the public namespace identical: `ti.Schedule.Monthly` works regardless of internal file layout.
+`algo.py` stays small and stable (just the ABC + AlgoQueue + branching). `algos/` holds growing concrete implementations grouped by category. Re-exports in `algos/__init__.py` keep the public namespace identical: `ti.Signal.Monthly` works regardless of internal file layout.
 
 ---
 
@@ -39,14 +39,14 @@ Selected over:
 
 ```
 src/tiportfolio/
-  __init__.py         # Public API: fetch_data, Portfolio, Backtest, BacktestResult, run, Schedule, Select, Weigh, Action, VixSignal, branching
+  __init__.py         # Public API: fetch_data, Portfolio, Backtest, BacktestResult, run, Signal, Select, Weigh, Action, VixSignal, branching
   config.py           # TiConfig dataclass with defaults
   algo.py             # Algo ABC + AlgoQueue + Or/Not (Or and Not also re-exported via branching.py)
   branching.py        # Thin re-export shim: "from tiportfolio.algo import Or, And, Not"
                       # Makes ti.branching.Or / ti.branching.And / ti.branching.Not work as a distinct namespace
   algos/
     __init__.py       # Re-exports all concrete algos → accessible as ti.algo.*
-    signal.py         # Schedule namespace (Schedule.Schedule, Schedule.Monthly, Schedule.Quarterly) + VixSignal
+    signal.py         # Signal namespace (Signal.Schedule, Signal.Monthly, Signal.Quarterly) + VixSignal
     select.py         # Select namespace (Select.Select, Select.All, Select.Momentum)
     weigh.py          # Weigh namespace: Weigh.Weigh (base) + proxies: Weigh.Equally, Weigh.Ratio, Weigh.BasedOnHV, Weigh.BasedOnBeta, Weigh.ERC
     rebalance.py      # Action namespace: Action.Rebalance, Action.PrintInfo
@@ -242,7 +242,7 @@ data = ti.fetch_data(["QQQ", "BIL", "GLD"], start="2019-01-01", end="2024-12-31"
 portfolio = ti.Portfolio(
     "monthly_rebalance",
     [
-        ti.Schedule.Monthly(),
+        ti.Signal.Monthly(),
         ti.Select.All(),
         ti.Weigh.Equally(),
         ti.Action.Rebalance(),
@@ -273,13 +273,13 @@ Namespaces exposed directly under `ti`:
 
 Signal algos are the first step in any `AlgoQueue` — they control *when* to proceed and *which branch* receives capital. Two sub-types live in the same file:
 
-**Time-based signals** — `Schedule` is a namespace; `Schedule.Schedule` is the primitive; `Schedule.Monthly` and `Schedule.Quarterly` are proxy subclasses:
+**Time-based signals** — `Signal` is a namespace; `Signal.Schedule` is the primitive; `Signal.Monthly` and `Signal.Quarterly` are proxy subclasses:
 
 | Class | Description |
 |---|---|
-| `Schedule.Schedule(month=None, day="end", next_trading_day=True)` | Base — fires on `day` of `month`; every month if `month=None` |
-| `Schedule.Monthly(day="end", next_trading_day=True)` | Proxy → `Schedule.Schedule`: monthly preset |
-| `Schedule.Quarterly(months=[2,5,8,11], day="end")` | Proxy → `Or(Schedule.Schedule(month=m) for m in months)`: quarterly preset |
+| `Signal.Schedule(month=None, day="end", next_trading_day=True)` | Base — fires on `day` of `month`; every month if `month=None` |
+| `Signal.Monthly(day="end", next_trading_day=True)` | Proxy → `Signal.Schedule`: monthly preset |
+| `Signal.Quarterly(months=[2,5,8,11], day="end")` | Proxy → `Or(Signal.Schedule(month=m) for m in months)`: quarterly preset |
 
 **Market-based signals** — fire based on market data; route capital to child portfolios:
 

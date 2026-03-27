@@ -16,7 +16,7 @@ data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 portfolio = ti.Portfolio(
     'monthly_rebalance',
     [
-        ti.Schedule.Monthly(),              # trigger: end of month
+        ti.Signal.Monthly(),              # trigger: end of month
         ti.Select.All(),                    # select all tickers
         ti.Weigh.Ratio(weights=target_ratio),  # fixed target weights
         ti.Action.Rebalance(),                    # execute trades
@@ -40,7 +40,7 @@ data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 portfolio = ti.Portfolio(
     'monthly_rebalance_mid',
     [
-        ti.Schedule.Monthly(day=15, next_trading_day=True),  # 15th or next trading day
+        ti.Signal.Monthly(day=15, next_trading_day=True),  # 15th or next trading day
         ti.Select.All(),
         ti.Weigh.Equally(),
         ti.Action.Rebalance(),
@@ -66,7 +66,7 @@ data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 portfolio = ti.Portfolio(
     'quarterly_rebalance',
     [
-        ti.Schedule.Quarterly(months=[2, 5, 8, 11]),  # end of Feb/May/Aug/Nov
+        ti.Signal.Quarterly(months=[2, 5, 8, 11]),  # end of Feb/May/Aug/Nov
         ti.Select.All(),
         ti.Weigh.Equally(),
         ti.Action.Rebalance(),
@@ -86,10 +86,10 @@ portfolio = ti.Portfolio(
     'quarterly_rebalance',
     [
         ti.branching.Or(
-            ti.Schedule.Schedule(month=2),
-            ti.Schedule.Schedule(month=5),
-            ti.Schedule.Schedule(month=8),
-            ti.Schedule.Schedule(month=11),
+            ti.Signal.Schedule(month=2),
+            ti.Signal.Schedule(month=5),
+            ti.Signal.Schedule(month=8),
+            ti.Signal.Schedule(month=11),
         ),
         ti.Select.All(),
         ti.Weigh.Equally(),
@@ -113,8 +113,8 @@ portfolio = ti.Portfolio(
     'half_year_rebalance',
     [
         ti.branching.Or(
-            ti.Schedule.Schedule(day=15, next_trading_day=True, month=2),
-            ti.Schedule.Schedule(day=15, next_trading_day=True, month=8),
+            ti.Signal.Schedule(day=15, next_trading_day=True, month=2),
+            ti.Signal.Schedule(day=15, next_trading_day=True, month=8),
         ),
         ti.Select.All(),
         ti.Weigh.Equally(),
@@ -139,7 +139,7 @@ data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 portfolio = ti.Portfolio(
     'yearly_rebalance',
     [
-        ti.Schedule.Schedule(day=15, next_trading_day=True, month=7),
+        ti.Signal.Schedule(day=15, next_trading_day=True, month=7),
         ti.Select.All(),
         ti.Weigh.Equally(),
         ti.Action.Rebalance(),

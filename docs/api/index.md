@@ -14,7 +14,7 @@ data = ti.fetch_data(["QQQ", "BIL", "GLD"], start="2019-01-01", end="2024-12-31"
 portfolio = ti.Portfolio(
     "monthly_rebalance",
     [
-        ti.Schedule.Monthly(),
+        ti.Signal.Monthly(),
         ti.Select.All(),
         ti.Weigh.Equally(),
         ti.Action.Rebalance(),
@@ -95,19 +95,19 @@ Signal algos fall into two sub-types:
 
 **Time-based signals** — fire on a calendar schedule:
 
-`Schedule` is a namespace. `Schedule.Schedule` is the primitive; `Schedule.Monthly` and `Schedule.Quarterly` are proxy subclasses that call `Schedule.Schedule` with preset configuration:
+`Signal` is a namespace. `Signal.Schedule` is the primitive; `Signal.Monthly` and `Signal.Quarterly` are proxy subclasses that call `Signal.Schedule` with preset configuration:
 
-| Algo | Equivalent `Schedule.Schedule` configuration |
+| Algo | Equivalent `Signal.Schedule` configuration |
 |---|---|
-| `Schedule.Monthly(day="end", next_trading_day=True)` | `Schedule.Schedule(day="end", next_trading_day=True)` |
-| `Schedule.Monthly(day=15, next_trading_day=True)` | `Schedule.Schedule(day=15, next_trading_day=True)` |
-| `Schedule.Quarterly(months=[2,5,8,11], day="end")` | `Or(Schedule.Schedule(month=2), ..., Schedule.Schedule(month=11))` |
+| `Signal.Monthly(day="end", next_trading_day=True)` | `Signal.Schedule(day="end", next_trading_day=True)` |
+| `Signal.Monthly(day=15, next_trading_day=True)` | `Signal.Schedule(day=15, next_trading_day=True)` |
+| `Signal.Quarterly(months=[2,5,8,11], day="end")` | `Or(Signal.Schedule(month=2), ..., Signal.Schedule(month=11))` |
 
 | Algo | Signature | Description |
 |---|---|---|
-| `Schedule.Schedule` | `(month=None, day="end", next_trading_day=True)` | Base — fires on `day` of `month` (or every month if `month=None`) |
-| `Schedule.Monthly` | `(day="end", next_trading_day=True)` | Proxy: monthly rebalance preset |
-| `Schedule.Quarterly` | `(months=[2,5,8,11], day="end")` | Proxy: `Or`-wrapped quarterly rebalance preset |
+| `Signal.Schedule` | `(month=None, day="end", next_trading_day=True)` | Base — fires on `day` of `month` (or every month if `month=None`) |
+| `Signal.Monthly` | `(day="end", next_trading_day=True)` | Proxy: monthly rebalance preset |
+| `Signal.Quarterly` | `(months=[2,5,8,11], day="end")` | Proxy: `Or`-wrapped quarterly rebalance preset |
 
 **Market-based signals** — fire based on market data; used in parent portfolios to route capital to child portfolios:
 
@@ -174,10 +174,10 @@ ti.branching.Not(algo: Algo)     # inverts result of wrapped algo
 ```python
 # Trigger quarterly: month 2 OR 5 OR 8 OR 11
 ti.branching.Or(
-    ti.Schedule.Schedule(month=2),
-    ti.Schedule.Schedule(month=5),
-    ti.Schedule.Schedule(month=8),
-    ti.Schedule.Schedule(month=11),
+    ti.Signal.Schedule(month=2),
+    ti.Signal.Schedule(month=5),
+    ti.Signal.Schedule(month=8),
+    ti.Signal.Schedule(month=11),
 )
 
 # Trigger only when NOT in high-volatility regime

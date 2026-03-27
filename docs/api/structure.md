@@ -39,7 +39,7 @@ from tiportfolio import (
     BacktestResult,
     TiConfig,
     run,         # accepts *tests for multi-backtest comparison
-    Schedule,    # ti.Schedule.Monthly(), ti.Schedule.Quarterly(), ti.Schedule.Schedule()
+    Signal,      # ti.Signal.Monthly(), ti.Signal.Quarterly(), ti.Signal.Schedule()
     Select,      # ti.Select.All(), ti.Select.Momentum(), ti.Select.Select()
     Weigh,       # ti.Weigh.Equally(), ti.Weigh.Ratio(), ti.Weigh.Weigh(), ...
     Action,      # ti.Action.Rebalance(), ti.Action.PrintInfo()
@@ -98,12 +98,12 @@ All concrete algos. Internal files are organized by the *role* each algo plays i
 
 | File | Role in stack | Algos |
 |---|---|---|
-| `signal.py` | **When / which branch** — time-based and market-based signals | `Schedule` namespace: `Schedule.Schedule` (base), `Schedule.Monthly`, `Schedule.Quarterly`; `VixSignal` |
+| `signal.py` | **When / which branch** — time-based and market-based signals | `Signal` namespace: `Signal.Schedule` (base), `Signal.Monthly`, `Signal.Quarterly`; `VixSignal` |
 | `select.py` | **What** to include | `Select` namespace: `Select.Select` (base), `Select.All`, `Select.Momentum` |
 | `weigh.py` | **How much** to allocate | `Weigh` namespace: `Weigh.Weigh` (base) + proxies: `Weigh.Equally`, `Weigh.Ratio`, `Weigh.BasedOnHV`, `Weigh.BasedOnBeta`, `Weigh.ERC` |
 | `rebalance.py` | **Action** — execute trades | `Action` namespace: `Action.Rebalance`, `Action.PrintInfo` |
 
-`algos/__init__.py` re-exports everything so `ti.Schedule.Monthly` resolves correctly.
+`algos/__init__.py` re-exports everything so `ti.Signal.Monthly` resolves correctly.
 
 ---
 
@@ -187,18 +187,18 @@ __init__.py
 Example:
 
 ```python
-# algos/signal.py  — add inside the Schedule namespace class
+# algos/signal.py  — add inside the Signal namespace class
 from tiportfolio.algo import Algo, Context
 
-class Schedule:
+class Signal:
     ...
     class Weekly(Algo):
-        """Proxy → Schedule.Schedule: triggers every Friday (or nearest trading day)."""
+        """Proxy → Signal.Schedule: triggers every Friday (or nearest trading day)."""
         def __call__(self, context: Context) -> bool:
             return context.date.dayofweek == 4  # Friday
 ```
 
 ```python
-# algos/__init__.py  — re-export the updated Schedule namespace
-from tiportfolio.algos.signal import Schedule
+# algos/__init__.py  — re-export the updated Signal namespace
+from tiportfolio.algos.signal import Signal
 ```

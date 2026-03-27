@@ -19,7 +19,7 @@ portfolio = ti.Portfolio(
     'monthly_rebalance',
     [
         # Order matters
-        ti.Schedule.Monthly(), # When
+        ti.Signal.Monthly(), # When
         ti.Select.All(),       # What
         ti.Weigh.Equally(),    # How much
         ti.Action.Rebalance() # Action
