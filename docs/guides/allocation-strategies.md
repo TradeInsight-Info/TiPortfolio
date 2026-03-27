@@ -46,7 +46,7 @@ lag = pd.DateOffset(days=1) # 1 day lag to avoid lookahead bias
 long = ti.Portfolio(
     'long',
     [
-        ti.algo.SelectMomentum(
+        ti.algo.Select.Momentum(
             n=3,
             lookback=lookback,
             lag=lag,
@@ -61,7 +61,7 @@ long = ti.Portfolio(
 short = ti.Portfolio(
     'short',
     [
-        ti.algo.SelectMomentum(
+        ti.algo.Select.Momentum(
             n=3,
             lookback=lookback,
             lag=lag,
@@ -76,8 +76,8 @@ short = ti.Portfolio(
 dollar_neutral_portfolio = ti.Portfolio(
     'dollar_neutral',
     [
-        ti.algo.ScheduleMonthly(),
-        ti.algo.SelectAll(),    # selects child portfolio names: ["long", "short"]
+        ti.algo.Schedule.Monthly(),
+        ti.algo.Select.All(),    # selects child portfolio names: ["long", "short"]
         ti.algo.Weigh.Equally(), # 50% capital to each child
         ti.algo.Rebalance(),    # allocates capital to children
     ],
@@ -105,8 +105,8 @@ data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 portfolio = ti.Portfolio(
     'monthly',
     [
-        ti.algo.ScheduleMonthly(),
-        ti.algo.SelectAll(),
+        ti.algo.Schedule.Monthly(),
+        ti.algo.Select.All(),
         ti.algo.Weigh.BasedOnHV(
             initial_ratio={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1},
             target_hv=60,
@@ -138,8 +138,8 @@ data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 portfolio = ti.Portfolio(
     'erc_monthly',
     [
-        ti.algo.ScheduleMonthly(),
-        ti.algo.SelectAll(),
+        ti.algo.Schedule.Monthly(),
+        ti.algo.Select.All(),
         ti.algo.Weigh.ERC(
             lookback=pd.DateOffset(months=3),  # covariance estimation window
             covar_method="ledoit-wolf",         # shrinkage estimator (default)
@@ -177,8 +177,8 @@ data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 portfolio = ti.Portfolio(
     'monthly',
     [
-        ti.algo.ScheduleMonthly(),
-        ti.algo.SelectAll(),
+        ti.algo.Schedule.Monthly(),
+        ti.algo.Select.All(),
         ti.algo.Weigh.BasedOnBeta(
             initial_ratio={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1},
             target_beta=0,

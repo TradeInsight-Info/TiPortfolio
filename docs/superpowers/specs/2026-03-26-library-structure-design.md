@@ -31,7 +31,7 @@ Selected over:
 
 ### Rationale
 
-`algo.py` stays small and stable (just the ABC + AlgoQueue + branching). `algos/` holds growing concrete implementations grouped by category. Re-exports in `algos/__init__.py` keep the public namespace identical: `ti.algo.ScheduleMonthly` works regardless of internal file layout.
+`algo.py` stays small and stable (just the ABC + AlgoQueue + branching). `algos/` holds growing concrete implementations grouped by category. Re-exports in `algos/__init__.py` keep the public namespace identical: `ti.algo.Schedule.Monthly` works regardless of internal file layout.
 
 ---
 
@@ -46,8 +46,8 @@ src/tiportfolio/
                       # Makes ti.branching.Or / ti.branching.And / ti.branching.Not work as a distinct namespace
   algos/
     __init__.py       # Re-exports all concrete algos → accessible as ti.algo.*
-    signal.py         # All signal algos: Schedule, ScheduleMonthly, ScheduleQuarterly, VixSignal
-    select.py         # SelectAll, SelectMomentum
+    signal.py         # Schedule namespace (Schedule.Schedule, Schedule.Monthly, Schedule.Quarterly) + VixSignal
+    select.py         # Select namespace (Select.Select, Select.All, Select.Momentum)
     weigh.py          # Weigh namespace: Weigh.Weigh (base) + proxies: Weigh.Equally, Weigh.Ratio, Weigh.BasedOnHV, Weigh.BasedOnBeta, Weigh.ERC
     rebalance.py      # Rebalance, PrintInfo
   portfolio.py        # Portfolio tree node
@@ -242,9 +242,9 @@ data = ti.fetch_data(["QQQ", "BIL", "GLD"], start="2019-01-01", end="2024-12-31"
 portfolio = ti.Portfolio(
     "monthly_rebalance",
     [
-        ti.algo.ScheduleMonthly(),
-        ti.algo.SelectAll(),
-        ti.algo.WeighEqually(),
+        ti.algo.Schedule.Monthly(),
+        ti.algo.Select.All(),
+        ti.algo.Weigh.Equally(),
         ti.algo.Rebalance(),
     ],
     ["QQQ", "BIL", "GLD"],
@@ -272,13 +272,13 @@ Namespaces exposed:
 
 Signal algos are the first step in any `AlgoQueue` — they control *when* to proceed and *which branch* receives capital. Two sub-types live in the same file:
 
-**Time-based signals** — `Schedule` is the primitive; `ScheduleMonthly` and `ScheduleQuarterly` are thin wrappers:
+**Time-based signals** — `Schedule` is a namespace; `Schedule.Schedule` is the primitive; `Schedule.Monthly` and `Schedule.Quarterly` are proxy subclasses:
 
 | Class | Description |
 |---|---|
-| `Schedule(month=None, day="end", next_trading_day=True)` | Primitive trigger — fires on `day` of `month`; every month if `month=None` |
-| `ScheduleMonthly(day="end", next_trading_day=True)` | Wrapper: `Schedule(day=day, next_trading_day=next_trading_day)` |
-| `ScheduleQuarterly(months=[2,5,8,11], day="end")` | Wrapper: `Or(Schedule(month=m) for m in months)` |
+| `Schedule.Schedule(month=None, day="end", next_trading_day=True)` | Base — fires on `day` of `month`; every month if `month=None` |
+| `Schedule.Monthly(day="end", next_trading_day=True)` | Proxy → `Schedule.Schedule`: monthly preset |
+| `Schedule.Quarterly(months=[2,5,8,11], day="end")` | Proxy → `Or(Schedule.Schedule(month=m) for m in months)`: quarterly preset |
 
 **Market-based signals** — fire based on market data; route capital to child portfolios:
 
@@ -290,10 +290,13 @@ Signal algos are the first step in any `AlgoQueue` — they control *when* to pr
 
 ### Select algos (`algos/select.py`)
 
+`Select` is a namespace; `Select.Select` is the base; `Select.All` and `Select.Momentum` are proxy subclasses:
+
 | Class | Description |
 |---|---|
-| `SelectAll()` | Select all tickers |
-| `SelectMomentum(n, lookback, lag, sort_descending=True)` | Select top/bottom n by momentum |
+| `Select.Select(tickers: list[str])` | Base — writes explicit ticker list to `context.selected` |
+| `Select.All()` | Proxy → `Select.Select`: selects all tickers in the portfolio |
+| `Select.Momentum(n, lookback, lag, sort_descending=True)` | Proxy → `Select.Select`: selects top/bottom n by momentum |
 
 ### Weigh algos (`algos/weigh.py`)
 

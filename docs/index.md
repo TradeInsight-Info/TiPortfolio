@@ -19,9 +19,9 @@ portfolio = ti.Portfolio(
     'monthly_rebalance',
     [
         # Order matters
-        ti.algo.ScheduleMonthly(), # When
-        ti.algo.Select(), # What
-        ti.algo.Weigh(), # How much
+        ti.algo.Schedule.Monthly(), # When
+        ti.algo.Select.All(),       # What
+        ti.algo.Weigh.Equally(),    # How much
         ti.algo.Rebalance() # Action
     ],
     tickers # match tickers

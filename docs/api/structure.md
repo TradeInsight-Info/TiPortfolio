@@ -94,12 +94,12 @@ All concrete algos. Internal files are organized by the *role* each algo plays i
 
 | File | Role in stack | Algos |
 |---|---|---|
-| `signal.py` | **When / which branch** — time-based and market-based signals | `Schedule`, `ScheduleMonthly`, `ScheduleQuarterly`, `VixSignal` |
-| `select.py` | **What** to include | `SelectAll`, `SelectMomentum` |
+| `signal.py` | **When / which branch** — time-based and market-based signals | `Schedule` namespace: `Schedule.Schedule` (base), `Schedule.Monthly`, `Schedule.Quarterly`; `VixSignal` |
+| `select.py` | **What** to include | `Select` namespace: `Select.Select` (base), `Select.All`, `Select.Momentum` |
 | `weigh.py` | **How much** to allocate | `Weigh` namespace: `Weigh.Weigh` (base) + proxies: `Weigh.Equally`, `Weigh.Ratio`, `Weigh.BasedOnHV`, `Weigh.BasedOnBeta`, `Weigh.ERC` |
 | `rebalance.py` | **Action** — execute trades | `Rebalance`, `PrintInfo` |
 
-`algos/__init__.py` re-exports everything so `ti.algo.ScheduleMonthly` resolves correctly.
+`algos/__init__.py` re-exports everything so `ti.algo.Schedule.Monthly` resolves correctly.
 
 ---
 
@@ -183,16 +183,18 @@ __init__.py
 Example:
 
 ```python
-# algos/schedule.py
+# algos/signal.py  — add inside the Schedule namespace class
 from tiportfolio.algo import Algo, Context
 
-class ScheduleWeekly(Algo):
-    """Triggers every Friday (or nearest trading day)."""
-    def __call__(self, context: Context) -> bool:
-        return context.date.dayofweek == 4  # Friday
+class Schedule:
+    ...
+    class Weekly(Algo):
+        """Proxy → Schedule.Schedule: triggers every Friday (or nearest trading day)."""
+        def __call__(self, context: Context) -> bool:
+            return context.date.dayofweek == 4  # Friday
 ```
 
 ```python
-# algos/__init__.py  — add to existing exports
-from tiportfolio.algos.schedule import ScheduleMonthly, ScheduleQuarterly, Schedule, ScheduleWeekly
+# algos/__init__.py  — re-export the updated Schedule namespace
+from tiportfolio.algos.signal import Schedule
 ```

@@ -14,9 +14,9 @@ data = ti.fetch_data(["QQQ", "BIL", "GLD"], start="2019-01-01", end="2024-12-31"
 portfolio = ti.Portfolio(
     "monthly_rebalance",
     [
-        ti.algo.ScheduleMonthly(),
-        ti.algo.SelectAll(),
-        ti.algo.WeighEqually(),
+        ti.algo.Schedule.Monthly(),
+        ti.algo.Select.All(),
+        ti.algo.Weigh.Equally(),
         ti.algo.Rebalance(),
     ],
     ["QQQ", "BIL", "GLD"],
@@ -73,7 +73,7 @@ ti.Portfolio("dynamic", [...algos...])   # no children
 
 The `algos` list is wrapped internally in an `AlgoQueue`. Each algo runs in order, returning `True` to continue or `False` to abort the rebalance for this node. For tree portfolios, the parent's `AlgoQueue` runs first; if it returns `True`, the engine forks a `Context` for the selected child and evaluates it recursively.
 
-In **parent portfolios**, `SelectAll()` populates `context.selected` with child portfolio names. `WeighEqually()` and `WeighFixedRatio()` operate on those names the same way — writing `{"long": 0.5, "short": 0.5}` to `context.weights`. Child portfolios do not need a schedule algo — the parent controls when evaluation happens.
+In **parent portfolios**, `Select.All()` populates `context.selected` with child portfolio names. `Weigh.Equally()` and `Weigh.Ratio()` operate on those names the same way — writing `{"long": 0.5, "short": 0.5}` to `context.weights`. Child portfolios do not need a schedule algo — the parent controls when evaluation happens.
 
 ---
 
@@ -94,19 +94,19 @@ Signal algos fall into two sub-types:
 
 **Time-based signals** — fire on a calendar schedule:
 
-`Schedule` is the primitive; `ScheduleMonthly` and `ScheduleQuarterly` are convenience wrappers:
+`Schedule` is a namespace. `Schedule.Schedule` is the primitive; `Schedule.Monthly` and `Schedule.Quarterly` are proxy subclasses that call `Schedule.Schedule` with preset configuration:
 
-| Algo | Equivalent `Schedule` configuration |
+| Algo | Equivalent `Schedule.Schedule` configuration |
 |---|---|
-| `ScheduleMonthly(day="end", next_trading_day=True)` | `Schedule(day="end", next_trading_day=True)` |
-| `ScheduleMonthly(day=15, next_trading_day=True)` | `Schedule(day=15, next_trading_day=True)` |
-| `ScheduleQuarterly(months=[2,5,8,11], day="end")` | `Or(Schedule(month=2), Schedule(month=5), Schedule(month=8), Schedule(month=11))` |
+| `Schedule.Monthly(day="end", next_trading_day=True)` | `Schedule.Schedule(day="end", next_trading_day=True)` |
+| `Schedule.Monthly(day=15, next_trading_day=True)` | `Schedule.Schedule(day=15, next_trading_day=True)` |
+| `Schedule.Quarterly(months=[2,5,8,11], day="end")` | `Or(Schedule.Schedule(month=2), ..., Schedule.Schedule(month=11))` |
 
 | Algo | Signature | Description |
 |---|---|---|
-| `Schedule` | `(month=None, day="end", next_trading_day=True)` | Primitive — fires on `day` of `month` (or every month if `month=None`) |
-| `ScheduleMonthly` | `(day="end", next_trading_day=True)` | `Schedule` preset for monthly rebalance |
-| `ScheduleQuarterly` | `(months=[2,5,8,11], day="end")` | `Or`-wrapped `Schedule` preset for quarterly rebalance |
+| `Schedule.Schedule` | `(month=None, day="end", next_trading_day=True)` | Base — fires on `day` of `month` (or every month if `month=None`) |
+| `Schedule.Monthly` | `(day="end", next_trading_day=True)` | Proxy: monthly rebalance preset |
+| `Schedule.Quarterly` | `(months=[2,5,8,11], day="end")` | Proxy: `Or`-wrapped quarterly rebalance preset |
 
 **Market-based signals** — fire based on market data; used in parent portfolios to route capital to child portfolios:
 
@@ -118,10 +118,13 @@ Signal algos fall into two sub-types:
 
 Control *which* tickers are included. Writes to `context.selected`.
 
+`Select` is a namespace. `Select.Select` is the base class; `Select.All` and `Select.Momentum` are proxy subclasses:
+
 | Algo | Signature | Description |
 |---|---|---|
-| `SelectAll` | `()` | Select all tickers |
-| `SelectMomentum` | `(n, lookback, lag=1, sort_descending=True)` | Selects top/bottom `n` by momentum score |
+| `Select.Select` | `(tickers: list[str])` | Base — writes an explicit ticker list to `context.selected` |
+| `Select.All` | `()` | Proxy: selects all tickers in the portfolio |
+| `Select.Momentum` | `(n, lookback, lag=1, sort_descending=True)` | Proxy: selects top/bottom `n` by momentum score |
 
 #### Weigh Algos
 
@@ -170,10 +173,10 @@ ti.branching.Not(algo: Algo)     # inverts result of wrapped algo
 ```python
 # Trigger quarterly: month 2 OR 5 OR 8 OR 11
 ti.branching.Or(
-    ti.algo.Schedule(month=2),
-    ti.algo.Schedule(month=5),
-    ti.algo.Schedule(month=8),
-    ti.algo.Schedule(month=11),
+    ti.algo.Schedule.Schedule(month=2),
+    ti.algo.Schedule.Schedule(month=5),
+    ti.algo.Schedule.Schedule(month=8),
+    ti.algo.Schedule.Schedule(month=11),
 )
 
 # Trigger only when NOT in high-volatility regime
@@ -411,7 +414,7 @@ class MyTrigger(Algo):
 Then add it to any stack:
 
 ```python
-ti.Portfolio("my_strategy", [MyTrigger(), ti.algo.SelectAll(), ti.algo.WeighEqually(), ti.algo.Rebalance()], [...])
+ti.Portfolio("my_strategy", [MyTrigger(), ti.algo.Select.All(), ti.algo.Weigh.Equally(), ti.algo.Rebalance()], [...])
 ```
 
 ### Custom Data Source
