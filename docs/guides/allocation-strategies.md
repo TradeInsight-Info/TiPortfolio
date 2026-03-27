@@ -53,7 +53,7 @@ long = ti.Portfolio(
             sort_descending=True,
         ),
         ti.algo.Weigh.Equally(),
-        ti.algo.Rebalance(),
+        ti.algo.Action.Rebalance(),
     ],
     tickers,
 )
@@ -68,7 +68,7 @@ short = ti.Portfolio(
             sort_descending=False,
         ),
         ti.algo.Weigh.Equally(sign=-1),
-        ti.algo.Rebalance(),
+        ti.algo.Action.Rebalance(),
     ],
     tickers,
 )
@@ -79,7 +79,7 @@ dollar_neutral_portfolio = ti.Portfolio(
         ti.algo.Schedule.Monthly(),
         ti.algo.Select.All(),    # selects child portfolio names: ["long", "short"]
         ti.algo.Weigh.Equally(), # 50% capital to each child
-        ti.algo.Rebalance(),    # allocates capital to children
+        ti.algo.Action.Rebalance(),    # allocates capital to children
     ],
     [long, short],
 )
@@ -112,7 +112,7 @@ portfolio = ti.Portfolio(
             target_hv=60,
             lookback=pd.DateOffset(months=1),
         ),
-        ti.algo.Rebalance(),
+        ti.algo.Action.Rebalance(),
     ],
     tickers,
 )
@@ -147,7 +147,7 @@ portfolio = ti.Portfolio(
             maximum_iterations=100,
             tolerance=1e-8,
         ),
-        ti.algo.Rebalance(),
+        ti.algo.Action.Rebalance(),
     ],
     tickers,
 )
@@ -184,7 +184,7 @@ portfolio = ti.Portfolio(
             target_beta=0,
             lookback=pd.DateOffset(months=1),
         ),
-        ti.algo.Rebalance(),
+        ti.algo.Action.Rebalance(),
     ],
     tickers,
 )

@@ -17,7 +17,7 @@ portfolio = ti.Portfolio(
         ti.algo.Schedule.Monthly(),
         ti.algo.Select.All(),
         ti.algo.Weigh.Equally(),
-        ti.algo.Rebalance(),
+        ti.algo.Action.Rebalance(),
     ],
     ["QQQ", "BIL", "GLD"],
 )
@@ -143,12 +143,12 @@ Control *how much* to allocate. Reads `context.selected`, writes `context.weight
 
 #### Action Algos
 
-Execute trades or side effects.
+Execute trades or side effects. All live under the `Action` namespace:
 
 | Algo | Signature | Description |
 |---|---|---|
-| `Rebalance` | `()` | Executes trades to reach target weights in `context.weights` |
-| `PrintInfo` | `()` | Debug: prints current context to stdout |
+| `Action.Rebalance` | `()` | Executes trades to reach target weights in `context.weights` |
+| `Action.PrintInfo` | `()` | Debug: prints current context to stdout |
 
 ---
 
@@ -414,7 +414,7 @@ class MyTrigger(Algo):
 Then add it to any stack:
 
 ```python
-ti.Portfolio("my_strategy", [MyTrigger(), ti.algo.Select.All(), ti.algo.Weigh.Equally(), ti.algo.Rebalance()], [...])
+ti.Portfolio("my_strategy", [MyTrigger(), ti.algo.Select.All(), ti.algo.Weigh.Equally(), ti.algo.Action.Rebalance()], [...])
 ```
 
 ### Custom Data Source

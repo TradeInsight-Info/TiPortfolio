@@ -12,15 +12,15 @@ tickers = ["QQQ", "BIL", "GLD"]
 data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 
 monthly = ti.Backtest(
-    ti.Portfolio('monthly', [ti.algo.Schedule.Monthly(), ti.algo.Select.All(), ti.algo.Weigh.Equally(), ti.algo.Rebalance()], tickers),
+    ti.Portfolio('monthly', [ti.algo.Schedule.Monthly(), ti.algo.Select.All(), ti.algo.Weigh.Equally(), ti.algo.Action.Rebalance()], tickers),
     data,
 )
 quarterly = ti.Backtest(
-    ti.Portfolio('quarterly', [ti.algo.Schedule.Quarterly(), ti.algo.Select.All(), ti.algo.Weigh.Equally(), ti.algo.Rebalance()], tickers),
+    ti.Portfolio('quarterly', [ti.algo.Schedule.Quarterly(), ti.algo.Select.All(), ti.algo.Weigh.Equally(), ti.algo.Action.Rebalance()], tickers),
     data,
 )
 yearly = ti.Backtest(
-    ti.Portfolio('yearly', [ti.algo.Schedule.Schedule(month=1), ti.algo.Select.All(), ti.algo.Weigh.Equally(), ti.algo.Rebalance()], tickers),
+    ti.Portfolio('yearly', [ti.algo.Schedule.Schedule(month=1), ti.algo.Select.All(), ti.algo.Weigh.Equally(), ti.algo.Action.Rebalance()], tickers),
     data,
 )
 
@@ -85,7 +85,7 @@ data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 
 def monthly_portfolio(name, weigh_algo):
     return ti.Backtest(
-        ti.Portfolio(name, [ti.algo.Schedule.Monthly(), ti.algo.Select.All(), weigh_algo, ti.algo.Rebalance()], tickers),
+        ti.Portfolio(name, [ti.algo.Schedule.Monthly(), ti.algo.Select.All(), weigh_algo, ti.algo.Action.Rebalance()], tickers),
         data,
     )
 

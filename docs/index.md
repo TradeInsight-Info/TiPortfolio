@@ -22,7 +22,7 @@ portfolio = ti.Portfolio(
         ti.algo.Schedule.Monthly(), # When
         ti.algo.Select.All(),       # What
         ti.algo.Weigh.Equally(),    # How much
-        ti.algo.Rebalance() # Action
+        ti.algo.Action.Rebalance() # Action
     ],
     tickers # match tickers
 )

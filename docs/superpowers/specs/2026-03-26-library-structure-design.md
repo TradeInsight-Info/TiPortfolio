@@ -49,7 +49,7 @@ src/tiportfolio/
     signal.py         # Schedule namespace (Schedule.Schedule, Schedule.Monthly, Schedule.Quarterly) + VixSignal
     select.py         # Select namespace (Select.Select, Select.All, Select.Momentum)
     weigh.py          # Weigh namespace: Weigh.Weigh (base) + proxies: Weigh.Equally, Weigh.Ratio, Weigh.BasedOnHV, Weigh.BasedOnBeta, Weigh.ERC
-    rebalance.py      # Rebalance, PrintInfo
+    rebalance.py      # Action namespace: Action.Rebalance, Action.PrintInfo
   portfolio.py        # Portfolio tree node
   backtest.py         # Backtest, BacktestResult, run_backtest()
   helpers/            # Data layer (existing — Alpaca, YFinance, cache, log)
@@ -87,7 +87,7 @@ class Context:
 The three mutable fields (`selected`, `weights`, `selected_child`) form the inter-algo communication contract:
 - **Select algos** write `context.selected`
 - **Weigh algos** read `context.selected`, write `context.weights`
-- **Rebalance** reads `context.weights` to execute trades
+- **Action.Rebalance** reads `context.weights` to execute trades
 - **Signal algos** write `context.selected_child`
 - **Engine** reads `context.selected_child` to fork and evaluate the selected child
 
@@ -245,7 +245,7 @@ portfolio = ti.Portfolio(
         ti.algo.Schedule.Monthly(),
         ti.algo.Select.All(),
         ti.algo.Weigh.Equally(),
-        ti.algo.Rebalance(),
+        ti.algo.Action.Rebalance(),
     ],
     ["QQQ", "BIL", "GLD"],
 )
@@ -315,8 +315,8 @@ Signal algos are the first step in any `AlgoQueue` — they control *when* to pr
 
 | Class | Description |
 |---|---|
-| `Rebalance()` | Executes trades to reach target weights |
-| `PrintInfo()` | Debug: logs current context state |
+| `Action.Rebalance()` | Executes trades to reach target weights |
+| `Action.PrintInfo()` | Debug: logs current context state |
 
 ### Tree Portfolio Execution Protocol
 

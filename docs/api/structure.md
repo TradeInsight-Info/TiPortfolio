@@ -97,7 +97,7 @@ All concrete algos. Internal files are organized by the *role* each algo plays i
 | `signal.py` | **When / which branch** — time-based and market-based signals | `Schedule` namespace: `Schedule.Schedule` (base), `Schedule.Monthly`, `Schedule.Quarterly`; `VixSignal` |
 | `select.py` | **What** to include | `Select` namespace: `Select.Select` (base), `Select.All`, `Select.Momentum` |
 | `weigh.py` | **How much** to allocate | `Weigh` namespace: `Weigh.Weigh` (base) + proxies: `Weigh.Equally`, `Weigh.Ratio`, `Weigh.BasedOnHV`, `Weigh.BasedOnBeta`, `Weigh.ERC` |
-| `rebalance.py` | **Action** — execute trades | `Rebalance`, `PrintInfo` |
+| `rebalance.py` | **Action** — execute trades | `Action` namespace: `Action.Rebalance`, `Action.PrintInfo` |
 
 `algos/__init__.py` re-exports everything so `ti.algo.Schedule.Monthly` resolves correctly.
 
