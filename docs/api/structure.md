@@ -5,7 +5,7 @@ src/tiportfolio/
 ├── __init__.py             # Public API exports
 ├── config.py               # TiConfig — global backtest defaults
 ├── algo.py                 # Algo ABC, AlgoQueue, Context, Or, Not
-├── branching.py            # Re-export shim: exposes Or/Not as ti.branching.*
+├── branching.py            # Re-export shim: exposes Or/And/Not directly as ti.Or / ti.And / ti.Not
 ├── algos/                  # Concrete algo implementations
 │   ├── __init__.py         # Re-exports all algos → accessible as ti.algo.*
 │   ├── signal.py           # All signal algos: time-based (Schedule*) + market-based (VixSignal)
@@ -40,10 +40,12 @@ from tiportfolio import (
     TiConfig,
     run,         # accepts *tests for multi-backtest comparison
     Signal,      # ti.Signal.Monthly(), ti.Signal.Quarterly(), ti.Signal.Schedule(), ti.Signal.VIX()
-    Select,      # ti.Select.All(), ti.Select.Momentum(), ti.Select.Select()
-    Weigh,       # ti.Weigh.Equally(), ti.Weigh.Ratio(), ti.Weigh.Weigh(), ...
+    Select,      # ti.Select.All(), ti.Select.Momentum()
+    Weigh,       # ti.Weigh.Equally(), ti.Weigh.Ratio(), ti.Weigh.BasedOnHV(), ti.Weigh.BasedOnBeta(), ti.Weigh.ERC()
     Action,      # ti.Action.Rebalance(), ti.Action.PrintInfo()
-    branching,   # ti.branching.Or / .And / .Not
+    Or,          # ti.Or(...)
+    And,         # ti.And(...)
+    Not,         # ti.Not(...)
 )
 ```
 
@@ -98,8 +100,8 @@ All concrete algos. Internal files are organized by the *role* each algo plays i
 | File | Role in stack | Algos |
 |---|---|---|
 | `signal.py` | **When / which branch** — time-based and market-based signals | `Signal` namespace: `Signal.Schedule` (base), `Signal.Monthly`, `Signal.Quarterly`; `Signal.VIX` |
-| `select.py` | **What** to include | `Select` namespace: `Select.Select` (base), `Select.All`, `Select.Momentum` |
-| `weigh.py` | **How much** to allocate | `Weigh` namespace: `Weigh.Weigh` (base) + proxies: `Weigh.Equally`, `Weigh.Ratio`, `Weigh.BasedOnHV`, `Weigh.BasedOnBeta`, `Weigh.ERC` |
+| `select.py` | **What** to include | `Select` namespace: `Select.All`, `Select.Momentum` |
+| `weigh.py` | **How much** to allocate | `Weigh` namespace: `Weigh.Equally`, `Weigh.Ratio`, `Weigh.BasedOnHV`, `Weigh.BasedOnBeta`, `Weigh.ERC` |
 | `rebalance.py` | **Action** — execute trades | `Action` namespace: `Action.Rebalance`, `Action.PrintInfo` |
 
 `algos/__init__.py` re-exports everything so `ti.Signal.Monthly` resolves correctly.

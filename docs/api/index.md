@@ -118,28 +118,26 @@ Signal algos fall into two sub-types:
 
 Control *which* tickers are included. Writes to `context.selected`.
 
-`Select` is a namespace. `Select.Select` is the base class; `Select.All` and `Select.Momentum` are proxy subclasses:
+`Select` is a namespace. `Select.All` is the standard selector; `Select.Momentum` is a direct implementation that computes momentum scores and writes the selected tickers to `context.selected`:
 
 | Algo | Signature | Description |
 |---|---|---|
-| `Select.Select` | `(tickers: list[str])` | Base — writes an explicit ticker list to `context.selected` |
-| `Select.All` | `()` | Proxy: selects all tickers in the portfolio |
-| `Select.Momentum` | `(n: int, lookback: pd.DateOffset, lag: pd.DateOffset = pd.DateOffset(days=1), sort_descending: bool = True)` | Proxy: selects top/bottom `n` by momentum score |
+| `Select.All` | `()` | Selects all tickers in the portfolio |
+| `Select.Momentum` | `(n: int, lookback: pd.DateOffset, lag: pd.DateOffset = pd.DateOffset(days=1), sort_descending: bool = True)` | Selects top/bottom `n` tickers by momentum score; writes to `context.selected` |
 
 #### Weigh Algos
 
 Control *how much* to allocate. Reads `context.selected`, writes `context.weights`.
 
-`Weigh` is a namespace. `Weigh.Weigh` is the explicit base class — it accepts a pre-computed `weights` dict and writes it directly to `context.weights`. All named variants are **proxy subclasses**: they compute their specific weight scheme and call `Weigh.Weigh` to apply it.
+`Weigh` is a namespace. `Weigh.Ratio` accepts an explicit weights dict; all other variants compute their specific scheme and write to `context.weights`:
 
 | Algo | Signature | Description |
 |---|---|---|
-| `Weigh.Weigh` | `(weights: dict[str, float])` | Base — applies explicit weights directly |
-| `Weigh.Equally` | `(short: bool = False)` | Proxy: divides capital equally; `short=True` for short leg |
-| `Weigh.Ratio` | `(weights: dict[str, float])` | Proxy: normalises provided weights before applying |
-| `Weigh.BasedOnHV` | `(initial_ratio, target_hv, lookback)` | Proxy: volatility-targeting weights |
-| `Weigh.BasedOnBeta` | `(initial_ratio, target_beta, lookback)` | Proxy: beta-neutral weights |
-| `Weigh.ERC` | `(lookback, covar_method="ledoit-wolf", risk_parity_method="ccd", maximum_iterations=100, tolerance=1e-8)` | Proxy: Equal Risk Contribution (Risk Parity) weights |
+| `Weigh.Equally` | `(short: bool = False)` | Divides capital equally across `context.selected`; `short=True` for short leg |
+| `Weigh.Ratio` | `(weights: dict[str, float])` | Applies provided weights (normalised to sum to 1) |
+| `Weigh.BasedOnHV` | `(initial_ratio: dict[str, float], target_hv: float, lookback: pd.DateOffset)` | Volatility-targeting weights |
+| `Weigh.BasedOnBeta` | `(initial_ratio: dict[str, float], target_beta: float, lookback: pd.DateOffset)` | Beta-neutral weights |
+| `Weigh.ERC` | `(lookback: pd.DateOffset, covar_method: str = "ledoit-wolf", risk_parity_method: str = "ccd", maximum_iterations: int = 100, tolerance: float = 1e-8)` | Equal Risk Contribution (Risk Parity) weights |
 
 #### Action Algos
 
@@ -160,19 +158,19 @@ Execute trades or side effects. All live under the `Action` namespace:
 
 ---
 
-### `branching` Namespace
+### Branching Combinators
 
-Combinators for composing algos with conditional logic. Defined in `algo.py`, re-exported through `branching.py`.
+Combinators for composing algos with conditional logic. Defined in `algo.py`, exported directly on the `ti` namespace.
 
 ```python
-ti.branching.Or(*algos: Algo)    # returns True on first algo that returns True
-ti.branching.And(*algos: Algo)   # all must return True (explicit version of AlgoQueue)
-ti.branching.Not(algo: Algo)     # inverts result of wrapped algo
+ti.Or(*algos: Algo)    # returns True on first algo that returns True
+ti.And(*algos: Algo)   # all must return True (explicit version of AlgoQueue)
+ti.Not(algo: Algo)     # inverts result of wrapped algo
 ```
 
 ```python
 # Trigger quarterly: month 2 OR 5 OR 8 OR 11
-ti.branching.Or(
+ti.Or(
     ti.Signal.Schedule(month=2),
     ti.Signal.Schedule(month=5),
     ti.Signal.Schedule(month=8),
@@ -180,7 +178,7 @@ ti.branching.Or(
 )
 
 # Trigger only when NOT in high-volatility regime
-ti.branching.Not(ti.Signal.VIX(high=30, low=20, data=vix_data))
+ti.Not(ti.Signal.VIX(high=30, low=20, data=vix_data))
 ```
 
 ---

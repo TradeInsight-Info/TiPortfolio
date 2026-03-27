@@ -6,21 +6,28 @@ A portfolio management tool with built-in state-of-the-art portfolio optimizatio
 Data is fetched automatically from Alpaca (if API keys are set) or Yahoo Finance:
 
 ```python
-from tiportfolio import ScheduleBasedEngine, FixRatio, Schedule
+import tiportfolio as ti
 
-engine = ScheduleBasedEngine(
-    allocation=FixRatio(weights={"SPY": 0.5, "QQQ": 0.3, "GLD": 0.2}),
-    rebalance=Schedule("month_end"),
-    fee_per_share=0.0035,
-)
-result = engine.run(
-    symbols=["SPY", "QQQ", "GLD"],
-    start="2019-01-01",
-    end="2024-12-31",
+tickers = ["QQQ", "BIL", "GLD"]
+
+# fetch data
+data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31") # this will return a dict of dataframe, key is ticker, value is dataframe with date as index and columns like open, close, high, low, volume
+
+# built strategy to rebalance monthly with fix ratio allocation among QQQ, BIL and GLD
+portfolio = ti.Portfolio(
+    'monthly_rebalance',
+    [
+        # Order matters
+        ti.algo.ScheduleMonthly(), # When
+        ti.algo.Select(), # What
+        ti.algo.Weigh(), # How much
+        ti.algo.Rebalance() # Action
+    ],
+    tickers # match tickers
 )
 
-print(result.summary())
-# result.equity_curve, result.metrics, result.rebalance_decisions
+test = ti.Backtest(portfolio, data, fee_per_share=0.0035)
+result = ti.run_backtest(test)
 ```
 
 
@@ -37,15 +44,6 @@ Data fetching uses Yahoo Finance by default. For Alpaca, set `ALPACA_API_KEY` an
 ```bash
 uv sync
 ```
-
-## CLI
-
-**Symbols mode** (fetch data from Alpaca or Yahoo Finance; no CSV directory):
-
-```bash
-uv run tiportfolio --symbols SPY QQQ GLD --weights 0.5 0.3 0.2 --start 2019-01-01 --end 2024-12-31 --rebalance month_end
-```
-
 
 ## License
 

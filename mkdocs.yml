@@ -19,26 +19,38 @@ extra:
   version:
     provider: mike
 
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+
+
 
 nav:
   - Home: index.md
-  - Guides and Examples:
+  - Built in Strategies:
+    - guides/fix-time-rebalance.md
+    - guides/market-volatility-rebalance.md
+    - guides/allocation-strategies.md
+  - Guides:
     - Debug: debug.md
     - Usage: guides/usage.md
-    - Rebalance:
-      - guides/fix-tim-rebalance.md
-      - guides/market-volatility-rebalance.md
-    - Allocation Strategy:
+    - guides/key-data-types.md
+    - guides/comparing-results.md
 
   - Why TiPortfolio:
+    - about.md
     - thoughts.md
-  
-
-  - API Reference:
+    - api/structure.md
+  - API:
     - api/index.md
-    - Module 1: api/module1.md
-    - Module 2: api/module2.md
-  - About: about.md
   - Reference:
     - Researching: papers.md
   - Changelog: https://github.com/TradeInsight-Info/TiPortfolio/releases

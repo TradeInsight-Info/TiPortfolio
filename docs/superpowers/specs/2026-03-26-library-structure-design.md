@@ -39,16 +39,16 @@ Selected over:
 
 ```
 src/tiportfolio/
-  __init__.py         # Public API: fetch_data, Portfolio, Backtest, BacktestResult, run, Signal, Select, Weigh, Action, branching
+  __init__.py         # Public API: fetch_data, Portfolio, Backtest, BacktestResult, run, Signal, Select, Weigh, Action, Or, And, Not
   config.py           # TiConfig dataclass with defaults
-  algo.py             # Algo ABC + AlgoQueue + Or/Not (Or and Not also re-exported via branching.py)
+  algo.py             # Algo ABC + AlgoQueue + Or/And/Not
   branching.py        # Thin re-export shim: "from tiportfolio.algo import Or, And, Not"
-                      # Makes ti.branching.Or / ti.branching.And / ti.branching.Not work as a distinct namespace
+                      # Re-exports into __init__.py so ti.Or / ti.And / ti.Not work at the top level
   algos/
     __init__.py       # Re-exports all concrete algos → accessible as ti.algo.*
     signal.py         # Signal namespace (Signal.Schedule, Signal.Monthly, Signal.Quarterly) + VixSignal
-    select.py         # Select namespace (Select.Select, Select.All, Select.Momentum)
-    weigh.py          # Weigh namespace: Weigh.Weigh (base) + proxies: Weigh.Equally, Weigh.Ratio, Weigh.BasedOnHV, Weigh.BasedOnBeta, Weigh.ERC
+    select.py         # Select namespace (Select.All, Select.Momentum)
+    weigh.py          # Weigh namespace: Weigh.Equally, Weigh.Ratio, Weigh.BasedOnHV, Weigh.BasedOnBeta, Weigh.ERC
     rebalance.py      # Action namespace: Action.Rebalance, Action.PrintInfo
   portfolio.py        # Portfolio tree node
   backtest.py         # Backtest, BacktestResult, run_backtest()
@@ -262,7 +262,7 @@ result.trades
 Namespaces exposed directly under `ti`:
 - `ti.run` — entry point
 - `ti.Signal`, `ti.Select`, `ti.Weigh`, `ti.Action` — algo namespaces (Signal includes both time-based and market-based algos)
-- `ti.branching.Or`, `ti.branching.And`, `ti.branching.Not`
+- `ti.Or`, `ti.And`, `ti.Not`
 
 ---
 
@@ -290,26 +290,24 @@ Signal algos are the first step in any `AlgoQueue` — they control *when* to pr
 
 ### Select algos (`algos/select.py`)
 
-`Select` is a namespace; `Select.Select` is the base; `Select.All` and `Select.Momentum` are proxy subclasses:
+`Select` is a namespace. `Select.All` is the standard selector; `Select.Momentum` is a direct implementation that computes momentum scores:
 
 | Class | Description |
 |---|---|
-| `Select.Select(tickers: list[str])` | Base — writes explicit ticker list to `context.selected` |
-| `Select.All()` | Proxy → `Select.Select`: selects all tickers in the portfolio |
-| `Select.Momentum(n, lookback, lag, sort_descending=True)` | Proxy → `Select.Select`: selects top/bottom n by momentum |
+| `Select.All()` | Selects all tickers in the portfolio |
+| `Select.Momentum(n, lookback, lag, sort_descending=True)` | Selects top/bottom `n` tickers by momentum score; writes to `context.selected` |
 
 ### Weigh algos (`algos/weigh.py`)
 
-`Weigh` is the base class — it accepts an explicit `weights` dict. The named subclasses are **proxy classes**: each computes its specific weight scheme and delegates to `Weigh`.
+`Weigh` is a namespace. `Weigh.Ratio` accepts an explicit weights dict; all other variants compute their specific scheme and write to `context.weights`:
 
 | Class | Description |
 |---|---|
-| `Weigh.Weigh(weights: dict[str, float])` | Base — applies explicit weights directly |
-| `Weigh.Equally(short: bool = False)` | Proxy → `Weigh.Weigh`: equal weight; `short=True` for short leg |
-| `Weigh.Ratio(weights: dict[str, float])` | Proxy → `Weigh.Weigh`: normalises provided weights before applying |
-| `Weigh.BasedOnHV(initial_ratio, target_hv, lookback)` | Proxy → `Weigh.Weigh`: volatility targeting |
-| `Weigh.BasedOnBeta(initial_ratio, target_beta, lookback)` | Proxy → `Weigh.Weigh`: beta neutral |
-| `Weigh.ERC(lookback, covar_method="ledoit-wolf", risk_parity_method="ccd", maximum_iterations=100, tolerance=1e-8)` | Proxy → `Weigh.Weigh`: Equal Risk Contribution (Risk Parity) |
+| `Weigh.Equally(short: bool = False)` | Equal weight; `short=True` for short leg |
+| `Weigh.Ratio(weights: dict[str, float])` | Applies provided weights (normalised to sum to 1) |
+| `Weigh.BasedOnHV(initial_ratio, target_hv, lookback)` | Volatility targeting |
+| `Weigh.BasedOnBeta(initial_ratio, target_beta, lookback)` | Beta neutral |
+| `Weigh.ERC(lookback, covar_method="ledoit-wolf", risk_parity_method="ccd", maximum_iterations=100, tolerance=1e-8)` | Equal Risk Contribution (Risk Parity) |
 
 ### Action algos (`algos/rebalance.py`)
 

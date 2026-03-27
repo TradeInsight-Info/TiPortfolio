@@ -30,7 +30,17 @@ result.trades.sample(10)
 Add this to your portfolio.
 
 ```python
-ti.branch.Or(ti.algo.PrintInfo(), ti.algo.Rebalance())
+portfolio = ti.Portfolio(
+    'debug_example',
+    [
+        ti.Signal.Monthly(),
+        ti.Select.All(),
+        ti.Weigh.Equally(),
+        ti.Action.PrintInfo(),   # logs algo context at this point in the stack
+        ti.Action.Rebalance(),
+    ],
+    tickers,
+)
 ```
 
 

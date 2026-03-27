@@ -1,0 +1,23 @@
+name: product
+version: 1
+description: Product OpenSpec workflow - proposal
+artifacts:
+  - id: prd
+    generates: prd.md
+    description: Initial PM proposal document outlining the change
+    template: prd.md
+    instruction: >
+      Use `/pm-product-discovery:brainstorm` skill to understand what is needed to be done and use `/pm-execution:write-prd` to create the proposal document that establishes WHY this change is needed.
+
+      Use mermaid charts when needed to represent data flow, system archtecture, use case diagrams.  
+
+      Sections:
+
+      - **Why**: 1-2 sentences on the problem or opportunity. What problem does this solve? Why now?
+
+      - **What Changes**: Bullet list of changes. Be specific about new
+      capabilities, modifications, or removals. Mark breaking changes with
+      **BREAKING**.
+
+      Keep it concise (1-2 pages). Focus on the "why" not the "how"
+    requires: []
