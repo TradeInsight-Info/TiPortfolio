@@ -48,7 +48,7 @@ src/tiportfolio/
     __init__.py       # Re-exports all concrete algos → accessible as ti.algo.*
     signal.py         # All signal algos: Schedule, ScheduleMonthly, ScheduleQuarterly, VixSignal
     select.py         # SelectAll, SelectMomentum
-    weigh.py          # Weigh (base) + proxy subclasses: Weigh.Equally, Weigh.FixedRatio, Weigh.BasedOnHV, Weigh.BasedOnBeta, Weigh.ERC
+    weigh.py          # Weigh namespace: Weigh.Weigh (base) + proxies: Weigh.Equally, Weigh.Ratio, Weigh.BasedOnHV, Weigh.BasedOnBeta, Weigh.ERC
     rebalance.py      # Rebalance, PrintInfo
   portfolio.py        # Portfolio tree node
   backtest.py         # Backtest, BacktestResult, run_backtest()
@@ -301,12 +301,12 @@ Signal algos are the first step in any `AlgoQueue` — they control *when* to pr
 
 | Class | Description |
 |---|---|
-| `Weigh(weights: dict[str, float])` | Base — applies explicit weights directly |
-| `Weigh.Equally(sign=1)` | Proxy: equal weight; sign=-1 for short leg |
-| `Weigh.FixedRatio(weights: dict[str, float])` | Proxy: normalises provided weights before applying |
-| `Weigh.BasedOnHV(initial_ratio, target_hv, lookback)` | Proxy: volatility targeting |
-| `Weigh.BasedOnBeta(initial_ratio, target_beta, lookback)` | Proxy: beta neutral |
-| `Weigh.ERC(lookback, covar_method="ledoit-wolf", risk_parity_method="ccd", maximum_iterations=100, tolerance=1e-8)` | Proxy: Equal Risk Contribution (Risk Parity) |
+| `Weigh.Weigh(weights: dict[str, float])` | Base — applies explicit weights directly |
+| `Weigh.Equally(sign=1)` | Proxy → `Weigh.Weigh`: equal weight; sign=-1 for short leg |
+| `Weigh.Ratio(weights: dict[str, float])` | Proxy → `Weigh.Weigh`: normalises provided weights before applying |
+| `Weigh.BasedOnHV(initial_ratio, target_hv, lookback)` | Proxy → `Weigh.Weigh`: volatility targeting |
+| `Weigh.BasedOnBeta(initial_ratio, target_beta, lookback)` | Proxy → `Weigh.Weigh`: beta neutral |
+| `Weigh.ERC(lookback, covar_method="ledoit-wolf", risk_parity_method="ccd", maximum_iterations=100, tolerance=1e-8)` | Proxy → `Weigh.Weigh`: Equal Risk Contribution (Risk Parity) |
 
 ### Action algos (`algos/rebalance.py`)
 

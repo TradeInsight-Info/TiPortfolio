@@ -33,14 +33,14 @@ ti.Backtest(portfolio, data, fee_per_share=0.005)
 ```
 
 
-### `WeighFixedRatio` — Weight Normalisation
+### `Weigh.Ratio` — Weight Normalisation
 
 If weights do not sum to 1.0, the engine normalises them proportionally before execution:
 
 ```python
 # These two are equivalent:
-ti.algo.WeighFixedRatio(weights={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1})   # sums to 1.0
-ti.algo.WeighFixedRatio(weights={"QQQ": 70, "BIL": 20, "GLD": 10})       # normalised to same
+ti.algo.Weigh.Ratio(weights={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1})   # sums to 1.0
+ti.algo.Weigh.Ratio(weights={"QQQ": 70, "BIL": 20, "GLD": 10})       # normalised to same
 
 # Intentional cash buffer: weights summing to < 1.0 are respected as-is (no normalisation)
 # Only over-weight cases (sum > 1.0) are normalised down.
@@ -73,4 +73,4 @@ These fields are the communication channel between algo stages in a stack:
 | `weights` | `dict[str, float]` | Weigh algos | Rebalance |
 | `selected_child` | `Portfolio \| None` | VixSignal (and other signal algos) | engine (routes capital to selected child automatically) |
 
-In **parent portfolios** (children are `Portfolio` objects), `selected` contains child portfolio names rather than ticker strings. `WeighEqually()` and `WeighFixedRatio()` work the same way — operating on names rather than tickers.
+In **parent portfolios** (children are `Portfolio` objects), `selected` contains child portfolio names rather than ticker strings. `Weigh.Equally()` and `Weigh.Ratio()` work the same way — operating on names rather than tickers.

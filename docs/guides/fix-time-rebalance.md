@@ -18,7 +18,7 @@ portfolio = ti.Portfolio(
     [
         ti.algo.ScheduleMonthly(),              # trigger: end of month
         ti.algo.SelectAll(),                    # select all tickers
-        ti.algo.WeighFixedRatio(weights=target_ratio),  # fixed target weights
+        ti.algo.Weigh.Ratio(weights=target_ratio),  # fixed target weights
         ti.algo.Rebalance(),                    # execute trades
     ],
     tickers,
@@ -42,7 +42,7 @@ portfolio = ti.Portfolio(
     [
         ti.algo.ScheduleMonthly(day=15, next_trading_day=True),  # 15th or next trading day
         ti.algo.SelectAll(),
-        ti.algo.WeighEqually(),
+        ti.algo.Weigh.Equally(),
         ti.algo.Rebalance(),
     ],
     tickers,
@@ -68,7 +68,7 @@ portfolio = ti.Portfolio(
     [
         ti.algo.ScheduleQuarterly(months=[2, 5, 8, 11]),  # end of Feb/May/Aug/Nov
         ti.algo.SelectAll(),
-        ti.algo.WeighEqually(),
+        ti.algo.Weigh.Equally(),
         ti.algo.Rebalance(),
     ],
     tickers,
@@ -92,7 +92,7 @@ portfolio = ti.Portfolio(
             ti.algo.Schedule(month=11),
         ),
         ti.algo.SelectAll(),
-        ti.algo.WeighEqually(),
+        ti.algo.Weigh.Equally(),
         ti.algo.Rebalance(),
     ],
     tickers,
@@ -117,7 +117,7 @@ portfolio = ti.Portfolio(
             ti.algo.Schedule(day=15, next_trading_day=True, month=8),
         ),
         ti.algo.SelectAll(),
-        ti.algo.WeighEqually(),
+        ti.algo.Weigh.Equally(),
         ti.algo.Rebalance(),
     ],
     tickers,
@@ -141,7 +141,7 @@ portfolio = ti.Portfolio(
     [
         ti.algo.Schedule(day=15, next_trading_day=True, month=7),
         ti.algo.SelectAll(),
-        ti.algo.WeighEqually(),
+        ti.algo.Weigh.Equally(),
         ti.algo.Rebalance(),
     ],
     tickers,

@@ -52,7 +52,7 @@ long = ti.Portfolio(
             lag=lag,
             sort_descending=True,
         ),
-        ti.algo.WeighEqually(),
+        ti.algo.Weigh.Equally(),
         ti.algo.Rebalance(),
     ],
     tickers,
@@ -67,7 +67,7 @@ short = ti.Portfolio(
             lag=lag,
             sort_descending=False,
         ),
-        ti.algo.WeighEqually(sign=-1),
+        ti.algo.Weigh.Equally(sign=-1),
         ti.algo.Rebalance(),
     ],
     tickers,
@@ -78,7 +78,7 @@ dollar_neutral_portfolio = ti.Portfolio(
     [
         ti.algo.ScheduleMonthly(),
         ti.algo.SelectAll(),    # selects child portfolio names: ["long", "short"]
-        ti.algo.WeighEqually(), # 50% capital to each child
+        ti.algo.Weigh.Equally(), # 50% capital to each child
         ti.algo.Rebalance(),    # allocates capital to children
     ],
     [long, short],
@@ -107,7 +107,7 @@ portfolio = ti.Portfolio(
     [
         ti.algo.ScheduleMonthly(),
         ti.algo.SelectAll(),
-        ti.algo.WeighBasedOnHV(
+        ti.algo.Weigh.BasedOnHV(
             initial_ratio={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1},
             target_hv=60,
             lookback=pd.DateOffset(months=1),
@@ -125,7 +125,7 @@ result = ti.run(ti.Backtest(portfolio, data))
 
 ERC — also known as Risk Parity — sizes each asset so that every position contributes the same amount of risk to the total portfolio, rather than equal capital weight. Compared to a minimum-variance portfolio it is more diversified; compared to an equal-weight portfolio it is less volatile. It sits between the two.
 
-Unlike `WeighBasedOnHV` (which ignores correlation) or `WeighBasedOnBeta` (which targets a single factor), ERC accounts for the full covariance structure of returns, so correlated assets naturally receive smaller allocations.
+Unlike `Weigh.BasedOnHV` (which ignores correlation) or `Weigh.BasedOnBeta` (which targets a single factor), ERC accounts for the full covariance structure of returns, so correlated assets naturally receive smaller allocations.
 
 ```python
 import pandas as pd
@@ -140,7 +140,7 @@ portfolio = ti.Portfolio(
     [
         ti.algo.ScheduleMonthly(),
         ti.algo.SelectAll(),
-        ti.algo.WeighERC(
+        ti.algo.Weigh.ERC(
             lookback=pd.DateOffset(months=3),  # covariance estimation window
             covar_method="ledoit-wolf",         # shrinkage estimator (default)
             risk_parity_method="ccd",           # cyclical coordinate descent (default)
@@ -179,7 +179,7 @@ portfolio = ti.Portfolio(
     [
         ti.algo.ScheduleMonthly(),
         ti.algo.SelectAll(),
-        ti.algo.WeighBasedOnBeta(
+        ti.algo.Weigh.BasedOnBeta(
             initial_ratio={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1},
             target_beta=0,
             lookback=pd.DateOffset(months=1),

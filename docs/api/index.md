@@ -127,13 +127,13 @@ Control *which* tickers are included. Writes to `context.selected`.
 
 Control *how much* to allocate. Reads `context.selected`, writes `context.weights`.
 
-`Weigh` is the base class — it accepts an explicit `weights` dict. All named variants (`Weigh.Equally`, `Weigh.FixedRatio`, etc.) are **proxy subclasses**: they compute their specific weight scheme and delegate to `Weigh`. This means every weigh algo produces the same `context.weights` structure regardless of which variant is used.
+`Weigh` is a namespace. `Weigh.Weigh` is the explicit base class — it accepts a pre-computed `weights` dict and writes it directly to `context.weights`. All named variants are **proxy subclasses**: they compute their specific weight scheme and call `Weigh.Weigh` to apply it.
 
 | Algo | Signature | Description |
 |---|---|---|
-| `Weigh` | `(weights: dict[str, float])` | Base — applies explicit weights directly |
+| `Weigh.Weigh` | `(weights: dict[str, float])` | Base — applies explicit weights directly |
 | `Weigh.Equally` | `(sign=1)` | Proxy: divides capital equally; `sign=-1` for short leg |
-| `Weigh.FixedRatio` | `(weights: dict[str, float])` | Proxy: normalises provided weights before applying |
+| `Weigh.Ratio` | `(weights: dict[str, float])` | Proxy: normalises provided weights before applying |
 | `Weigh.BasedOnHV` | `(initial_ratio, target_hv, lookback)` | Proxy: volatility-targeting weights |
 | `Weigh.BasedOnBeta` | `(initial_ratio, target_beta, lookback)` | Proxy: beta-neutral weights |
 | `Weigh.ERC` | `(lookback, covar_method="ledoit-wolf", risk_parity_method="ccd", maximum_iterations=100, tolerance=1e-8)` | Proxy: Equal Risk Contribution (Risk Parity) weights |

@@ -12,15 +12,15 @@ tickers = ["QQQ", "BIL", "GLD"]
 data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 
 monthly = ti.Backtest(
-    ti.Portfolio('monthly', [ti.algo.ScheduleMonthly(), ti.algo.SelectAll(), ti.algo.WeighEqually(), ti.algo.Rebalance()], tickers),
+    ti.Portfolio('monthly', [ti.algo.ScheduleMonthly(), ti.algo.SelectAll(), ti.algo.Weigh.Equally(), ti.algo.Rebalance()], tickers),
     data,
 )
 quarterly = ti.Backtest(
-    ti.Portfolio('quarterly', [ti.algo.ScheduleQuarterly(), ti.algo.SelectAll(), ti.algo.WeighEqually(), ti.algo.Rebalance()], tickers),
+    ti.Portfolio('quarterly', [ti.algo.ScheduleQuarterly(), ti.algo.SelectAll(), ti.algo.Weigh.Equally(), ti.algo.Rebalance()], tickers),
     data,
 )
 yearly = ti.Backtest(
-    ti.Portfolio('yearly', [ti.algo.Schedule(month=1), ti.algo.SelectAll(), ti.algo.WeighEqually(), ti.algo.Rebalance()], tickers),
+    ti.Portfolio('yearly', [ti.algo.Schedule(month=1), ti.algo.SelectAll(), ti.algo.Weigh.Equally(), ti.algo.Rebalance()], tickers),
     data,
 )
 
@@ -90,10 +90,10 @@ def monthly_portfolio(name, weigh_algo):
     )
 
 result = ti.run(
-    monthly_portfolio("equal_weight",    ti.algo.WeighEqually()),
-    monthly_portfolio("fixed_ratio",     ti.algo.WeighFixedRatio(weights={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1})),
-    monthly_portfolio("vol_target",      ti.algo.WeighBasedOnHV(initial_ratio={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1}, target_hv=60, lookback=pd.DateOffset(months=1))),
-    monthly_portfolio("erc",             ti.algo.WeighERC(lookback=pd.DateOffset(months=3))),
+    monthly_portfolio("equal_weight",    ti.algo.Weigh.Equally()),
+    monthly_portfolio("fixed_ratio",     ti.algo.Weigh.Ratio(weights={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1})),
+    monthly_portfolio("vol_target",      ti.algo.Weigh.BasedOnHV(initial_ratio={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1}, target_hv=60, lookback=pd.DateOffset(months=1))),
+    monthly_portfolio("erc",             ti.algo.Weigh.ERC(lookback=pd.DateOffset(months=3))),
 )
 
 result.plot()

@@ -31,7 +31,7 @@ low_vol_portfolio = ti.Portfolio(
     'low_vol',
     [
         ti.algo.SelectAll(),
-        ti.algo.WeighFixedRatio(weights={"QQQ": 0.8, "BIL": 0.15, "GLD": 0.05}),
+        ti.algo.Weigh.Ratio(weights={"QQQ": 0.8, "BIL": 0.15, "GLD": 0.05}),
         ti.algo.Rebalance(),
     ],
     tickers,
@@ -42,7 +42,7 @@ high_vol_portfolio = ti.Portfolio(
     'high_vol',
     [
         ti.algo.SelectAll(),
-        ti.algo.WeighFixedRatio(weights={"QQQ": 0.5, "BIL": 0.4, "GLD": 0.1}),
+        ti.algo.Weigh.Ratio(weights={"QQQ": 0.5, "BIL": 0.4, "GLD": 0.1}),
         ti.algo.Rebalance(),
     ],
     tickers,
