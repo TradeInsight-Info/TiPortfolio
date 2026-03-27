@@ -95,18 +95,10 @@ Select.Momentum(
 ) -> bool
 ```
 
-### `Weigh.Equally` — open question
+### `Weigh.Equally`
 ```python
-# Current:
-Weigh.Equally(sign: int = 1) -> bool     # sign=-1 for short; not obvious
-
-# Option A:
 Weigh.Equally(short: bool = False) -> bool
-
-# Option B:
-Weigh.Equally(direction: Literal["long", "short"] = "long") -> bool
 ```
-See open questions below.
 
 ### `Weigh.BasedOnHV` / `Weigh.BasedOnBeta` — add type annotations
 ```python
@@ -136,8 +128,8 @@ Weigh.ERC(
 
 ### `BacktestResult`
 ```python
-result.summary() -> dict[str, float] | pd.DataFrame    # currently only shows dict
-result.full_summary() -> dict[str, float] | pd.DataFrame
+result.summary() -> pd.DataFrame     # always DataFrame; single backtest = one column
+result.full_summary() -> pd.DataFrame
 result.plot(interactive: bool = True) -> None           # benchmark: see open questions
 result.plot_histogram(interactive: bool = True) -> None
 result.plot_security_weights(interactive: bool = True) -> None
@@ -162,7 +154,5 @@ Options:
 - `short: bool = False` — simplest, clear intent
 - `direction: Literal["long", "short"] = "long"` — more explicit, extensible
 
-### Q3 — `Action.Rebalance()` in parent portfolios
-Should parent portfolios always include `Action.Rebalance()` explicitly, or is capital routing to `selected_child` handled implicitly by the engine?
-
-Recommendation: require it explicitly. Implicit routing is surprising; explicit Rebalance makes the stack self-documenting.
+### Q3 — `Action.Rebalance()` in parent portfolios ✓ resolved
+Parent portfolios always require `Action.Rebalance()` explicitly. Every stack that moves capital ends with Rebalance, regardless of whether it routes to tickers or child portfolios.

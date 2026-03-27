@@ -66,7 +66,7 @@ Both positional index and portfolio name work regardless of how many tests were 
 ```python
 result[0]              # first portfolio's BacktestResult
 result["monthly"]      # by portfolio name
-result["quarterly"].summary()   # individual summary dict
+result["quarterly"].summary()   # individual summary DataFrame (single column)
 result["quarterly"].trades      # individual trades DataFrame
 ```
 

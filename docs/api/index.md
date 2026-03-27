@@ -135,7 +135,7 @@ Control *how much* to allocate. Reads `context.selected`, writes `context.weight
 | Algo | Signature | Description |
 |---|---|---|
 | `Weigh.Weigh` | `(weights: dict[str, float])` | Base — applies explicit weights directly |
-| `Weigh.Equally` | `(sign=1)` | Proxy: divides capital equally; `sign=-1` for short leg |
+| `Weigh.Equally` | `(short: bool = False)` | Proxy: divides capital equally; `short=True` for short leg |
 | `Weigh.Ratio` | `(weights: dict[str, float])` | Proxy: normalises provided weights before applying |
 | `Weigh.BasedOnHV` | `(initial_ratio, target_hv, lookback)` | Proxy: volatility-targeting weights |
 | `Weigh.BasedOnBeta` | `(initial_ratio, target_beta, lookback)` | Proxy: beta-neutral weights |
@@ -238,7 +238,7 @@ result.summary()        # comparison table: rows = metrics, columns = portfolio 
 ```
 
 When called with multiple backtests, all `BacktestResult` methods adapt automatically:
-- `summary()` / `full_summary()` return a `pd.DataFrame` (metrics × portfolios) instead of a dict
+- `summary()` / `full_summary()` return a `pd.DataFrame` with one column per portfolio
 - `plot()` overlays all equity curves on a single chart
 - `plot_histogram()` overlays all return distributions
 - `plot_security_weights()` shows weights per portfolio in separate panels
@@ -255,9 +255,11 @@ When called with multiple backtests, all `BacktestResult` methods adapt automati
 #### Metrics
 
 ```python
-result.summary() -> dict[str, float]
-result.full_summary() -> dict[str, float]
+result.summary() -> pd.DataFrame
+result.full_summary() -> pd.DataFrame
 ```
+
+Both always return a `pd.DataFrame` — rows are metric names, columns are portfolio names. For a single backtest there is one column; for multiple backtests each portfolio gets its own column, enabling direct side-by-side comparison with `result.summary()["portfolio_name"]`.
 
 **`summary()`** — Quick overview of the most-used metrics:
 

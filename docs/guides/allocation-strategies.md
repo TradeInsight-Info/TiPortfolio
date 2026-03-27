@@ -67,7 +67,7 @@ short = ti.Portfolio(
             lag=lag,
             sort_descending=False,
         ),
-        ti.Weigh.Equally(sign=-1),
+        ti.Weigh.Equally(short=True),
         ti.Action.Rebalance(),
     ],
     tickers,

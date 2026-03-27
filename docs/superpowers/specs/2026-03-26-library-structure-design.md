@@ -305,7 +305,7 @@ Signal algos are the first step in any `AlgoQueue` — they control *when* to pr
 | Class | Description |
 |---|---|
 | `Weigh.Weigh(weights: dict[str, float])` | Base — applies explicit weights directly |
-| `Weigh.Equally(sign=1)` | Proxy → `Weigh.Weigh`: equal weight; sign=-1 for short leg |
+| `Weigh.Equally(short: bool = False)` | Proxy → `Weigh.Weigh`: equal weight; `short=True` for short leg |
 | `Weigh.Ratio(weights: dict[str, float])` | Proxy → `Weigh.Weigh`: normalises provided weights before applying |
 | `Weigh.BasedOnHV(initial_ratio, target_hv, lookback)` | Proxy → `Weigh.Weigh`: volatility targeting |
 | `Weigh.BasedOnBeta(initial_ratio, target_beta, lookback)` | Proxy → `Weigh.Weigh`: beta neutral |
