@@ -16,10 +16,10 @@ data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 portfolio = ti.Portfolio(
     'monthly_rebalance',
     [
-        ti.algo.Schedule.Monthly(),              # trigger: end of month
-        ti.algo.Select.All(),                    # select all tickers
-        ti.algo.Weigh.Ratio(weights=target_ratio),  # fixed target weights
-        ti.algo.Action.Rebalance(),                    # execute trades
+        ti.Schedule.Monthly(),              # trigger: end of month
+        ti.Select.All(),                    # select all tickers
+        ti.Weigh.Ratio(weights=target_ratio),  # fixed target weights
+        ti.Action.Rebalance(),                    # execute trades
     ],
     tickers,
 )
@@ -40,10 +40,10 @@ data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 portfolio = ti.Portfolio(
     'monthly_rebalance_mid',
     [
-        ti.algo.Schedule.Monthly(day=15, next_trading_day=True),  # 15th or next trading day
-        ti.algo.Select.All(),
-        ti.algo.Weigh.Equally(),
-        ti.algo.Action.Rebalance(),
+        ti.Schedule.Monthly(day=15, next_trading_day=True),  # 15th or next trading day
+        ti.Select.All(),
+        ti.Weigh.Equally(),
+        ti.Action.Rebalance(),
     ],
     tickers,
 )
@@ -66,10 +66,10 @@ data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 portfolio = ti.Portfolio(
     'quarterly_rebalance',
     [
-        ti.algo.Schedule.Quarterly(months=[2, 5, 8, 11]),  # end of Feb/May/Aug/Nov
-        ti.algo.Select.All(),
-        ti.algo.Weigh.Equally(),
-        ti.algo.Action.Rebalance(),
+        ti.Schedule.Quarterly(months=[2, 5, 8, 11]),  # end of Feb/May/Aug/Nov
+        ti.Select.All(),
+        ti.Weigh.Equally(),
+        ti.Action.Rebalance(),
     ],
     tickers,
 )
@@ -86,14 +86,14 @@ portfolio = ti.Portfolio(
     'quarterly_rebalance',
     [
         ti.branching.Or(
-            ti.algo.Schedule.Schedule(month=2),
-            ti.algo.Schedule.Schedule(month=5),
-            ti.algo.Schedule.Schedule(month=8),
-            ti.algo.Schedule.Schedule(month=11),
+            ti.Schedule.Schedule(month=2),
+            ti.Schedule.Schedule(month=5),
+            ti.Schedule.Schedule(month=8),
+            ti.Schedule.Schedule(month=11),
         ),
-        ti.algo.Select.All(),
-        ti.algo.Weigh.Equally(),
-        ti.algo.Action.Rebalance(),
+        ti.Select.All(),
+        ti.Weigh.Equally(),
+        ti.Action.Rebalance(),
     ],
     tickers,
 )
@@ -113,12 +113,12 @@ portfolio = ti.Portfolio(
     'half_year_rebalance',
     [
         ti.branching.Or(
-            ti.algo.Schedule.Schedule(day=15, next_trading_day=True, month=2),
-            ti.algo.Schedule.Schedule(day=15, next_trading_day=True, month=8),
+            ti.Schedule.Schedule(day=15, next_trading_day=True, month=2),
+            ti.Schedule.Schedule(day=15, next_trading_day=True, month=8),
         ),
-        ti.algo.Select.All(),
-        ti.algo.Weigh.Equally(),
-        ti.algo.Action.Rebalance(),
+        ti.Select.All(),
+        ti.Weigh.Equally(),
+        ti.Action.Rebalance(),
     ],
     tickers,
 )
@@ -139,10 +139,10 @@ data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 portfolio = ti.Portfolio(
     'yearly_rebalance',
     [
-        ti.algo.Schedule.Schedule(day=15, next_trading_day=True, month=7),
-        ti.algo.Select.All(),
-        ti.algo.Weigh.Equally(),
-        ti.algo.Action.Rebalance(),
+        ti.Schedule.Schedule(day=15, next_trading_day=True, month=7),
+        ti.Select.All(),
+        ti.Weigh.Equally(),
+        ti.Action.Rebalance(),
     ],
     tickers,
 )

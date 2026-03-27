@@ -38,9 +38,13 @@ from tiportfolio import (
     Backtest,
     BacktestResult,
     TiConfig,
-    run,         # replaces run_backtest; accepts *tests for multi-backtest comparison
-    algo,        # module: ti.algo.*
-    branching,   # module: ti.branching.*
+    run,         # accepts *tests for multi-backtest comparison
+    Schedule,    # ti.Schedule.Monthly(), ti.Schedule.Quarterly(), ti.Schedule.Schedule()
+    Select,      # ti.Select.All(), ti.Select.Momentum(), ti.Select.Select()
+    Weigh,       # ti.Weigh.Equally(), ti.Weigh.Ratio(), ti.Weigh.Weigh(), ...
+    Action,      # ti.Action.Rebalance(), ti.Action.PrintInfo()
+    VixSignal,   # market-based signal algo
+    branching,   # ti.branching.Or / .And / .Not
 )
 ```
 
@@ -99,7 +103,7 @@ All concrete algos. Internal files are organized by the *role* each algo plays i
 | `weigh.py` | **How much** to allocate | `Weigh` namespace: `Weigh.Weigh` (base) + proxies: `Weigh.Equally`, `Weigh.Ratio`, `Weigh.BasedOnHV`, `Weigh.BasedOnBeta`, `Weigh.ERC` |
 | `rebalance.py` | **Action** — execute trades | `Action` namespace: `Action.Rebalance`, `Action.PrintInfo` |
 
-`algos/__init__.py` re-exports everything so `ti.algo.Schedule.Monthly` resolves correctly.
+`algos/__init__.py` re-exports everything so `ti.Schedule.Monthly` resolves correctly.
 
 ---
 

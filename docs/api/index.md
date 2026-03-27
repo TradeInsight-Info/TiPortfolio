@@ -14,10 +14,10 @@ data = ti.fetch_data(["QQQ", "BIL", "GLD"], start="2019-01-01", end="2024-12-31"
 portfolio = ti.Portfolio(
     "monthly_rebalance",
     [
-        ti.algo.Schedule.Monthly(),
-        ti.algo.Select.All(),
-        ti.algo.Weigh.Equally(),
-        ti.algo.Action.Rebalance(),
+        ti.Schedule.Monthly(),
+        ti.Select.All(),
+        ti.Weigh.Equally(),
+        ti.Action.Rebalance(),
     ],
     ["QQQ", "BIL", "GLD"],
 )
@@ -77,13 +77,14 @@ In **parent portfolios**, `Select.All()` populates `context.selected` with child
 
 ---
 
-### `algo` Namespace
+### Algo Namespaces
 
-All concrete algos live under `ti.algo.*`. A typical stack follows four roles in order:
+All algo namespaces are exposed directly under `ti`. A typical stack follows four roles in order:
 
 ```
-Signal → Select → Weigh → Rebalance
-  When?   What?  How much?  Execute
+Signal    → Select    → Weigh    → Action
+Schedule.*  Select.*    Weigh.*    Action.*
+  When?      What?     How much?   Execute
 ```
 
 #### Signal Algos
@@ -173,14 +174,14 @@ ti.branching.Not(algo: Algo)     # inverts result of wrapped algo
 ```python
 # Trigger quarterly: month 2 OR 5 OR 8 OR 11
 ti.branching.Or(
-    ti.algo.Schedule.Schedule(month=2),
-    ti.algo.Schedule.Schedule(month=5),
-    ti.algo.Schedule.Schedule(month=8),
-    ti.algo.Schedule.Schedule(month=11),
+    ti.Schedule.Schedule(month=2),
+    ti.Schedule.Schedule(month=5),
+    ti.Schedule.Schedule(month=8),
+    ti.Schedule.Schedule(month=11),
 )
 
 # Trigger only when NOT in high-volatility regime
-ti.branching.Not(ti.algo.VixSignal(high=30, low=20, signal=vix_data))
+ti.branching.Not(ti.VixSignal(high=30, low=20, signal=vix_data))
 ```
 
 ---
@@ -414,7 +415,7 @@ class MyTrigger(Algo):
 Then add it to any stack:
 
 ```python
-ti.Portfolio("my_strategy", [MyTrigger(), ti.algo.Select.All(), ti.algo.Weigh.Equally(), ti.algo.Action.Rebalance()], [...])
+ti.Portfolio("my_strategy", [MyTrigger(), ti.Select.All(), ti.Weigh.Equally(), ti.Action.Rebalance()], [...])
 ```
 
 ### Custom Data Source

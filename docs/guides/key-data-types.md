@@ -39,8 +39,8 @@ If weights do not sum to 1.0, the engine normalises them proportionally before e
 
 ```python
 # These two are equivalent:
-ti.algo.Weigh.Ratio(weights={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1})   # sums to 1.0
-ti.algo.Weigh.Ratio(weights={"QQQ": 70, "BIL": 20, "GLD": 10})       # normalised to same
+ti.Weigh.Ratio(weights={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1})   # sums to 1.0
+ti.Weigh.Ratio(weights={"QQQ": 70, "BIL": 20, "GLD": 10})       # normalised to same
 
 # Intentional cash buffer: weights summing to < 1.0 are respected as-is (no normalisation)
 # Only over-weight cases (sum > 1.0) are normalised down.

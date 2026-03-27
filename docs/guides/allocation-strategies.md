@@ -46,14 +46,14 @@ lag = pd.DateOffset(days=1) # 1 day lag to avoid lookahead bias
 long = ti.Portfolio(
     'long',
     [
-        ti.algo.Select.Momentum(
+        ti.Select.Momentum(
             n=3,
             lookback=lookback,
             lag=lag,
             sort_descending=True,
         ),
-        ti.algo.Weigh.Equally(),
-        ti.algo.Action.Rebalance(),
+        ti.Weigh.Equally(),
+        ti.Action.Rebalance(),
     ],
     tickers,
 )
@@ -61,14 +61,14 @@ long = ti.Portfolio(
 short = ti.Portfolio(
     'short',
     [
-        ti.algo.Select.Momentum(
+        ti.Select.Momentum(
             n=3,
             lookback=lookback,
             lag=lag,
             sort_descending=False,
         ),
-        ti.algo.Weigh.Equally(sign=-1),
-        ti.algo.Action.Rebalance(),
+        ti.Weigh.Equally(sign=-1),
+        ti.Action.Rebalance(),
     ],
     tickers,
 )
@@ -76,10 +76,10 @@ short = ti.Portfolio(
 dollar_neutral_portfolio = ti.Portfolio(
     'dollar_neutral',
     [
-        ti.algo.Schedule.Monthly(),
-        ti.algo.Select.All(),    # selects child portfolio names: ["long", "short"]
-        ti.algo.Weigh.Equally(), # 50% capital to each child
-        ti.algo.Action.Rebalance(),    # allocates capital to children
+        ti.Schedule.Monthly(),
+        ti.Select.All(),    # selects child portfolio names: ["long", "short"]
+        ti.Weigh.Equally(), # 50% capital to each child
+        ti.Action.Rebalance(),    # allocates capital to children
     ],
     [long, short],
 )
@@ -105,14 +105,14 @@ data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 portfolio = ti.Portfolio(
     'monthly',
     [
-        ti.algo.Schedule.Monthly(),
-        ti.algo.Select.All(),
-        ti.algo.Weigh.BasedOnHV(
+        ti.Schedule.Monthly(),
+        ti.Select.All(),
+        ti.Weigh.BasedOnHV(
             initial_ratio={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1},
             target_hv=60,
             lookback=pd.DateOffset(months=1),
         ),
-        ti.algo.Action.Rebalance(),
+        ti.Action.Rebalance(),
     ],
     tickers,
 )
@@ -138,16 +138,16 @@ data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 portfolio = ti.Portfolio(
     'erc_monthly',
     [
-        ti.algo.Schedule.Monthly(),
-        ti.algo.Select.All(),
-        ti.algo.Weigh.ERC(
+        ti.Schedule.Monthly(),
+        ti.Select.All(),
+        ti.Weigh.ERC(
             lookback=pd.DateOffset(months=3),  # covariance estimation window
             covar_method="ledoit-wolf",         # shrinkage estimator (default)
             risk_parity_method="ccd",           # cyclical coordinate descent (default)
             maximum_iterations=100,
             tolerance=1e-8,
         ),
-        ti.algo.Action.Rebalance(),
+        ti.Action.Rebalance(),
     ],
     tickers,
 )
@@ -177,14 +177,14 @@ data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 portfolio = ti.Portfolio(
     'monthly',
     [
-        ti.algo.Schedule.Monthly(),
-        ti.algo.Select.All(),
-        ti.algo.Weigh.BasedOnBeta(
+        ti.Schedule.Monthly(),
+        ti.Select.All(),
+        ti.Weigh.BasedOnBeta(
             initial_ratio={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1},
             target_beta=0,
             lookback=pd.DateOffset(months=1),
         ),
-        ti.algo.Action.Rebalance(),
+        ti.Action.Rebalance(),
     ],
     tickers,
 )

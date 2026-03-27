@@ -30,9 +30,9 @@ vix_data = ti.fetch_data(["^VIX"], start="2019-01-01", end="2024-12-31")
 low_vol_portfolio = ti.Portfolio(
     'low_vol',
     [
-        ti.algo.Select.All(),
-        ti.algo.Weigh.Ratio(weights={"QQQ": 0.8, "BIL": 0.15, "GLD": 0.05}),
-        ti.algo.Action.Rebalance(),
+        ti.Select.All(),
+        ti.Weigh.Ratio(weights={"QQQ": 0.8, "BIL": 0.15, "GLD": 0.05}),
+        ti.Action.Rebalance(),
     ],
     tickers,
 )
@@ -41,9 +41,9 @@ low_vol_portfolio = ti.Portfolio(
 high_vol_portfolio = ti.Portfolio(
     'high_vol',
     [
-        ti.algo.Select.All(),
-        ti.algo.Weigh.Ratio(weights={"QQQ": 0.5, "BIL": 0.4, "GLD": 0.1}),
-        ti.algo.Action.Rebalance(),
+        ti.Select.All(),
+        ti.Weigh.Ratio(weights={"QQQ": 0.5, "BIL": 0.4, "GLD": 0.1}),
+        ti.Action.Rebalance(),
     ],
     tickers,
 )
@@ -52,8 +52,8 @@ high_vol_portfolio = ti.Portfolio(
 portfolio = ti.Portfolio(
     'vix_based_rebalance',
     [
-        ti.algo.Schedule.Monthly(),
-        ti.algo.VixSignal(high=30, low=20, signal=vix_data),
+        ti.Schedule.Monthly(),
+        ti.VixSignal(high=30, low=20, signal=vix_data),
         # engine automatically routes capital to selected_child
     ],
     [low_vol_portfolio, high_vol_portfolio],

@@ -31,7 +31,7 @@ Selected over:
 
 ### Rationale
 
-`algo.py` stays small and stable (just the ABC + AlgoQueue + branching). `algos/` holds growing concrete implementations grouped by category. Re-exports in `algos/__init__.py` keep the public namespace identical: `ti.algo.Schedule.Monthly` works regardless of internal file layout.
+`algo.py` stays small and stable (just the ABC + AlgoQueue + branching). `algos/` holds growing concrete implementations grouped by category. Re-exports in `algos/__init__.py` keep the public namespace identical: `ti.Schedule.Monthly` works regardless of internal file layout.
 
 ---
 
@@ -39,7 +39,7 @@ Selected over:
 
 ```
 src/tiportfolio/
-  __init__.py         # Public API: fetch_data, Portfolio, Backtest, BacktestResult, run_backtest, algo, branching
+  __init__.py         # Public API: fetch_data, Portfolio, Backtest, BacktestResult, run, Schedule, Select, Weigh, Action, VixSignal, branching
   config.py           # TiConfig dataclass with defaults
   algo.py             # Algo ABC + AlgoQueue + Or/Not (Or and Not also re-exported via branching.py)
   branching.py        # Thin re-export shim: "from tiportfolio.algo import Or, And, Not"
@@ -242,10 +242,10 @@ data = ti.fetch_data(["QQQ", "BIL", "GLD"], start="2019-01-01", end="2024-12-31"
 portfolio = ti.Portfolio(
     "monthly_rebalance",
     [
-        ti.algo.Schedule.Monthly(),
-        ti.algo.Select.All(),
-        ti.algo.Weigh.Equally(),
-        ti.algo.Action.Rebalance(),
+        ti.Schedule.Monthly(),
+        ti.Select.All(),
+        ti.Weigh.Equally(),
+        ti.Action.Rebalance(),
     ],
     ["QQQ", "BIL", "GLD"],
 )
@@ -259,9 +259,10 @@ result.plot()
 result.trades
 ```
 
-Namespaces exposed:
-- `ti.run` — entry point (replaces `run_backtest`)
-- `ti.algo.*` — all concrete algos (via `algos/__init__.py` re-exports)
+Namespaces exposed directly under `ti`:
+- `ti.run` — entry point
+- `ti.Schedule`, `ti.Select`, `ti.Weigh`, `ti.Action` — algo namespaces
+- `ti.VixSignal` — market-based signal algo
 - `ti.branching.Or`, `ti.branching.And`, `ti.branching.Not`
 
 ---
