@@ -10,11 +10,13 @@ This uses the [Tree Structure](https://pmorissette.github.io/bt/tree.html) conce
 When a portfolio's `children` are other `Portfolio` objects (not ticker strings), the engine evaluates it as a **parent node**:
 
 1. The parent's algo stack runs first
-2. A signal algo (e.g. `Signal.VIX`) sets `context.selected_child`
-3. `Action.Rebalance()` routes capital to `selected_child`
-4. The engine evaluates the selected child's algo stack with a fresh context
+2. A signal algo (e.g. `Signal.VIX`) writes the chosen child to `context.selected` and its capital fraction to `context.weights`
+3. `Action.Rebalance()` reads `context.selected` and `context.weights` to allocate capital — identically to how a leaf node allocates across tickers
+4. The engine evaluates each selected child's algo stack with a fresh context
 
 Child portfolios **do not need a schedule algo** — the parent controls when evaluation happens. Children just describe *how* to allocate when they are active.
+
+**Children ordering for `Signal.VIX`:** the parent portfolio's `children` list must be ordered `[low_vol_child, high_vol_child]` — index 0 is activated when VIX < `low`, index 1 when VIX > `high`.
 
 
 ### VIX Regime-Switching Example

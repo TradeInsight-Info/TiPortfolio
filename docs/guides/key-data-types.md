@@ -13,6 +13,7 @@ config = ti.TiConfig(
     stock_borrow_rate=0.07,  # short-selling borrow fee; varies by security
     initial_capital=10_000,  # starting portfolio value
     bars_per_year=252,       # trading days per year (adjust for intraday data)
+    benchmark_ticker="SPY",  # benchmark shown in result.plot() and stats; set None to disable
 )
 
 result = ti.run(ti.Backtest(portfolio, data, config=config))

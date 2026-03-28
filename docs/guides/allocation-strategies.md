@@ -95,12 +95,12 @@ A volatility targeting strategy is a different animal from dollar-neutral or bet
 
 
 ```python
+import pandas as pd
 import tiportfolio as ti
 
 tickers = ["QQQ", "BIL", "GLD"]
 
-
-data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31") 
+data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31")
 
 portfolio = ti.Portfolio(
     'monthly',
@@ -109,7 +109,7 @@ portfolio = ti.Portfolio(
         ti.Select.All(),
         ti.Weigh.BasedOnHV(
             initial_ratio={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1},
-            target_hv=60,
+            target_hv=0.60,   # annualised decimal: 0.60 = 60% volatility target
             lookback=pd.DateOffset(months=1),
         ),
         ti.Action.Rebalance(),
@@ -167,6 +167,7 @@ If your longs have a high beta, you short more of a low-beta stock to offset it,
 
 
 ```python
+import pandas as pd
 import tiportfolio as ti
 
 tickers = ["QQQ", "BIL", "GLD"]

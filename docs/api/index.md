@@ -39,10 +39,23 @@ ti.fetch_data(
     start: str,                      # "YYYY-MM-DD"
     end: str,                        # "YYYY-MM-DD"
     source: str = "yfinance",        # "yfinance" | "alpaca"
-) -> pd.DataFrame
+) -> dict[str, pd.DataFrame]
 ```
 
-Fetches OHLCV price data for the given tickers. Returns a DataFrame with a MultiIndex of `(date, symbol)` and columns `open`, `high`, `low`, `close`, `volume` — normalized to UTC. `context.prices` inside algos uses the same format, sliced to the current evaluation date.
+Fetches OHLCV price data for the given tickers. Returns a `dict` keyed by ticker string. Each value is a `pd.DataFrame` with a `DatetimeIndex` (UTC) and columns `open`, `high`, `low`, `close`, `volume`.
+
+`context.prices` inside algos is this same dict — the **full history** for all tickers, not sliced. Algos slice to their own lookback window using `context.prices[ticker].loc[start:end]`.
+
+### `validate_data`
+
+```python
+ti.validate_data(
+    data: dict[str, pd.DataFrame],
+    extra: dict[str, pd.DataFrame] | None = None,
+) -> None
+```
+
+Validates that all DataFrames in `data` (and optionally `extra`) share identical `DatetimeIndex` values. Raises `ValueError` with the first misaligned date and the ticker names involved. Called automatically at `Backtest` construction; also callable explicitly before running.
 
 ---
 
@@ -112,7 +125,7 @@ Signal algos fall into two sub-types:
 
 | Algo | Signature | Description |
 |---|---|---|
-| `Signal.VIX` | `(high: float, low: float, data: pd.DataFrame)` | Sets `context.selected_child` based on VIX regime; `signal` is a pre-fetched OHLCV DataFrame |
+| `Signal.VIX` | `(high: float, low: float, data: dict[str, pd.DataFrame])` | Writes the active child portfolio to `context.selected` and `{child.name: 1.0}` to `context.weights` based on VIX regime. `data` must contain `"^VIX"`. **Children ordering:** `children[0]` = low-vol regime (VIX < `low`), `children[1]` = high-vol regime (VIX > `high`). Between thresholds, previous regime persists (hysteresis). |
 
 #### Select Algos
 
@@ -124,6 +137,7 @@ Control *which* tickers are included. Writes to `context.selected`.
 |---|---|---|
 | `Select.All` | `()` | Selects all tickers in the portfolio |
 | `Select.Momentum` | `(n: int, lookback: pd.DateOffset, lag: pd.DateOffset = pd.DateOffset(days=1), sort_descending: bool = True)` | Selects top/bottom `n` tickers by momentum score; writes to `context.selected` |
+| `Select.Filter` | `(data: dict[str, pd.DataFrame], condition: Callable[[dict[str, pd.Series]], bool])` | Boolean gate — returns `False` to halt the queue (no rebalance) if `condition` fails; returns `True` without modifying `context.selected` if it passes |
 
 #### Weigh Algos
 
@@ -134,8 +148,8 @@ Control *how much* to allocate. Reads `context.selected`, writes `context.weight
 | Algo | Signature | Description |
 |---|---|---|
 | `Weigh.Equally` | `(short: bool = False)` | Divides capital equally across `context.selected`; `short=True` for short leg |
-| `Weigh.Ratio` | `(weights: dict[str, float])` | Applies provided weights (normalised to sum to 1) |
-| `Weigh.BasedOnHV` | `(initial_ratio: dict[str, float], target_hv: float, lookback: pd.DateOffset)` | Volatility-targeting weights |
+| `Weigh.Ratio` | `(weights: dict[str, float])` | Applies provided weights (normalised so absolute values sum to 1; handles short positions) |
+| `Weigh.BasedOnHV` | `(initial_ratio: dict[str, float], target_hv: float, lookback: pd.DateOffset)` | Volatility-targeting weights; `target_hv` is an annualised decimal (e.g. `0.15` = 15% vol) |
 | `Weigh.BasedOnBeta` | `(initial_ratio: dict[str, float], target_beta: float, lookback: pd.DateOffset)` | Beta-neutral weights |
 | `Weigh.ERC` | `(lookback: pd.DateOffset, covar_method: str = "ledoit-wolf", risk_parity_method: str = "ccd", maximum_iterations: int = 100, tolerance: float = 1e-8)` | Equal Risk Contribution (Risk Parity) weights |
 
@@ -195,6 +209,7 @@ ti.TiConfig(
     stock_borrow_rate: float = 0.07,  # short-selling borrow fee; varies by security
     initial_capital: float = 10_000,
     bars_per_year: int = 252,
+    benchmark_ticker: str | None = "SPY",  # benchmark for performance comparison
 )
 ```
 
@@ -205,7 +220,7 @@ Global defaults for all backtests. Pass a custom instance to `Backtest(config=..
 ```python
 ti.Backtest(
     portfolio: Portfolio,
-    data: pd.DataFrame,
+    data: dict[str, pd.DataFrame],        # same dict returned by fetch_data
     fee_per_share: float | None = None,   # convenience override of TiConfig
     config: TiConfig | None = None,
 )
@@ -358,7 +373,7 @@ Portfolio performance chart. Shows:
 - Equity curve
 - Drawdown chart below
 
-When `interactive=True`, renders with Plotly: hover to see daily return and cumulative performance, click a date to inspect the trade record for that rebalance. When `interactive=False`, renders a static Matplotlib figure suitable for export.
+When `interactive=True`, renders with Plotly: hover to see daily return and cumulative performance. When `interactive=False`, renders a static Matplotlib figure suitable for export.
 
 **`plot_histogram(interactive=True)`**
 
@@ -377,10 +392,10 @@ When `interactive=True`, hover to see exact weights on any date; click a ticker 
 #### Trade Records
 
 ```python
-result.trades  # pd.DataFrame
+result.trades  # Trades — a pd.DataFrame wrapper
 ```
 
-One row per rebalance event:
+One row per rebalance event. Negative `qty` values indicate short positions.
 
 | Column | Description |
 |---|---|
@@ -389,10 +404,18 @@ One row per rebalance event:
 | `equity_after` | Portfolio value after trades |
 | `fee_paid` | Total fee for this rebalance |
 | `{TICKER}_price` | Price at execution |
-| `{TICKER}_qty_before` | Shares held before |
-| `{TICKER}_trade_qty` | Shares bought (+) or sold (−) |
-| `{TICKER}_qty_after` | Shares held after |
-| `{TICKER}_value_after` | Position value after |
+| `{TICKER}_qty_before` | Shares held before (negative = short) |
+| `{TICKER}_trade_qty` | Shares bought (+) or sold/shorted (−) |
+| `{TICKER}_qty_after` | Shares held after (negative = short) |
+| `{TICKER}_value_after` | Position value after (negative for short) |
+
+`result.trades` supports all standard `pd.DataFrame` operations and adds one method:
+
+```python
+result.trades.sample(n: int) -> pd.DataFrame
+```
+
+Returns the top `n` and bottom `n` rebalances ranked by equity return (`equity_after / equity_before - 1`). Useful for spotting the best and worst rebalance decisions during debugging. Returns at most `2n` rows; gracefully returns fewer if fewer than `n` rebalances exist.
 
 ---
 
