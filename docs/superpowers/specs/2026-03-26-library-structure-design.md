@@ -306,7 +306,7 @@ Signal algos are the first step in any `AlgoQueue` — they control *when* to pr
 | `Weigh.Equally(short: bool = False)` | Equal weight; `short=True` for short leg |
 | `Weigh.Ratio(weights: dict[str, float])` | Applies provided weights (normalised to sum to 1) |
 | `Weigh.BasedOnHV(initial_ratio, target_hv, lookback)` | Volatility targeting |
-| `Weigh.BasedOnBeta(initial_ratio, target_beta, lookback)` | Beta neutral |
+| `Weigh.BasedOnBeta(initial_ratio, target_beta, lookback, base_data)` | Beta neutral; `base_data` is the benchmark OHLCV DataFrame |
 | `Weigh.ERC(lookback, covar_method="ledoit-wolf", risk_parity_method="ccd", maximum_iterations=100, tolerance=1e-8)` | Equal Risk Contribution (Risk Parity) |
 
 ### Action algos (`algos/rebalance.py`)

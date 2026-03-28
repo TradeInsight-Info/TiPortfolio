@@ -21,7 +21,7 @@ This spec covers the full implementation of the TiPortfolio core engine as descr
 | 2 | `Select.Filter` documented in `extra-data.md` but missing from `api/index.md` Select table | Add to `api/index.md` and implement in `algos/select.py`. Must be added to docs **before** implementation. |
 | 3 | `ti.validate_data()` in `extra-data.md` but not in API reference | Add to public API and add usage example to `extra-data.md`. |
 | 4 | Short selling: `Weigh.Equally(short=True)` used but engine mechanics unspecified | Negative weights in `context.weights`; daily borrow costs; negative `positions` qty. |
-| 5 | `Weigh.BasedOnBeta` needs a benchmark ticker to compute beta | Add `benchmark_ticker: str = "SPY"` as a constructor parameter on `Weigh.BasedOnBeta` — not on `TiConfig`. |
+| 5 | `Weigh.BasedOnBeta` needs benchmark data to compute beta | Add `base_data: pd.DataFrame` as a constructor parameter on `Weigh.BasedOnBeta`. User passes the benchmark OHLCV DataFrame directly. |
 | 6 | `result.trades.sample(10)` described as top/bottom trades but pandas `.sample()` is random | Custom `Trades` wrapper with `.sample(n)` returning top/bottom n by equity return. Add to `api/index.md`. |
 | 7 | `context.prices` described as "sliced to current date" — ambiguous for lookback algos | Full history dict passed; each algo slices to its own lookback window. |
 | 8 | `Signal.Quarterly` shown as expanding to `Or(...)` — unclear if factory or class | `Algo` subclass composing `Or` in `__init__`, exposes clean `__call__`. |
@@ -555,12 +555,12 @@ Algorithm:
 
 **`Weigh.BasedOnBeta`** — beta-neutral; adjusts `initial_ratio` so portfolio beta → `target_beta`:
 
-Accepts `benchmark_ticker: str = "SPY"` as a constructor parameter. The benchmark ticker must be present in `context.prices` (i.e., included in the `data` dict passed to `Backtest`). If the ticker is absent from `context.prices`, raises `KeyError` at call time.
+Accepts `base_data: pd.DataFrame` as a constructor parameter — the benchmark OHLCV DataFrame (e.g. the SPY DataFrame from `fetch_data`). The algo slices it to the lookback window internally, same pattern as `Signal.VIX(data=...)`.
 
 Algorithm:
 1. Compute benchmark daily returns over `lookback`:
    ```
-   r_bench = prices[self._benchmark_ticker].loc[start:end, "close"].pct_change().dropna()
+   r_bench = self._base_data.loc[start:end, "close"].pct_change().dropna()
    ```
 2. Compute beta for each selected ticker:
    ```

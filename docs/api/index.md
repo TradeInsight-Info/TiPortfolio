@@ -150,7 +150,7 @@ Control *how much* to allocate. Reads `context.selected`, writes `context.weight
 | `Weigh.Equally` | `(short: bool = False)` | Divides capital equally across `context.selected`; `short=True` for short leg |
 | `Weigh.Ratio` | `(weights: dict[str, float])` | Applies provided weights (normalised so absolute values sum to 1; handles short positions) |
 | `Weigh.BasedOnHV` | `(initial_ratio: dict[str, float], target_hv: float, lookback: pd.DateOffset)` | Volatility-targeting weights; `target_hv` is an annualised decimal (e.g. `0.15` = 15% vol) |
-| `Weigh.BasedOnBeta` | `(initial_ratio: dict[str, float], target_beta: float, lookback: pd.DateOffset, benchmark_ticker: str = "SPY")` | Beta-neutral weights |
+| `Weigh.BasedOnBeta` | `(initial_ratio: dict[str, float], target_beta: float, lookback: pd.DateOffset, base_data: pd.DataFrame)` | Beta-neutral weights; `base_data` is the benchmark OHLCV DataFrame (e.g. SPY) |
 | `Weigh.ERC` | `(lookback: pd.DateOffset, covar_method: str = "ledoit-wolf", risk_parity_method: str = "ccd", maximum_iterations: int = 100, tolerance: float = 1e-8)` | Equal Risk Contribution (Risk Parity) weights |
 
 #### Action Algos
