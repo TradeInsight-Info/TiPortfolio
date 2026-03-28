@@ -172,8 +172,8 @@ import tiportfolio as ti
 
 tickers = ["QQQ", "BIL", "GLD"]
 
-
-data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31") 
+# The benchmark ticker must be included in the data dict so BasedOnBeta can compute beta.
+data = ti.fetch_data(tickers + ["SPY"], start="2019-01-01", end="2024-12-31")
 
 portfolio = ti.Portfolio(
     'monthly',
@@ -184,6 +184,7 @@ portfolio = ti.Portfolio(
             initial_ratio={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1},
             target_beta=0,
             lookback=pd.DateOffset(months=1),
+            benchmark_ticker="SPY",
         ),
         ti.Action.Rebalance(),
     ],

@@ -21,7 +21,7 @@ This spec covers the full implementation of the TiPortfolio core engine as descr
 | 2 | `Select.Filter` documented in `extra-data.md` but missing from `api/index.md` Select table | Add to `api/index.md` and implement in `algos/select.py`. Must be added to docs **before** implementation. |
 | 3 | `ti.validate_data()` in `extra-data.md` but not in API reference | Add to public API and add usage example to `extra-data.md`. |
 | 4 | Short selling: `Weigh.Equally(short=True)` used but engine mechanics unspecified | Negative weights in `context.weights`; daily borrow costs; negative `positions` qty. |
-| 5 | `benchmark_ticker` mentioned in ideas/debug but missing from `TiConfig` | Add `benchmark_ticker: str \| None = "SPY"` to `TiConfig`. |
+| 5 | `Weigh.BasedOnBeta` needs a benchmark ticker to compute beta | Add `benchmark_ticker: str = "SPY"` as a constructor parameter on `Weigh.BasedOnBeta` — not on `TiConfig`. |
 | 6 | `result.trades.sample(10)` described as top/bottom trades but pandas `.sample()` is random | Custom `Trades` wrapper with `.sample(n)` returning top/bottom n by equity return. Add to `api/index.md`. |
 | 7 | `context.prices` described as "sliced to current date" — ambiguous for lookback algos | Full history dict passed; each algo slices to its own lookback window. |
 | 8 | `Signal.Quarterly` shown as expanding to `Or(...)` — unclear if factory or class | `Algo` subclass composing `Or` in `__init__`, exposes clean `__call__`. |
@@ -555,12 +555,12 @@ Algorithm:
 
 **`Weigh.BasedOnBeta`** — beta-neutral; adjusts `initial_ratio` so portfolio beta → `target_beta`:
 
-Requires `config.benchmark_ticker` to be non-`None` and present in `context.prices`. Because `config` is only available at call time (via `context.config`), the `ValueError` is raised inside `__call__` on the first invocation where `context.config.benchmark_ticker is None`, not at construction time.
+Accepts `benchmark_ticker: str = "SPY"` as a constructor parameter. The benchmark ticker must be present in `context.prices` (i.e., included in the `data` dict passed to `Backtest`). If the ticker is absent from `context.prices`, raises `KeyError` at call time.
 
 Algorithm:
 1. Compute benchmark daily returns over `lookback`:
    ```
-   r_bench = prices[config.benchmark_ticker].loc[start:end, "close"].pct_change().dropna()
+   r_bench = prices[self._benchmark_ticker].loc[start:end, "close"].pct_change().dropna()
    ```
 2. Compute beta for each selected ticker:
    ```
@@ -736,7 +736,7 @@ _render_plotly(data)        ← interactive=True   (Plotly, already in dev deps)
 _render_matplotlib(data)    ← interactive=False  (Matplotlib, in deps)
 ```
 
-Benchmark overlay: when `config.benchmark_ticker` is set and present in `context.prices`, the engine builds a buy-and-hold equity curve for that ticker and overlays it on `plot()`. Interactive click-to-inspect-trade-record is **out of scope** for v1 (Plotly callback support without Dash is non-trivial; deferred to future enhancement).
+Interactive click-to-inspect-trade-record is **out of scope** for v1 (Plotly callback support without Dash is non-trivial; deferred to future enhancement).
 
 ---
 
@@ -751,7 +751,6 @@ class TiConfig:
     stock_borrow_rate: float = 0.07      # short-selling borrow fee
     initial_capital: float = 10_000
     bars_per_year: int = 252
-    benchmark_ticker: str | None = "SPY" # buy-and-hold overlay in plot(); required by Weigh.BasedOnBeta
 ```
 
 ---
