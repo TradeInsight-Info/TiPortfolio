@@ -156,8 +156,8 @@ class TestFullBacktest:
         bt = Backtest(p, prices_dict)
         result = run(bt)
         single = result[0]
-        # Fixture has 22 trading days
-        assert len(single.equity_curve) == 22
+        expected_days = len(next(iter(prices_dict.values())))
+        assert len(single.equity_curve) == expected_days
 
     def test_initial_equity(self, prices_dict: dict[str, pd.DataFrame]) -> None:
         p = Portfolio(

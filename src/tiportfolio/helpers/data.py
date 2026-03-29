@@ -474,7 +474,7 @@ class YFinance(DataSource):
     ADJ_CLOSE: Final = "adj_close"
     __TIMEFRAME: Final = "1d"
 
-    def __init__(self, auto_adjust: bool = False):
+    def __init__(self, auto_adjust: bool = True):
         super().__init__()
         self.auto_adjust = auto_adjust
         self._scope.register_custom_cols(self.ADJ_CLOSE)
