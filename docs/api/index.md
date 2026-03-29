@@ -220,7 +220,6 @@ Global defaults for all backtests. Pass a custom instance to `Backtest(config=..
 ti.Backtest(
     portfolio: Portfolio,
     data: dict[str, pd.DataFrame],        # same dict returned by fetch_data
-    fee_per_share: float | None = None,   # convenience override of TiConfig
     config: TiConfig | None = None,
 )
 ```

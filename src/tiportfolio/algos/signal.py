@@ -48,6 +48,21 @@ class Signal:
             # Compare date-only (both should be UTC)
             return date.normalize() == last_trading_day.normalize()
 
+    class Once(Algo):
+        """Fires True on the first call, False on all subsequent calls.
+
+        Use for buy-and-hold strategies: buy once, then hold forever.
+        """
+
+        def __init__(self) -> None:
+            self._fired = False
+
+        def __call__(self, context: Context) -> bool:
+            if self._fired:
+                return False
+            self._fired = True
+            return True
+
     class Monthly(Algo):
         """Fires on the last trading day of each month. Delegates to Schedule."""
 

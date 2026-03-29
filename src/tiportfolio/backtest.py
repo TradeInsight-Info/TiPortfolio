@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-from dataclasses import replace
 
 import pandas as pd
 
@@ -19,15 +18,12 @@ class Backtest:
         self,
         portfolio: Portfolio,
         data: dict[str, pd.DataFrame],
-        fee_per_share: float | None = None,
         config: TiConfig | None = None,
     ) -> None:
         validate_data(data)
         self.portfolio = portfolio
         self.data = data
         self.config = config or TiConfig()
-        if fee_per_share is not None:
-            self.config = replace(self.config, fee_per_share=fee_per_share)
 
 
 # ---------------------------------------------------------------------------

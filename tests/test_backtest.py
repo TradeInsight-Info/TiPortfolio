@@ -134,9 +134,10 @@ class TestBacktestConstructor:
         bt = Backtest(p, prices_dict, config=config)
         assert bt.config.initial_capital == 50_000
 
-    def test_fee_override(self, prices_dict: dict[str, pd.DataFrame]) -> None:
+    def test_custom_fee_via_config(self, prices_dict: dict[str, pd.DataFrame]) -> None:
         p = Portfolio("test", [], ["QQQ"])
-        bt = Backtest(p, prices_dict, fee_per_share=0.01)
+        config = TiConfig(fee_per_share=0.01)
+        bt = Backtest(p, prices_dict, config=config)
         assert bt.config.fee_per_share == 0.01
 
 

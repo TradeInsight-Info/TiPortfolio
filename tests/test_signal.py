@@ -3,7 +3,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock
 
 import pandas as pd
-import pytest
 
 from tiportfolio.algo import Context
 from tiportfolio.algos.signal import Signal
@@ -72,3 +71,28 @@ class TestSignalMonthly:
         assert len(fire_dates) == 1
         assert fire_dates[0].month == 1
         assert fire_dates[0].day == 31
+
+
+class TestSignalOnce:
+    """Signal.Once fires True on the first call, False thereafter."""
+
+    def test_first_call_true(self) -> None:
+        algo = Signal.Once()
+        ctx = _make_context("2024-01-02")
+        assert algo(ctx) is True
+
+    def test_second_call_false(self) -> None:
+        algo = Signal.Once()
+        ctx1 = _make_context("2024-01-02")
+        algo(ctx1)
+        ctx2 = _make_context("2024-01-03")
+        assert algo(ctx2) is False
+
+    def test_fires_exactly_once_over_many_bars(self, trading_dates: pd.DatetimeIndex) -> None:
+        algo = Signal.Once()
+        fire_count = 0
+        for date in trading_dates:
+            ctx = _make_context(str(date.date()))
+            if algo(ctx):
+                fire_count += 1
+        assert fire_count == 1

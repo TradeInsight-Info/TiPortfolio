@@ -69,7 +69,6 @@ Checks all DataFrames in `data` (and optionally `extra`) share identical `Dateti
 ti.Backtest(
     portfolio: Portfolio,
     data: dict[str, pd.DataFrame],    # NOT pd.DataFrame — fix api/index.md
-    fee_per_share: float | None = None,
     config: TiConfig | None = None,
 )
 ```

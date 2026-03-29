@@ -26,7 +26,8 @@ bt_low = ti.Backtest(portfolio_low, data)
 
 # --- Backtest 2: High fees ($0.05/share — simulating an expensive broker) ---
 portfolio_high = ti.Portfolio("high_fee", list(algos), tickers)
-bt_high = ti.Backtest(portfolio_high, data, fee_per_share=0.05)
+config_high = ti.TiConfig(fee_per_share=0.05)
+bt_high = ti.Backtest(portfolio_high, data, config=config_high)
 
 # --- Backtest 3: Large starting capital ($100k instead of $10k) ---
 portfolio_big = ti.Portfolio("big_capital", list(algos), tickers)
