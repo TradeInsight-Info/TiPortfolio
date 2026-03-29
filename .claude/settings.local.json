@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(uv run pytest *)"
+      "Bash(uv run pytest *)",
+      "WebFetch(domain:fc.yahoo.com)",
+      "WebFetch(domain:query1.finance.yahoo.com)",
+      "WebFetch(domain:query2.finance.yahoo.com)",
+      "WebFetch(domain:data.alpaca.markets)"
     ]
   }
 }
