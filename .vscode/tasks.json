@@ -1,10 +1,5 @@
 {
   "version": "2.0.0",
-  "options": {
-    "env": {
-      "TI_SSL_NOVERIFY": "1"
-    }
-  },
   "tasks": [
     {
       "label": "Test: all",
@@ -44,62 +39,6 @@
       "command": "uv run python -m black src/ tests/",
       "group": "build",
       "presentation": { "reveal": "always", "panel": "shared" },
-      "problemMatcher": []
-    },
-    {
-      "label": "Example: 01 Quick Start",
-      "type": "shell",
-      "command": "uv run python examples/01_quick_start.py",
-      "group": "none",
-      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
-      "problemMatcher": []
-    },
-    {
-      "label": "Example: 02 Custom Config",
-      "type": "shell",
-      "command": "uv run python examples/02_custom_config.py",
-      "group": "none",
-      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
-      "problemMatcher": []
-    },
-    {
-      "label": "Example: 03 Bond + Equity",
-      "type": "shell",
-      "command": "uv run python examples/03_two_asset_bond_equity.py",
-      "group": "none",
-      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
-      "problemMatcher": []
-    },
-    {
-      "label": "Example: 04 Single Asset",
-      "type": "shell",
-      "command": "uv run python examples/04_single_asset.py",
-      "group": "none",
-      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
-      "problemMatcher": []
-    },
-    {
-      "label": "Example: 05 Debug with PrintInfo",
-      "type": "shell",
-      "command": "uv run python examples/05_debug_with_printinfo.py",
-      "group": "none",
-      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
-      "problemMatcher": []
-    },
-    {
-      "label": "Example: 06 Buy and Hold",
-      "type": "shell",
-      "command": "uv run python examples/06_buy_and_hold.py",
-      "group": "none",
-      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
-      "problemMatcher": []
-    },
-    {
-      "label": "Run All Examples",
-      "type": "shell",
-      "command": "for f in examples/*.py; do echo \"\\n=== $f ===\"; uv run python \"$f\" || true; done",
-      "group": "none",
-      "presentation": { "reveal": "always", "panel": "shared", "clear": true },
       "problemMatcher": []
     }
   ],

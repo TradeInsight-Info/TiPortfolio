@@ -16,4 +16,3 @@ src/tiportfolio.egg-info/
 .coverage.*
 htmlcov/
 .ruff_cache/
-.certs/
