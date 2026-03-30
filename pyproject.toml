@@ -50,6 +50,9 @@ package = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+    "integration: tests that hit external services (skipped by default, use -m integration to run)",
+]
 
 [tool.mypy]
 # Python version target

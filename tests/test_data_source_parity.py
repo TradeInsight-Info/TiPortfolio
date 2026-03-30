@@ -1,7 +1,8 @@
 """Integration test: verify Alpaca and YFinance return structurally compatible DataFrames.
 
 Fetches real data for QQQ over a short window (2018-01-01 to 2018-01-31).
-Alpaca tests are skipped if ALPACA_API_KEY / ALPACA_API_SECRET are not set.
+Skipped by default — run with ``pytest -m integration`` to include.
+Alpaca tests are further skipped if ALPACA_API_KEY / ALPACA_API_SECRET are not set.
 """
 
 from __future__ import annotations
@@ -11,6 +12,8 @@ import os
 import pandas as pd
 import pytest
 from dotenv import load_dotenv
+
+pytestmark = pytest.mark.integration
 
 from tiportfolio.data import _split_flat_to_dict
 from tiportfolio.helpers.data import Alpaca, YFinance

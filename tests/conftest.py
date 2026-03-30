@@ -10,6 +10,24 @@ DATA_DIR = Path(__file__).parent / "data"
 
 
 # ---------------------------------------------------------------------------
+# Auto-skip integration tests unless explicitly requested
+# ---------------------------------------------------------------------------
+
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    """Skip tests marked ``@pytest.mark.integration`` unless the user passes
+    ``-m integration`` (or ``--run-integration``) on the command line."""
+    keyword_expr = config.option.markexpr  # value of ``-m``
+    if keyword_expr and "integration" in keyword_expr:
+        return  # user explicitly asked for integration tests
+    skip_marker = pytest.mark.skip(reason="integration test — pass -m integration to run")
+    for item in items:
+        if "integration" in item.keywords:
+            item.add_marker(skip_marker)
+
+
+# ---------------------------------------------------------------------------
 # Synthetic fixtures for unit tests (controlled prices, small date range)
 # ---------------------------------------------------------------------------
 
