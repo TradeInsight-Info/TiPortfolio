@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import math
-
 import pandas as pd
 
 from tiportfolio.algo import Context
@@ -27,6 +25,32 @@ class Backtest:
 
 
 # ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _is_parent(portfolio: Portfolio) -> bool:
+    return (
+        portfolio.children is not None
+        and len(portfolio.children) > 0
+        and isinstance(portfolio.children[0], Portfolio)
+    )
+
+
+def _init_portfolio(portfolio: Portfolio, initial_capital: float) -> None:
+    """Recursively initialise portfolio tree state."""
+    portfolio.positions = {}
+    if _is_parent(portfolio):
+        portfolio.cash = 0.0
+        portfolio.equity = initial_capital
+        for child in portfolio.children:  # type: ignore[union-attr]
+            _init_portfolio(child, 0.0)
+    else:
+        portfolio.cash = initial_capital
+        portfolio.equity = initial_capital
+
+
+# ---------------------------------------------------------------------------
 # Engine functions
 # ---------------------------------------------------------------------------
 
@@ -36,19 +60,106 @@ def mark_to_market(
     prices: dict[str, pd.DataFrame],
     date: pd.Timestamp,
 ) -> None:
-    """Recompute leaf portfolio equity from current positions and prices."""
-    position_value = sum(
-        qty * prices[ticker].loc[date, "close"]
-        for ticker, qty in portfolio.positions.items()
+    """Recompute portfolio equity. Recursive for parent nodes."""
+    if _is_parent(portfolio):
+        for child in portfolio.children:  # type: ignore[union-attr]
+            mark_to_market(child, prices, date)
+        portfolio.equity = sum(c.equity for c in portfolio.children)  # type: ignore[union-attr]
+    else:
+        position_value = sum(
+            qty * prices[ticker].loc[date, "close"]
+            for ticker, qty in portfolio.positions.items()
+        )
+        portfolio.equity = portfolio.cash + position_value
+
+
+def deduct_daily_carry_costs(
+    portfolio: Portfolio,
+    prices: dict[str, pd.DataFrame],
+    date: pd.Timestamp,
+    config: TiConfig,
+) -> None:
+    """Deduct short borrow and leverage loan costs. Recursive for parents."""
+    if _is_parent(portfolio):
+        for child in portfolio.children:  # type: ignore[union-attr]
+            deduct_daily_carry_costs(child, prices, date, config)
+        return
+
+    for ticker, qty in portfolio.positions.items():
+        if qty == 0.0:
+            continue
+        price = prices[ticker].loc[date, "close"]
+        # Short borrow cost
+        if qty < 0:
+            portfolio.cash -= abs(qty * price) * config.stock_borrow_rate / config.bars_per_year
+
+    # Leverage cost: when total long value exceeds equity
+    long_value = sum(
+        qty * prices[t].loc[date, "close"]
+        for t, qty in portfolio.positions.items()
+        if qty > 0
     )
-    portfolio.equity = portfolio.cash + position_value
+    if long_value > portfolio.equity:
+        portfolio.cash -= (long_value - portfolio.equity) * config.loan_rate / config.bars_per_year
+
+
+def _liquidate_child(
+    child: Portfolio,
+    prices: dict[str, pd.DataFrame],
+    date: pd.Timestamp,
+    config: TiConfig,
+) -> None:
+    """Sell all positions in a child, accumulate proceeds in child.cash."""
+    for ticker, qty in list(child.positions.items()):
+        price = prices[ticker].loc[date, "close"]
+        fee = abs(qty) * config.fee_per_share
+        child.cash += qty * price - fee
+        del child.positions[ticker]
+
+
+def allocate_equity_to_children(
+    portfolio: Portfolio,
+    context: Context,
+) -> None:
+    """4-step parent equity redistribution."""
+    selected_names = {c.name for c in context.selected if isinstance(c, Portfolio)}
+
+    # Step 1: Liquidate deselected children
+    for child in portfolio.children:  # type: ignore[union-attr]
+        if not isinstance(child, Portfolio):
+            continue
+        if child.name not in selected_names and child.positions:
+            _liquidate_child(child, context.prices, context.date, context.config)
+            child.equity = child.cash
+            child.cash = 0.0
+
+    # Step 2: Total available capital
+    total_equity = sum(c.equity for c in portfolio.children)  # type: ignore[union-attr]
+
+    # Step 3: Redistribute to selected children
+    for child in context.selected:
+        if not isinstance(child, Portfolio):
+            continue
+        fraction = context.weights.get(child.name, 0.0)
+        child.equity = total_equity * fraction
+
+    # Step 4: Zero deselected children
+    for child in portfolio.children:  # type: ignore[union-attr]
+        if not isinstance(child, Portfolio):
+            continue
+        if child.name not in selected_names:
+            child.equity = 0.0
+            child.cash = 0.0
 
 
 def execute_leaf_trades(
     portfolio: Portfolio,
     context: Context,
 ) -> None:
-    """Compute target positions from context.weights, trade the delta, deduct fees."""
+    """Compute target positions from context.weights, trade the delta, deduct fees.
+
+    Uses fractional shares (target_value / price).
+    """
     prices = context.prices
     date = context.date
     config = context.config
@@ -67,12 +178,12 @@ def execute_leaf_trades(
             continue
 
         target_value = equity * weight
-        target_qty = math.floor(target_value / price)
+        target_qty = target_value / price  # fractional shares
 
         current_qty = portfolio.positions.get(ticker, 0.0)
-        delta = target_qty - current_qty
-        cost = delta * price
-        fee = abs(delta) * config.fee_per_share
+        delta_qty = target_qty - current_qty
+        cost = delta_qty * price
+        fee = abs(delta_qty) * config.fee_per_share
 
         new_positions[ticker] = target_qty
         total_cost += cost
@@ -82,9 +193,8 @@ def execute_leaf_trades(
     for ticker, qty in portfolio.positions.items():
         if ticker not in new_positions:
             price = prices[ticker].loc[date, "close"]
-            cost = -qty * price  # sell all
             fee = abs(qty) * config.fee_per_share
-            total_cost += cost
+            portfolio.cash += qty * price - fee
             total_fees += fee
 
     portfolio.positions = new_positions
@@ -95,18 +205,16 @@ def _evaluate_node(
     portfolio: Portfolio,
     context: Context,
 ) -> None:
-    """Evaluate a portfolio's algo queue. Leaf-only for Chunk 1."""
-    is_parent = (
-        portfolio.children is not None
-        and len(portfolio.children) > 0
-        and isinstance(portfolio.children[0], Portfolio)
-    )
+    """Evaluate a portfolio's algo queue. Handles both leaf and parent nodes."""
+    is_parent = _is_parent(portfolio)
 
     context.selected = list(portfolio.children or [])
     portfolio.algo_queue(context)
 
     if is_parent:
         for child in context.selected:
+            if not isinstance(child, Portfolio):
+                continue
             child_context = Context(
                 portfolio=child,
                 prices=context.prices,
@@ -124,10 +232,8 @@ def _run_single(backtest: Backtest) -> _SingleResult:
     prices = backtest.data
     config = backtest.config
 
-    # Initialise portfolio state
-    portfolio.cash = config.initial_capital
-    portfolio.equity = config.initial_capital
-    portfolio.positions = {}
+    # Initialise portfolio tree
+    _init_portfolio(portfolio, config.initial_capital)
 
     # Compute sorted union of all trading days
     all_dates: set[pd.Timestamp] = set()
@@ -141,16 +247,20 @@ def _run_single(backtest: Backtest) -> _SingleResult:
         # 1. Mark-to-market
         mark_to_market(portfolio, prices, date)
 
-        # 2. Record equity
+        # 2. Daily carry costs
+        deduct_daily_carry_costs(portfolio, prices, date, config)
+
+        # 3. Record equity
         equity_curve.append((date, portfolio.equity))
 
-        # 3. Evaluate algo queue
+        # 4. Evaluate algo queue
         context = Context(
             portfolio=portfolio,
             prices=prices,
             date=date,
             config=config,
             _execute_leaf=execute_leaf_trades,
+            _allocate_children=allocate_equity_to_children,
         )
         _evaluate_node(portfolio, context)
 

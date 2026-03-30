@@ -45,3 +45,33 @@ class AlgoQueue(Algo):
 
     def __call__(self, context: Context) -> bool:
         return all(algo(context) for algo in self._algos)
+
+
+class Or(Algo):
+    """Returns True when any inner algo returns True (short-circuits on first True)."""
+
+    def __init__(self, *algos: Algo) -> None:
+        self._algos = algos
+
+    def __call__(self, context: Context) -> bool:
+        return any(algo(context) for algo in self._algos)
+
+
+class And(Algo):
+    """Returns True only when all inner algos return True (short-circuits on first False)."""
+
+    def __init__(self, *algos: Algo) -> None:
+        self._algos = algos
+
+    def __call__(self, context: Context) -> bool:
+        return all(algo(context) for algo in self._algos)
+
+
+class Not(Algo):
+    """Returns True when the wrapped algo returns False."""
+
+    def __init__(self, algo: Algo) -> None:
+        self._algo = algo
+
+    def __call__(self, context: Context) -> bool:
+        return not self._algo(context)

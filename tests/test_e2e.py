@@ -54,6 +54,22 @@ class TestQuickExample:
         assert hasattr(ti, "Select")
         assert hasattr(ti, "Weigh")
         assert hasattr(ti, "Action")
+        # Chunk 2: branching combinators
+        assert hasattr(ti, "Or")
+        assert hasattr(ti, "And")
+        assert hasattr(ti, "Not")
+
+    def test_signal_weekly_accessible(self) -> None:
+        algo = ti.Signal.Weekly()
+        assert algo is not None
+
+    def test_signal_yearly_accessible(self) -> None:
+        algo = ti.Signal.Yearly()
+        assert algo is not None
+
+    def test_signal_every_n_periods_accessible(self) -> None:
+        algo = ti.Signal.EveryNPeriods(n=2, period="week")
+        assert algo is not None
 
     def test_signal_monthly_accessible(self) -> None:
         algo = ti.Signal.Monthly()
@@ -69,4 +85,12 @@ class TestQuickExample:
 
     def test_action_rebalance_accessible(self) -> None:
         algo = ti.Action.Rebalance()
+        assert algo is not None
+
+    def test_signal_vix_accessible(self) -> None:
+        vix_df = pd.DataFrame(
+            {"close": [25.0]},
+            index=pd.DatetimeIndex([pd.Timestamp("2024-01-02", tz="UTC")]),
+        )
+        algo = ti.Signal.VIX(high=30, low=20, data={"^VIX": vix_df})
         assert algo is not None

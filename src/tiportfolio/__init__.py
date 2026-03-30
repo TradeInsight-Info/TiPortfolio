@@ -1,5 +1,6 @@
 """TiPortfolio — portfolio backtesting as simple as writing SQL."""
 
+from tiportfolio.algo import And, Not, Or
 from tiportfolio.algos import Action, Select, Signal, Weigh
 from tiportfolio.backtest import Backtest, run
 from tiportfolio.config import TiConfig
@@ -8,7 +9,10 @@ from tiportfolio.portfolio import Portfolio
 
 __all__ = [
     "Action",
+    "And",
     "Backtest",
+    "Not",
+    "Or",
     "Portfolio",
     "Select",
     "Signal",

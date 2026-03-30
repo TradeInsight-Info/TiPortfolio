@@ -74,13 +74,14 @@ class TestExecuteLeafTrades:
 
         execute_leaf_trades(p, ctx)
 
-        # target_value QQQ = 10000 * 0.5 = 5000, price=101.0, qty=floor(5000/101)=49
-        # target_value BIL = 10000 * 0.5 = 5000, price=91.55, qty=floor(5000/91.55)=54
-        assert p.positions["QQQ"] == 49.0
-        assert p.positions["BIL"] == 54.0
-        # fees: (49 + 54) * 0.0035 = 0.3605
-        cost = 49 * 101.0 + 54 * 91.55
-        fees = (49 + 54) * config.fee_per_share
+        # target_value QQQ = 10000 * 0.5 = 5000, price=101.0, qty=5000/101 ≈ 49.505
+        # target_value BIL = 10000 * 0.5 = 5000, price=91.55, qty=5000/91.55 ≈ 54.614
+        expected_qqq = 5000.0 / 101.0
+        expected_bil = 5000.0 / 91.55
+        assert p.positions["QQQ"] == pytest.approx(expected_qqq)
+        assert p.positions["BIL"] == pytest.approx(expected_bil)
+        cost = expected_qqq * 101.0 + expected_bil * 91.55
+        fees = (expected_qqq + expected_bil) * config.fee_per_share
         assert p.cash == pytest.approx(10_000.0 - cost - fees)
 
     def test_rebalance_sells_excess(self, prices_dict: dict[str, pd.DataFrame]) -> None:
@@ -104,10 +105,12 @@ class TestExecuteLeafTrades:
         execute_leaf_trades(p, ctx)
 
         # equity = 10411.0
-        # target QQQ: floor(10411 * 0.3 / 101) = floor(30.92) = 30 → sell 50
-        # target BIL: floor(10411 * 0.7 / 91.55) = floor(79.60) = 79 → buy 59
-        assert p.positions["QQQ"] == 30.0
-        assert p.positions["BIL"] == 79.0
+        # target QQQ: 10411 * 0.3 / 101 ≈ 30.924
+        # target BIL: 10411 * 0.7 / 91.55 ≈ 79.596
+        expected_qqq = 10411.0 * 0.3 / 101.0
+        expected_bil = 10411.0 * 0.7 / 91.55
+        assert p.positions["QQQ"] == pytest.approx(expected_qqq)
+        assert p.positions["BIL"] == pytest.approx(expected_bil)
 
 
 # ---------------------------------------------------------------------------
