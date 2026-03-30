@@ -9,6 +9,8 @@ the initial purchase on the first month-end.
 This serves as a baseline to compare more complex strategies against.
 """
 
+import _env  # noqa: F401 — load .env before anything else
+
 import tiportfolio as ti
 
 data = ti.fetch_data(["SPY"], start="2019-01-01", end="2024-12-31")

@@ -9,6 +9,8 @@ Key concept: TiConfig lets you override simulation parameters.
 The `fee_per_share` parameter models brokerage commissions.
 """
 
+import _env  # noqa: F401 — load .env before anything else
+
 import tiportfolio as ti
 
 data = ti.fetch_data(["QQQ", "BIL", "GLD"], start="2019-01-01", end="2024-12-31")

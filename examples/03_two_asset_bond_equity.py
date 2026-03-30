@@ -11,6 +11,8 @@ while equities provide growth. Monthly rebalancing automatically sells
 the winner and buys the loser — a disciplined contrarian approach.
 """
 
+import _env  # noqa: F401 — load .env before anything else
+
 import tiportfolio as ti
 
 data = ti.fetch_data(["SPY", "TLT"], start="2019-01-01", end="2024-12-31")

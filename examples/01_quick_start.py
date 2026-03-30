@@ -8,6 +8,8 @@ on the last trading day of each month.
 This is the Quick Example from the API reference.
 """
 
+import _env  # noqa: F401 — load .env before anything else
+
 import tiportfolio as ti
 
 # 1. Fetch 5 years of daily OHLCV data

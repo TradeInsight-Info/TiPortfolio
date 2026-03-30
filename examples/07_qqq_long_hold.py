@@ -13,6 +13,8 @@ over a period that includes the 2020 COVID crash, 2022 bear market,
 and 2023–2024 recovery.
 """
 
+import _env  # noqa: F401 — load .env before anything else
+
 import tiportfolio as ti
 
 data = ti.fetch_data(["QQQ"], start="2018-01-01", end="2024-12-31")
