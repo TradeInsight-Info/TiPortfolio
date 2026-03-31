@@ -1,7 +1,7 @@
 """End-to-end test: Quick Example from api/index.md runs without error."""
 from __future__ import annotations
 
-from unittest.mock import patch
+from pathlib import Path
 
 import pandas as pd
 import pytest
@@ -9,13 +9,22 @@ import pytest
 import tiportfolio as ti
 
 
+_DATA_DIR = Path(__file__).parent / "data"
+
+CSV_PATHS: dict[str, str] = {
+    "AAPL": str(_DATA_DIR / "aapl_2018_2024_yf.csv"),
+    "QQQ": str(_DATA_DIR / "qqq_2018_2024_yf.csv"),
+    "BIL": str(_DATA_DIR / "bil_2018_2024_yf.csv"),
+    "GLD": str(_DATA_DIR / "gld_2018_2024_yf.csv"),
+    "^VIX": str(_DATA_DIR / "vix_2018_2024_yf.csv"),
+}
+
+
 class TestQuickExample:
     """The Quick Example from api/index.md must work with fixture data."""
 
-    def test_quick_example_runs(self, prices_dict: dict[str, pd.DataFrame], prices_flat: pd.DataFrame) -> None:
-        # Mock fetch_data to return our fixture instead of hitting network
-        with patch("tiportfolio.data._query_yfinance", return_value=prices_flat):
-            data = ti.fetch_data(["QQQ", "BIL", "GLD"], start="2024-01-01", end="2024-02-01")
+    def test_quick_example_runs(self) -> None:
+        data = ti.fetch_data(["QQQ", "BIL", "GLD"], start="2019-01-01", end="2024-12-31", csv=CSV_PATHS)
 
         portfolio = ti.Portfolio(
             "monthly_rebalance",
@@ -86,6 +95,74 @@ class TestQuickExample:
     def test_action_rebalance_accessible(self) -> None:
         algo = ti.Action.Rebalance()
         assert algo is not None
+
+    def test_weigh_based_on_beta_accessible(self) -> None:
+        bench_df = pd.DataFrame(
+            {"close": [100.0, 101.0, 102.0]},
+            index=pd.DatetimeIndex(
+                pd.bdate_range("2024-01-02", periods=3, freq="B"), tz="UTC"
+            ),
+        )
+        algo = ti.Weigh.BasedOnBeta(
+            initial_ratio={"QQQ": 0.7, "BIL": 0.3},
+            target_beta=0,
+            lookback=pd.DateOffset(days=5),
+            base_data=bench_df,
+        )
+        assert algo is not None
+
+    def test_weigh_erc_accessible(self) -> None:
+        algo = ti.Weigh.ERC(lookback=pd.DateOffset(months=3))
+        assert algo is not None
+
+    def test_beta_neutral_backtest(self) -> None:
+        """BasedOnBeta runs through a full backtest without error."""
+        data = ti.fetch_data(["QQQ", "BIL", "GLD"], start="2019-01-01", end="2024-12-31", csv=CSV_PATHS)
+        aapl_data = ti.fetch_data(["AAPL"], start="2019-01-01", end="2024-12-31", csv=CSV_PATHS)
+
+        portfolio = ti.Portfolio(
+            "beta_neutral_test",
+            [
+                ti.Signal.Monthly(),
+                ti.Select.All(),
+                ti.Weigh.BasedOnBeta(
+                    initial_ratio={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1},
+                    target_beta=0,
+                    lookback=pd.DateOffset(months=1),
+                    base_data=aapl_data["AAPL"],
+                ),
+                ti.Action.Rebalance(),
+            ],
+            ["QQQ", "BIL", "GLD"],
+        )
+
+        result = ti.run(ti.Backtest(portfolio, data))
+        summary = result.summary()
+        assert isinstance(summary, pd.DataFrame)
+        assert "total_return" in summary.index
+
+    def test_erc_backtest(self) -> None:
+        """ERC runs through a full backtest without error."""
+        data = ti.fetch_data(["QQQ", "BIL", "GLD"], start="2019-01-01", end="2024-12-31", csv=CSV_PATHS)
+
+        portfolio = ti.Portfolio(
+            "erc_test",
+            [
+                ti.Signal.Monthly(),
+                ti.Select.All(),
+                ti.Weigh.ERC(
+                    lookback=pd.DateOffset(months=3),
+                    covar_method="hist",
+                ),
+                ti.Action.Rebalance(),
+            ],
+            ["QQQ", "BIL", "GLD"],
+        )
+
+        result = ti.run(ti.Backtest(portfolio, data))
+        summary = result.summary()
+        assert isinstance(summary, pd.DataFrame)
+        assert "total_return" in summary.index
 
     def test_signal_vix_accessible(self) -> None:
         vix_df = pd.DataFrame(

@@ -1,6 +1,7 @@
 # TiPortfolio
 
 A portfolio management tool with built-in state-of-the-art portfolio optimization algorithms, with extensibility for different use cases for both institutes and retail traders.
+
 ## Quick start (fetch by symbols)
 
 Data is fetched automatically from Alpaca (if API keys are set) or Yahoo Finance:
@@ -31,6 +32,9 @@ result = ti.run_backtest(test)
 ```
 
 
+- More [examples](examples/README.md)
+
+
 ## Requirements
 
 - Python 3.10+
@@ -48,3 +52,6 @@ uv sync
 ## License
 
 Apache 2.0
+
+
+

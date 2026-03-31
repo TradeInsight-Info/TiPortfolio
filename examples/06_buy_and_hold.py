@@ -13,11 +13,11 @@ Compare this to 01_quick_start.py (monthly rebalance) to see
 the effect of rebalancing vs letting winners run.
 """
 
-import _env  # noqa: F401 — load .env before anything else
+from _env import CSV_DATA  # noqa: F401 — load .env + CSV paths
 
 import tiportfolio as ti
 
-data = ti.fetch_data(["QQQ", "BIL", "GLD"], start="2019-01-01", end="2024-12-31")
+data = ti.fetch_data(["QQQ", "BIL", "GLD"], start="2019-01-01", end="2024-12-31", csv=CSV_DATA)
 
 portfolio = ti.Portfolio(
     "buy_and_hold",

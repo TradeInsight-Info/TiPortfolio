@@ -1,5 +1,5 @@
 """
-04 — Single Asset: SPY Buy-and-Hold
+04 — Single Asset: QQQ Buy-and-Hold
 ====================================
 
 A single-ticker portfolio is effectively buy-and-hold.
@@ -9,26 +9,26 @@ the initial purchase on the first month-end.
 This serves as a baseline to compare more complex strategies against.
 """
 
-import _env  # noqa: F401 — load .env before anything else
+from _env import CSV_DATA  # noqa: F401 — load .env + CSV paths
 
 import tiportfolio as ti
 
-data = ti.fetch_data(["SPY"], start="2019-01-01", end="2024-12-31")
+data = ti.fetch_data(["QQQ"], start="2019-01-01", end="2024-12-31", csv=CSV_DATA)
 
 portfolio = ti.Portfolio(
-    "spy_hold",
+    "qqq_hold",
     [
         ti.Signal.Monthly(),
         ti.Select.All(),
         ti.Weigh.Equally(),
         ti.Action.Rebalance(),
     ],
-    ["SPY"],
+    ["QQQ"],
 )
 
 result = ti.run(ti.Backtest(portfolio, data))
 
-print("=== SPY Buy-and-Hold (via Monthly Rebalance) ===")
+print("=== QQQ Buy-and-Hold (via Monthly Rebalance) ===")
 print(result.summary())
 print()
 

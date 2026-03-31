@@ -2,7 +2,7 @@
 03 — Two-Asset Bond + Equity Split
 ===================================
 
-A classic diversified portfolio: one equity ETF (SPY) and one bond ETF (TLT),
+A classic diversified portfolio: one equity ETF (QQQ) and one bond ETF (BIL),
 rebalanced monthly to equal weight (50/50 split).
 
 This is the foundation of the "60/40 portfolio" concept. With equal-weight,
@@ -11,11 +11,11 @@ while equities provide growth. Monthly rebalancing automatically sells
 the winner and buys the loser — a disciplined contrarian approach.
 """
 
-import _env  # noqa: F401 — load .env before anything else
+from _env import CSV_DATA  # noqa: F401 — load .env + CSV paths
 
 import tiportfolio as ti
 
-data = ti.fetch_data(["SPY", "TLT"], start="2019-01-01", end="2024-12-31")
+data = ti.fetch_data(["QQQ", "BIL"], start="2019-01-01", end="2024-12-31", csv=CSV_DATA)
 
 portfolio = ti.Portfolio(
     "bond_equity_5050",
@@ -25,12 +25,12 @@ portfolio = ti.Portfolio(
         ti.Weigh.Equally(),
         ti.Action.Rebalance(),
     ],
-    ["SPY", "TLT"],
+    ["QQQ", "BIL"],
 )
 
 result = ti.run(ti.Backtest(portfolio, data))
 
-print("=== 50/50 SPY + TLT (Monthly Rebalance) ===")
+print("=== 50/50 QQQ + BIL (Monthly Rebalance) ===")
 print(result.summary())
 print()
 

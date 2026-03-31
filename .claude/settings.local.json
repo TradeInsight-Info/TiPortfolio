@@ -5,7 +5,9 @@
       "WebFetch(domain:fc.yahoo.com)",
       "WebFetch(domain:query1.finance.yahoo.com)",
       "WebFetch(domain:query2.finance.yahoo.com)",
-      "WebFetch(domain:data.alpaca.markets)"
+      "WebFetch(domain:data.alpaca.markets)",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:files.pythonhosted.org)"
     ]
   }
 }

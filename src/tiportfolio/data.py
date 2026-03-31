@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 
 import pandas as pd
 
@@ -64,11 +65,26 @@ def fetch_data(
     start: str,
     end: str,
     source: str = "yfinance",
+    csv: str | dict[str, str] | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Fetch OHLCV data. Returns dict keyed by ticker, each with UTC DatetimeIndex.
 
+    Args:
+        tickers: List of ticker symbols.
+        start: Start date string (e.g. "2019-01-01").
+        end: End date string (e.g. "2024-12-31").
+        source: Data source — "yfinance" or "alpaca".
+        csv: Optional CSV source for offline loading. Either:
+            - A directory path (str) — auto-discovers ``<ticker>.csv`` files
+              (case-insensitive lookup).
+            - A dict mapping ticker to CSV file path.
+            Each CSV must have a ``date`` index and ``open,high,low,close,volume`` columns.
+
     Falls back to the other source once on failure.
     """
+    if csv is not None:
+        return _load_from_csv(tickers, csv)
+
     primary, fallback = (
         (_query_yfinance, _query_alpaca)
         if source == "yfinance"
@@ -83,6 +99,59 @@ def fetch_data(
         flat_df = fallback(tickers, start, end)
 
     return _split_flat_to_dict(flat_df)
+
+
+def _load_from_csv(
+    tickers: list[str],
+    csv: str | dict[str, str],
+) -> dict[str, pd.DataFrame]:
+    """Load per-ticker CSV files into the standard dict format.
+
+    Args:
+        tickers: List of ticker symbols to load.
+        csv: Directory path (auto-discover) or dict of {ticker: filepath}.
+    """
+    if isinstance(csv, dict):
+        # Validate all tickers have entries before loading any files
+        missing = sorted(set(tickers) - set(csv.keys()))
+        if missing:
+            raise FileNotFoundError(
+                f"CSV paths missing for tickers: {', '.join(missing)}. "
+                f"Provided keys: {', '.join(sorted(csv.keys()))}"
+            )
+        paths = csv
+    else:
+        csv_dir = Path(csv)
+        paths: dict[str, str] = {}
+        missing_tickers: list[str] = []
+        for ticker in tickers:
+            candidates = [
+                csv_dir / f"{ticker}.csv",
+                csv_dir / f"{ticker.lower()}.csv",
+                csv_dir / f"{ticker.upper()}.csv",
+            ]
+            found = next((p for p in candidates if p.exists()), None)
+            if found is None:
+                missing_tickers.append(ticker)
+            else:
+                paths[ticker] = str(found)
+        if missing_tickers:
+            raise FileNotFoundError(
+                f"CSV files not found for tickers: {', '.join(missing_tickers)} "
+                f"in {csv_dir}"
+            )
+
+    result: dict[str, pd.DataFrame] = {}
+    for ticker in tickers:
+        filepath = paths[ticker]
+        df = pd.read_csv(filepath, index_col="date", parse_dates=True)
+        df.columns = [c.lower() for c in df.columns]
+        if df.index.tz is None:
+            df.index = df.index.tz_localize("UTC")
+        else:
+            df.index = df.index.tz_convert("UTC")
+        result[ticker] = df.sort_index()
+    return result
 
 
 def _split_flat_to_dict(flat_df: pd.DataFrame) -> dict[str, pd.DataFrame]:

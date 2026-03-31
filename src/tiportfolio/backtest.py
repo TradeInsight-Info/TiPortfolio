@@ -155,19 +155,21 @@ def allocate_equity_to_children(
 def execute_leaf_trades(
     portfolio: Portfolio,
     context: Context,
-) -> None:
+) -> list[dict[str, object]]:
     """Compute target positions from context.weights, trade the delta, deduct fees.
 
     Uses fractional shares (target_value / price).
+    Returns a list of trade record dicts.
     """
     prices = context.prices
     date = context.date
     config = context.config
-    equity = portfolio.equity
+    equity_before = portfolio.equity
 
     new_positions: dict[str, float] = {}
     total_cost = 0.0
     total_fees = 0.0
+    trade_records: list[dict[str, object]] = []
 
     for ticker in context.selected:
         if not isinstance(ticker, str):
@@ -177,7 +179,7 @@ def execute_leaf_trades(
         if price <= 0:
             continue
 
-        target_value = equity * weight
+        target_value = equity_before * weight
         target_qty = target_value / price  # fractional shares
 
         current_qty = portfolio.positions.get(ticker, 0.0)
@@ -189,6 +191,19 @@ def execute_leaf_trades(
         total_cost += cost
         total_fees += fee
 
+        trade_records.append({
+            "date": date,
+            "portfolio": portfolio.name,
+            "ticker": ticker,
+            "qty_before": current_qty,
+            "qty_after": target_qty,
+            "delta": delta_qty,
+            "price": float(price),
+            "fee": fee,
+            "equity_before": equity_before,
+            "equity_after": 0.0,  # filled after settlement
+        })
+
     # Close positions not in the new selection
     for ticker, qty in portfolio.positions.items():
         if ticker not in new_positions:
@@ -197,8 +212,31 @@ def execute_leaf_trades(
             portfolio.cash += qty * price - fee
             total_fees += fee
 
+            trade_records.append({
+                "date": date,
+                "portfolio": portfolio.name,
+                "ticker": ticker,
+                "qty_before": qty,
+                "qty_after": 0.0,
+                "delta": -qty,
+                "price": float(price),
+                "fee": fee,
+                "equity_before": equity_before,
+                "equity_after": 0.0,
+            })
+
     portfolio.positions = new_positions
     portfolio.cash -= total_cost + total_fees
+
+    # Compute equity_after inline
+    equity_after = portfolio.cash + sum(
+        qty * float(prices[t].loc[date, "close"])
+        for t, qty in portfolio.positions.items()
+    )
+    for rec in trade_records:
+        rec["equity_after"] = equity_after
+
+    return trade_records
 
 
 def _evaluate_node(
@@ -242,6 +280,16 @@ def _run_single(backtest: Backtest) -> _SingleResult:
     trading_days = sorted(all_dates)
 
     equity_curve: list[tuple[pd.Timestamp, float]] = []
+    all_trade_records: list[dict[str, object]] = []
+    weight_history: list[dict[str, object]] = []
+
+    # Wrapper to capture trade records from execute_leaf_trades
+    def _recording_execute_leaf(port: Portfolio, ctx: Context) -> None:
+        records = execute_leaf_trades(port, ctx)
+        all_trade_records.extend(records)
+        # Record weights at each rebalance
+        for ticker, w in ctx.weights.items():
+            weight_history.append({"date": ctx.date, "ticker": ticker, "weight": w})
 
     for date in trading_days:
         # 1. Mark-to-market
@@ -259,7 +307,7 @@ def _run_single(backtest: Backtest) -> _SingleResult:
             prices=prices,
             date=date,
             config=config,
-            _execute_leaf=execute_leaf_trades,
+            _execute_leaf=_recording_execute_leaf,
             _allocate_children=allocate_equity_to_children,
         )
         _evaluate_node(portfolio, context)
@@ -268,10 +316,19 @@ def _run_single(backtest: Backtest) -> _SingleResult:
     dates, values = zip(*equity_curve) if equity_curve else ([], [])
     equity_series = pd.Series(values, index=pd.DatetimeIndex(dates), name="equity")
 
+    # Compute aggregate stats from trade records
+    total_fee = sum(float(rec.get("fee", 0)) for rec in all_trade_records)
+    rebalance_dates = {rec["date"] for rec in all_trade_records}
+    rebalance_count = len(rebalance_dates)
+
     return _SingleResult(
         name=portfolio.name,
         equity_curve=equity_series,
         config=config,
+        trade_records=all_trade_records,
+        weight_history=weight_history,
+        total_fee=total_fee,
+        rebalance_count=rebalance_count,
     )
 
 

@@ -37,7 +37,7 @@ result.summary()
 #                    monthly  quarterly  yearly
 # total_return        0.42      0.39      0.35
 # cagr                0.07      0.065     0.059
-# daily_sharpe        0.91      0.88      0.84
+# sharpe              0.91      0.88      0.84
 # max_drawdown       -0.18     -0.19     -0.21
 # ...
 ```

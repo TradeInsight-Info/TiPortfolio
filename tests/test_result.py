@@ -38,6 +38,13 @@ class TestSingleResult:
         assert "cagr" in metrics
         assert "max_drawdown" in metrics
         assert "sharpe" in metrics
+        assert "sortino" in metrics
+        assert "calmar" in metrics
+        assert "kelly" in metrics
+        assert "final_value" in metrics
+        assert "total_fee" in metrics
+        assert "rebalance_count" in metrics
+        assert "risk_free_rate" in metrics
 
     def test_total_return_positive(self) -> None:
         sr = _make_single_result()

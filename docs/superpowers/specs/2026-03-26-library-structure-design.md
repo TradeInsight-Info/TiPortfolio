@@ -194,7 +194,7 @@ class BacktestResult:
 
     def summary(self) -> dict[str, float]:
         """Quick overview. Returns: start, end, risk_free_rate, total_return, cagr,
-           daily_sharpe, daily_sortino, max_drawdown, calmar, kelly,
+           sharpe, sortino, max_drawdown, calmar, kelly,
            final_value, total_fee, rebalance_count"""
 
     def full_summary(self) -> dict[str, float]:

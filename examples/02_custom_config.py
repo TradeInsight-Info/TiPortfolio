@@ -2,18 +2,18 @@
 02 — Custom Config: Impact of Fees on Returns
 ==============================================
 
-Run the same strategy twice with different fee structures to see
-how transaction costs eat into returns over time.
+Run the same strategy with different fee structures and compare
+side by side using ti.run(bt1, bt2, bt3).
 
 Key concept: TiConfig lets you override simulation parameters.
 The `fee_per_share` parameter models brokerage commissions.
 """
 
-import _env  # noqa: F401 — load .env before anything else
+from _env import CSV_DATA  # noqa: F401 — load .env + CSV paths
 
 import tiportfolio as ti
 
-data = ti.fetch_data(["QQQ", "BIL", "GLD"], start="2019-01-01", end="2024-12-31")
+data = ti.fetch_data(["QQQ", "BIL", "GLD"], start="2019-01-01", end="2024-12-31", csv=CSV_DATA)
 tickers = ["QQQ", "BIL", "GLD"]
 algos = [
     ti.Signal.Monthly(),
@@ -36,21 +36,11 @@ portfolio_big = ti.Portfolio("big_capital", list(algos), tickers)
 config_big = ti.TiConfig(initial_capital=100_000)
 bt_big = ti.Backtest(portfolio_big, data, config=config_big)
 
-# Run all three
-result_low = ti.run(bt_low)
-result_high = ti.run(bt_high)
-result_big = ti.run(bt_big)
+# Run all three in one call — result is a side-by-side comparison
+result = ti.run(bt_low, bt_high, bt_big)
 
-print("=== Low Fee (default $0.0035/share) ===")
-print(result_low.summary())
-print()
-
-print("=== High Fee ($0.05/share) ===")
-print(result_high.summary())
-print()
-
-print("=== Large Capital ($100k, default fees) ===")
-print(result_big.summary())
+print("=== Side-by-Side Comparison ===")
+print(result.summary())
 print()
 
 # Note: with equal-weight monthly rebalance, higher fees reduce returns

@@ -281,8 +281,8 @@ Both always return a `pd.DataFrame` — rows are metric names, columns are portf
 | `risk_free_rate` | Risk-free rate used |
 | `total_return` | Total return over the full period |
 | `cagr` | Compound Annual Growth Rate |
-| `daily_sharpe` | Daily Sharpe Ratio |
-| `daily_sortino` | Daily Sortino Ratio |
+| `sharpe` | Sharpe Ratio (annualised) |
+| `sortino` | Sortino Ratio (annualised) |
 | `max_drawdown` | Maximum Drawdown (%) |
 | `calmar` | Calmar Ratio (CAGR / Max Drawdown) |
 | `kelly` | Kelly Leverage |

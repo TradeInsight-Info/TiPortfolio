@@ -6,14 +6,23 @@ The simplest possible backtest: rebalance three ETFs to equal weight
 on the last trading day of each month.
 
 This is the Quick Example from the API reference.
+
+Offline mode
+------------
+This example uses ``csv=`` to load data from local CSV files for faster,
+offline-friendly runs.  The ``CSV_DATA`` dict in ``_env.py`` maps tickers
+to pre-downloaded YFinance CSVs in ``tests/data/``.
+
+To fetch live data instead, remove the ``csv=`` parameter — this requires
+network access.
 """
 
-import _env  # noqa: F401 — load .env before anything else
+from _env import CSV_DATA  # noqa: F401 — load .env + CSV paths
 
 import tiportfolio as ti
 
-# 1. Fetch 5 years of daily OHLCV data
-data = ti.fetch_data(["QQQ", "BIL", "GLD"], start="2019-01-01", end="2024-12-31")
+# 1. Fetch 5 years of daily OHLCV data (offline via CSV)
+data = ti.fetch_data(["QQQ", "BIL", "GLD"], start="2019-01-01", end="2024-12-31", csv=CSV_DATA)
 
 # 2. Define the strategy as an algo stack
 #    Signal  → WHEN to rebalance (monthly)
