@@ -34,17 +34,23 @@ class TestSingleResult:
         sr = _make_single_result()
         df = sr.summary()
         metrics = df.index.tolist()
-        assert "total_return" in metrics
-        assert "cagr" in metrics
-        assert "max_drawdown" in metrics
-        assert "sharpe" in metrics
-        assert "sortino" in metrics
-        assert "calmar" in metrics
-        assert "kelly" in metrics
-        assert "final_value" in metrics
-        assert "total_fee" in metrics
-        assert "rebalance_count" in metrics
-        assert "risk_free_rate" in metrics
+        # Top 5 must appear first in this exact order
+        assert metrics[:5] == ["sharpe", "calmar", "sortino", "max_drawdown", "cagr"]
+        # All 11 metrics present
+        expected = {
+            "sharpe", "calmar", "sortino", "max_drawdown", "cagr",
+            "risk_free_rate", "total_return", "kelly", "final_value",
+            "total_fee", "rebalance_count",
+        }
+        assert set(metrics) == expected
+
+    def test_summary_values_rounded_to_3_decimals(self) -> None:
+        sr = _make_single_result()
+        df = sr.summary()
+        for key, val in df["value"].items():
+            if isinstance(val, float):
+                # Check that rounding to 3 decimals is a no-op
+                assert val == round(val, 3), f"{key}={val} has more than 3 decimals"
 
     def test_total_return_positive(self) -> None:
         sr = _make_single_result()

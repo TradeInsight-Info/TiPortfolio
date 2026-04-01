@@ -151,17 +151,6 @@ class TestFullSummary:
         fs = result[0].full_summary()
         assert isinstance(fs, pd.DataFrame)
 
-    def test_full_summary_has_extended_metrics(self) -> None:
-        result = _run_simple_backtest()
-        fs = result[0].full_summary()
-        metrics = fs.index.tolist()
-        assert "sortino" in metrics
-        assert "max_dd_duration" in metrics
-        assert "calmar" in metrics
-        assert "best_month" in metrics
-        assert "worst_month" in metrics
-        assert "win_rate" in metrics
-
     def test_full_summary_includes_basic_metrics(self) -> None:
         result = _run_simple_backtest()
         fs = result[0].full_summary()
@@ -169,12 +158,13 @@ class TestFullSummary:
         assert "total_return" in metrics
         assert "cagr" in metrics
         assert "sharpe" in metrics
+        assert "calmar" in metrics
+        assert "sortino" in metrics
 
     def test_sortino_positive_for_growing_equity(self) -> None:
         result = _run_simple_backtest()
         fs = result[0].full_summary()
         sortino = fs.loc["sortino", "value"]
-        # Growing equity should have positive Sortino
         assert sortino >= 0.0
 
     def test_calmar_positive_for_growing_equity(self) -> None:
@@ -183,11 +173,76 @@ class TestFullSummary:
         calmar = fs.loc["calmar", "value"]
         assert calmar >= 0.0
 
-    def test_win_rate_between_0_and_1(self) -> None:
+    def test_period_return_keys_present(self) -> None:
         result = _run_simple_backtest()
         fs = result[0].full_summary()
-        wr = fs.loc["win_rate", "value"]
-        assert 0.0 <= wr <= 1.0
+        metrics = fs.index.tolist()
+        for key in ["mtd", "3m", "6m", "ytd", "1y", "3y_ann", "5y_ann", "10y_ann", "incep_ann"]:
+            assert key in metrics, f"Missing period return key: {key}"
+
+    def test_period_returns_nan_for_short_data(self) -> None:
+        """Short (20-day) synthetic equity → multi-year returns should be NaN."""
+        values = [10000 * (1.005**i) for i in range(20)]
+        eq = _make_equity_curve(values)
+        from tiportfolio.config import TiConfig
+        sr = _SingleResult(name="short", equity_curve=eq, config=TiConfig())
+        fs = sr.full_summary()
+        assert np.isnan(fs.loc["3y_ann", "value"])
+        assert np.isnan(fs.loc["5y_ann", "value"])
+        assert np.isnan(fs.loc["10y_ann", "value"])
+
+    def test_daily_stats_keys_present(self) -> None:
+        result = _run_simple_backtest()
+        fs = result[0].full_summary()
+        metrics = fs.index.tolist()
+        for key in ["daily_mean_ann", "daily_vol_ann", "daily_skew", "daily_kurt", "best_day", "worst_day"]:
+            assert key in metrics, f"Missing daily stat key: {key}"
+
+    def test_monthly_stats_keys_present(self) -> None:
+        result = _run_simple_backtest()
+        fs = result[0].full_summary()
+        metrics = fs.index.tolist()
+        for key in ["monthly_sharpe", "monthly_sortino", "monthly_mean_ann", "monthly_vol_ann",
+                     "monthly_skew", "monthly_kurt", "best_month", "worst_month"]:
+            assert key in metrics, f"Missing monthly stat key: {key}"
+
+    def test_yearly_stats_keys_present(self) -> None:
+        result = _run_simple_backtest()
+        fs = result[0].full_summary()
+        metrics = fs.index.tolist()
+        for key in ["yearly_sharpe", "yearly_sortino", "yearly_mean", "yearly_vol",
+                     "yearly_skew", "yearly_kurt", "best_year", "worst_year"]:
+            assert key in metrics, f"Missing yearly stat key: {key}"
+
+    def test_drawdown_analysis_keys_present(self) -> None:
+        result = _run_simple_backtest()
+        fs = result[0].full_summary()
+        metrics = fs.index.tolist()
+        for key in ["avg_drawdown", "avg_drawdown_days", "avg_up_month", "avg_down_month",
+                     "win_year_pct", "win_12m_pct"]:
+            assert key in metrics, f"Missing drawdown analysis key: {key}"
+
+    def test_full_summary_rounding(self) -> None:
+        result = _run_simple_backtest()
+        fs = result[0].full_summary()
+        for key, val in fs["value"].items():
+            if isinstance(val, float) and not np.isnan(val):
+                assert val == round(val, 3), f"{key}={val} has more than 3 decimals"
+
+    def test_avg_drawdown_monotonic_equity(self) -> None:
+        """Monotonically increasing equity should have avg_drawdown of 0.0."""
+        values = [10000 * (1.005**i) for i in range(252)]
+        eq = _make_equity_curve(values)
+        from tiportfolio.config import TiConfig
+        sr = _SingleResult(name="mono", equity_curve=eq, config=TiConfig())
+        fs = sr.full_summary()
+        assert fs.loc["avg_drawdown", "value"] == 0.0
+
+    def test_win_rate_metrics_bounds(self) -> None:
+        result = _run_simple_backtest()
+        fs = result[0].full_summary()
+        assert 0.0 <= fs.loc["win_year_pct", "value"] <= 1.0
+        assert 0.0 <= fs.loc["win_12m_pct", "value"] <= 1.0
 
     def test_backtest_result_full_summary_side_by_side(self) -> None:
         data = ti.fetch_data(["QQQ", "BIL", "GLD"], start="2023-01-01", end="2023-12-31", csv=CSV_PATHS)

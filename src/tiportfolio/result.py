@@ -10,6 +10,17 @@ import pandas as pd
 from tiportfolio.config import TiConfig
 
 
+def _round_values(data: dict[str, Any], decimals: int = 3) -> dict[str, Any]:
+    """Round float values to *decimals* places, leaving ints and NaN untouched."""
+    out: dict[str, Any] = {}
+    for k, v in data.items():
+        if isinstance(v, float) and not math.isnan(v):
+            out[k] = round(v, decimals)
+        else:
+            out[k] = v
+    return out
+
+
 class Trades:
     """Wraps a DataFrame of trade records with delegation and sample()."""
 
@@ -118,18 +129,19 @@ class _SingleResult:
         kelly = float(excess.mean()) / excess_var if excess_var > 0 else 0.0
 
         data = {
-            "risk_free_rate": self._config.risk_free_rate,
-            "total_return": total_return,
-            "cagr": cagr,
             "sharpe": sharpe,
+            "calmar": calmar,
             "sortino": sortino,
             "max_drawdown": max_dd,
-            "calmar": calmar,
+            "cagr": cagr,
+            "risk_free_rate": self._config.risk_free_rate,
+            "total_return": total_return,
             "kelly": kelly,
             "final_value": float(eq.iloc[-1]),
             "total_fee": self._total_fee,
             "rebalance_count": self._rebalance_count,
         }
+        data = _round_values(data)
         return pd.DataFrame(
             {"value": data.values()},
             index=list(data.keys()),
@@ -137,36 +149,220 @@ class _SingleResult:
 
     def full_summary(self) -> pd.DataFrame:
         """Return extended performance metrics. Superset of summary()."""
-        eq = self.equity_curve
-        bars_per_year = self._config.bars_per_year
-
-        # Start with all summary metrics
         base = self.summary()
-        data = {k: float(v) for k, v in base["value"].items()}
+        data: dict[str, Any] = {k: v for k, v in base["value"].items()}
 
-        # Max drawdown duration (bars from peak to recovery)
-        cummax = eq.cummax()
-        in_drawdown = eq < cummax
-        max_dd_duration = 0
-        current_duration = 0
-        for is_dd in in_drawdown:
-            if is_dd:
-                current_duration += 1
-                max_dd_duration = max(max_dd_duration, current_duration)
-            else:
-                current_duration = 0
-        data["max_dd_duration"] = max_dd_duration
+        data.update(self._period_returns())
+        data.update(self._daily_stats())
+        data.update(self._monthly_stats())
+        data.update(self._yearly_stats())
+        data.update(self._drawdown_analysis())
 
-        # Monthly returns
-        monthly = eq.resample("ME").last().pct_change().dropna()
-        data["best_month"] = float(monthly.max()) if len(monthly) > 0 else 0.0
-        data["worst_month"] = float(monthly.min()) if len(monthly) > 0 else 0.0
-        data["win_rate"] = float((monthly > 0).mean()) if len(monthly) > 0 else 0.0
-
+        data = _round_values(data)
         return pd.DataFrame(
             {"value": data.values()},
             index=list(data.keys()),
         )
+
+    # ------------------------------------------------------------------
+    # full_summary helper methods
+    # ------------------------------------------------------------------
+
+    def _period_returns(self) -> dict[str, Any]:
+        """Trailing period returns from the equity curve."""
+        eq = self.equity_curve
+        last_date = eq.index[-1]
+        bars_per_year = self._config.bars_per_year
+
+        def _ret(start_date: pd.Timestamp) -> float:
+            """Simple return from start_date to last equity value."""
+            idx = eq.index.searchsorted(start_date)
+            if idx >= len(eq):
+                return float("nan")
+            return float(eq.iloc[-1] / eq.iloc[idx] - 1.0)
+
+        def _ann_ret(start_date: pd.Timestamp, years: float) -> float:
+            """Annualised return from start_date."""
+            idx = eq.index.searchsorted(start_date)
+            if idx >= len(eq):
+                return float("nan")
+            ratio = eq.iloc[-1] / eq.iloc[idx]
+            return float(ratio ** (1.0 / years) - 1.0)
+
+        first_date = eq.index[0]
+        total_years = len(eq) / bars_per_year
+
+        # Month-to-date: start of current month
+        mtd_start = last_date.replace(day=1)
+        # Year-to-date: start of current year
+        ytd_start = last_date.replace(month=1, day=1)
+
+        # Lookback dates
+        m3_start = last_date - pd.DateOffset(months=3)
+        m6_start = last_date - pd.DateOffset(months=6)
+        y1_start = last_date - pd.DateOffset(years=1)
+        y3_start = last_date - pd.DateOffset(years=3)
+        y5_start = last_date - pd.DateOffset(years=5)
+        y10_start = last_date - pd.DateOffset(years=10)
+
+        return {
+            "mtd": _ret(mtd_start),
+            "3m": _ret(m3_start),
+            "6m": _ret(m6_start),
+            "ytd": _ret(ytd_start),
+            "1y": _ret(y1_start),
+            "3y_ann": _ann_ret(y3_start, 3.0) if y3_start >= first_date else float("nan"),
+            "5y_ann": _ann_ret(y5_start, 5.0) if y5_start >= first_date else float("nan"),
+            "10y_ann": _ann_ret(y10_start, 10.0) if y10_start >= first_date else float("nan"),
+            "incep_ann": float(
+                (eq.iloc[-1] / eq.iloc[0]) ** (1.0 / total_years) - 1.0
+            ) if total_years > 0 else 0.0,
+        }
+
+    def _daily_stats(self) -> dict[str, float]:
+        """Daily return statistics."""
+        bars_per_year = self._config.bars_per_year
+        daily = self.equity_curve.pct_change().dropna()
+
+        return {
+            "daily_mean_ann": float(daily.mean() * bars_per_year),
+            "daily_vol_ann": float(daily.std() * math.sqrt(bars_per_year)),
+            "daily_skew": float(daily.skew()),
+            "daily_kurt": float(daily.kurt()),
+            "best_day": float(daily.max()),
+            "worst_day": float(daily.min()),
+        }
+
+    def _monthly_stats(self) -> dict[str, float]:
+        """Monthly return statistics."""
+        eq = self.equity_curve
+        rf = self._config.risk_free_rate
+        monthly = eq.resample("ME").last().pct_change().dropna()
+
+        if len(monthly) < 2:
+            return {
+                "monthly_sharpe": 0.0, "monthly_sortino": 0.0,
+                "monthly_mean_ann": 0.0, "monthly_vol_ann": 0.0,
+                "monthly_skew": 0.0, "monthly_kurt": 0.0,
+                "best_month": float(monthly.max()) if len(monthly) > 0 else 0.0,
+                "worst_month": float(monthly.min()) if len(monthly) > 0 else 0.0,
+            }
+
+        rf_monthly = rf / 12.0
+        excess = monthly - rf_monthly
+        std = float(excess.std())
+        downside = excess[excess < 0]
+        down_std = float(downside.std()) if len(downside) > 0 else 0.0
+
+        return {
+            "monthly_sharpe": float(excess.mean()) / std * math.sqrt(12) if std > 0 else 0.0,
+            "monthly_sortino": float(excess.mean()) / down_std * math.sqrt(12) if down_std > 0 else 0.0,
+            "monthly_mean_ann": float(monthly.mean() * 12),
+            "monthly_vol_ann": float(monthly.std() * math.sqrt(12)),
+            "monthly_skew": float(monthly.skew()),
+            "monthly_kurt": float(monthly.kurt()),
+            "best_month": float(monthly.max()),
+            "worst_month": float(monthly.min()),
+        }
+
+    def _yearly_stats(self) -> dict[str, float]:
+        """Yearly return statistics."""
+        eq = self.equity_curve
+        rf = self._config.risk_free_rate
+        yearly = eq.resample("YE").last().pct_change().dropna()
+
+        if len(yearly) < 2:
+            return {
+                "yearly_sharpe": 0.0, "yearly_sortino": 0.0,
+                "yearly_mean": float(yearly.mean()) if len(yearly) > 0 else 0.0,
+                "yearly_vol": 0.0,
+                "yearly_skew": 0.0, "yearly_kurt": 0.0,
+                "best_year": float(yearly.max()) if len(yearly) > 0 else 0.0,
+                "worst_year": float(yearly.min()) if len(yearly) > 0 else 0.0,
+            }
+
+        excess = yearly - rf
+        std = float(excess.std())
+        downside = excess[excess < 0]
+        down_std = float(downside.std()) if len(downside) > 0 else 0.0
+
+        return {
+            "yearly_sharpe": float(excess.mean()) / std if std > 0 else 0.0,
+            "yearly_sortino": float(excess.mean()) / down_std if down_std > 0 else 0.0,
+            "yearly_mean": float(yearly.mean()),
+            "yearly_vol": float(yearly.std()),
+            "yearly_skew": float(yearly.skew()),
+            "yearly_kurt": float(yearly.kurt()),
+            "best_year": float(yearly.max()),
+            "worst_year": float(yearly.min()),
+        }
+
+    def _drawdown_analysis(self) -> dict[str, float]:
+        """Drawdown episode analysis and win-rate metrics."""
+        eq = self.equity_curve
+        cummax = eq.cummax()
+        drawdown = (eq - cummax) / cummax
+
+        # Identify drawdown episodes (contiguous periods below cummax)
+        in_dd = eq < cummax
+        episodes: list[dict[str, Any]] = []
+        current_start = None
+        current_trough = 0.0
+
+        for i, is_dd in enumerate(in_dd):
+            if is_dd:
+                if current_start is None:
+                    current_start = i
+                    current_trough = float(drawdown.iloc[i])
+                else:
+                    current_trough = min(current_trough, float(drawdown.iloc[i]))
+            else:
+                if current_start is not None:
+                    start_dt = eq.index[current_start]
+                    end_dt = eq.index[i]
+                    days = (end_dt - start_dt).days
+                    episodes.append({"trough": current_trough, "days": days})
+                    current_start = None
+                    current_trough = 0.0
+
+        # Handle ongoing drawdown at end of series
+        if current_start is not None:
+            start_dt = eq.index[current_start]
+            end_dt = eq.index[-1]
+            days = (end_dt - start_dt).days
+            episodes.append({"trough": current_trough, "days": days})
+
+        avg_dd = float(np.mean([e["trough"] for e in episodes])) if episodes else 0.0
+        avg_dd_days = float(np.mean([e["days"] for e in episodes])) if episodes else 0.0
+
+        # Monthly return analysis
+        monthly = eq.resample("ME").last().pct_change().dropna()
+        up = monthly[monthly > 0]
+        down = monthly[monthly < 0]
+        avg_up_month = float(up.mean()) if len(up) > 0 else 0.0
+        avg_down_month = float(down.mean()) if len(down) > 0 else 0.0
+
+        # Win year %
+        yearly = eq.resample("YE").last().pct_change().dropna()
+        win_year_pct = float((yearly > 0).mean()) if len(yearly) > 0 else 0.0
+
+        # Win 12-month rolling %
+        if len(monthly) >= 13:
+            rolling_12m = monthly.rolling(12).apply(
+                lambda x: float(np.prod(1 + x) - 1), raw=True
+            ).dropna()
+            win_12m_pct = float((rolling_12m > 0).mean()) if len(rolling_12m) > 0 else 0.0
+        else:
+            win_12m_pct = 0.0
+
+        return {
+            "avg_drawdown": avg_dd,
+            "avg_drawdown_days": avg_dd_days,
+            "avg_up_month": avg_up_month,
+            "avg_down_month": avg_down_month,
+            "win_year_pct": win_year_pct,
+            "win_12m_pct": win_12m_pct,
+        }
 
     def plot(self, interactive: bool = False) -> Any:
         """Render equity curve and drawdown."""
