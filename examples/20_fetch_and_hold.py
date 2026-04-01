@@ -22,24 +22,20 @@ import tiportfolio as ti
 # --- Fetch live data per ticker then merge --------------------------------
 # ALLW is a new ETF (March 2025) — fetching separately avoids issues with
 # YFinance multi-ticker download when one ticker has less history.
-qqq_data = ti.fetch_data(["QQQ"], start="2025-04-01", end="2026-04-01")
-allw_data = ti.fetch_data(["ALLW"], start="2025-04-01", end="2026-04-01")
-data = {**qqq_data, **allw_data}
+data = ti.fetch_data(["QQQ", "ALLW"], start="2025-03-05", end="2026-04-01")
 
-# Align to shared trading dates
-shared_dates = qqq_data["QQQ"].index.intersection(allw_data["ALLW"].index)
-data = {ticker: df.loc[shared_dates] for ticker, df in data.items()}
 
-# --- Shared algo stack: buy once, hold forever ---------------------------
-hold_algos = [
-    ti.Signal.Once(),
-    ti.Select.All(),
-    ti.Weigh.Equally(),
-    ti.Action.Rebalance(),
-]
 
-qqq_hold = ti.Portfolio("qqq_long_hold", list(hold_algos), ["QQQ"])
-allw_hold = ti.Portfolio("allw_long_hold", list(hold_algos), ["ALLW"])
+# --- Buy once, hold forever ------------------------------------------------
+# Each portfolio must have its own algo instances — stateful algos like
+# Signal.Once() cannot be shared across portfolios.
+qqq_hold = ti.Portfolio("qqq_long_hold", [
+    ti.Signal.Once(), ti.Select.All(), ti.Weigh.Equally(), ti.Action.Rebalance(),
+], ["QQQ"])
+
+allw_hold = ti.Portfolio("allw_long_hold", [
+    ti.Signal.Once(), ti.Select.All(), ti.Weigh.Equally(), ti.Action.Rebalance(),
+], ["ALLW"])
 
 # --- Run both backtests together for side-by-side comparison -------------
 result = ti.run(

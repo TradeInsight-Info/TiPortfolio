@@ -165,5 +165,6 @@ def _split_flat_to_dict(flat_df: pd.DataFrame) -> dict[str, pd.DataFrame]:
         else:
             df.index = df.index.tz_convert("UTC")
         df.columns = [c.lower() for c in df.columns]
-        result[str(symbol)] = df.sort_index()
+        df = df.sort_index().dropna(how="all")
+        result[str(symbol)] = df
     return result

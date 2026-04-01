@@ -18,9 +18,11 @@ class Backtest:
         data: dict[str, pd.DataFrame],
         config: TiConfig | None = None,
     ) -> None:
-        validate_data(data)
+        tickers = _leaf_ticker_names(portfolio)
+        subset = {t: data[t] for t in tickers if t in data} if tickers else data
+        validate_data(subset)
         self.portfolio = portfolio
-        self.data = data
+        self.data = subset
         self.config = config or TiConfig()
 
 
@@ -35,6 +37,19 @@ def _is_parent(portfolio: Portfolio) -> bool:
         and len(portfolio.children) > 0
         and isinstance(portfolio.children[0], Portfolio)
     )
+
+
+def _leaf_ticker_names(portfolio: Portfolio) -> list[str]:
+    """Return flat list of ticker strings from a portfolio's leaf nodes."""
+    if _is_parent(portfolio):
+        result: list[str] = []
+        for child in portfolio.children:  # type: ignore[union-attr]
+            result.extend(_leaf_ticker_names(child))
+        return result
+    if portfolio.children and isinstance(portfolio.children[0], str):
+        return list(portfolio.children)  # type: ignore[arg-type]
+    return []
+
 
 
 def _init_portfolio(portfolio: Portfolio, initial_capital: float) -> None:

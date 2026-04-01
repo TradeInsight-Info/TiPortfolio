@@ -168,6 +168,23 @@ Execute trades or side effects. All live under the `Action` namespace:
 
 `AlgoQueue` is the internal container that runs a portfolio's algo list. The name reflects its semantics: algos are processed **in order from the top**, like a queue — the first algo runs first, the second runs second, and so on. This is distinct from a "stack" (which implies LIFO/last-in-first-out). `Portfolio` wraps the `algos` list in an `AlgoQueue` automatically.
 
+> **Do not share algo instances between portfolios.** Many algos (e.g. `Signal.Once`, `Signal.Schedule`) carry internal state that mutates during a backtest. Sharing the same instance across portfolios causes one portfolio's execution to corrupt another's. Always create a fresh algo list per portfolio:
+>
+> ```python
+> # WRONG — shared Signal.Once fires only for the first portfolio
+> algos = [ti.Signal.Once(), ti.Select.All(), ti.Weigh.Equally(), ti.Action.Rebalance()]
+> p1 = ti.Portfolio("a", algos, ["QQQ"])
+> p2 = ti.Portfolio("b", algos, ["ALLW"])   # Signal.Once already spent!
+>
+> # RIGHT — each portfolio gets its own algo instances
+> p1 = ti.Portfolio("a", [
+>     ti.Signal.Once(), ti.Select.All(), ti.Weigh.Equally(), ti.Action.Rebalance(),
+> ], ["QQQ"])
+> p2 = ti.Portfolio("b", [
+>     ti.Signal.Once(), ti.Select.All(), ti.Weigh.Equally(), ti.Action.Rebalance(),
+> ], ["ALLW"])
+> ```
+
 `And` in the `branching` namespace is an explicit, nestable version of `AlgoQueue` for use inside `Or` or `Not`.
 
 ---

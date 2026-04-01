@@ -127,7 +127,7 @@ class TestBacktestConstructor:
     def test_misaligned_data_rejected(self, prices_dict: dict[str, pd.DataFrame]) -> None:
         bad = prices_dict.copy()
         bad["BAD"] = prices_dict["QQQ"].iloc[:-5]
-        p = Portfolio("test", [], ["QQQ"])
+        p = Portfolio("test", [], ["QQQ", "BAD"])
         with pytest.raises(ValueError):
             Backtest(p, bad)
 
