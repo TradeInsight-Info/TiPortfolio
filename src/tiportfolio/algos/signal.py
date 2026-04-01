@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import calendar
+from collections.abc import Callable
 
 import pandas as pd
 import pandas_market_calendars as mcal
@@ -303,4 +304,69 @@ class Signal:
 
             context.selected = [self._active]
             context.weights = {self._active.name: 1.0}  # type: ignore[union-attr]
+            return True
+
+    class Indicator(Algo):
+        """Fires on technical indicator state transitions (crossovers).
+
+        The condition function receives a Series of close prices over the
+        lookback window and returns a boolean *state* (e.g., SMA50 > SMA200).
+        The algo fires True only when that state **transitions**:
+        - cross="up":   False → True  (e.g., golden cross)
+        - cross="down": True → False  (e.g., death cross)
+        - cross="both": any state change
+
+        Args:
+            ticker: Which ticker's prices to evaluate.
+            condition: Receives close prices Series, returns bool state.
+            lookback: How far back to slice prices for the condition.
+            cross: Transition direction — "up", "down", or "both".
+        """
+
+        _VALID_CROSS = {"up", "down", "both"}
+
+        def __init__(
+            self,
+            ticker: str,
+            condition: Callable[[pd.Series], bool],  # type: ignore[type-arg]
+            lookback: pd.DateOffset,
+            cross: str = "up",
+        ) -> None:
+            if cross not in self._VALID_CROSS:
+                raise ValueError(
+                    f"cross must be one of {self._VALID_CROSS}, got '{cross}'"
+                )
+            self._ticker = ticker
+            self._condition = condition
+            self._lookback = lookback
+            self._cross = cross
+            self._prev_state: bool | None = None
+
+        def __call__(self, context: Context) -> bool:
+            if self._ticker not in context.prices:
+                return False
+
+            start = context.date - self._lookback
+            end = context.date
+            series = context.prices[self._ticker].loc[start:end, "close"]
+
+            current_state = bool(self._condition(series))
+
+            # First bar: initialise state, don't fire
+            if self._prev_state is None:
+                self._prev_state = current_state
+                return False
+
+            # Edge detection
+            prev = self._prev_state
+            self._prev_state = current_state
+
+            if prev == current_state:
+                return False
+
+            if self._cross == "up":
+                return not prev and current_state  # False → True
+            if self._cross == "down":
+                return prev and not current_state  # True → False
+            # "both"
             return True
