@@ -145,13 +145,29 @@ def _load_from_csv(
     for ticker in tickers:
         filepath = paths[ticker]
         df = pd.read_csv(filepath, index_col="date", parse_dates=True)
-        df.columns = [c.lower() for c in df.columns]
-        if df.index.tz is None:
-            df.index = df.index.tz_localize("UTC")
-        else:
-            df.index = df.index.tz_convert("UTC")
-        result[ticker] = df.sort_index()
+        result[ticker] = _normalize_ticker_df(df, default_tz="UTC", ticker=ticker)
     return result
+
+
+def _normalize_ticker_df(
+    df: pd.DataFrame, default_tz: str = "UTC", ticker: str = "",
+) -> pd.DataFrame:
+    """Lowercase columns, convert index to UTC, sort, drop all-NaN rows."""
+    df.columns = [c.lower() for c in df.columns]
+    if df.index.tz is None:
+        df.index = df.index.tz_localize(default_tz).tz_convert("UTC")
+    else:
+        df.index = df.index.tz_convert("UTC")
+    df = df.sort_index()
+    nan_mask = df.isna().all(axis=1)
+    if nan_mask.any():
+        nan_dates = df.index[nan_mask]
+        logger.warning(
+            "%s: dropped %d all-NaN rows from %s to %s",
+            ticker or "unknown", len(nan_dates), nan_dates[0].date(), nan_dates[-1].date(),
+        )
+        df = df.loc[~nan_mask]
+    return df
 
 
 def _split_flat_to_dict(flat_df: pd.DataFrame) -> dict[str, pd.DataFrame]:
@@ -160,11 +176,5 @@ def _split_flat_to_dict(flat_df: pd.DataFrame) -> dict[str, pd.DataFrame]:
     for symbol, group in flat_df.groupby("symbol"):
         df = group.drop(columns=["symbol"]).copy()
         df = df.set_index("date")
-        if df.index.tz is None:
-            df.index = df.index.tz_localize("US/Eastern").tz_convert("UTC")
-        else:
-            df.index = df.index.tz_convert("UTC")
-        df.columns = [c.lower() for c in df.columns]
-        df = df.sort_index().dropna(how="all")
-        result[str(symbol)] = df
+        result[str(symbol)] = _normalize_ticker_df(df, default_tz="US/Eastern", ticker=str(symbol))
     return result
