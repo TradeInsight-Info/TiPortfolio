@@ -56,7 +56,7 @@ def _init_portfolio(portfolio: Portfolio, initial_capital: float) -> None:
     """Recursively initialise portfolio tree state."""
     portfolio.positions = {}
     if _is_parent(portfolio):
-        portfolio.cash = 0.0
+        portfolio.cash = initial_capital
         portfolio.equity = initial_capital
         for child in portfolio.children:  # type: ignore[union-attr]
             _init_portfolio(child, 0.0)
@@ -79,7 +79,7 @@ def mark_to_market(
     if _is_parent(portfolio):
         for child in portfolio.children:  # type: ignore[union-attr]
             mark_to_market(child, prices, date)
-        portfolio.equity = sum(c.equity for c in portfolio.children)  # type: ignore[union-attr]
+        portfolio.equity = portfolio.cash + sum(c.equity for c in portfolio.children)  # type: ignore[union-attr]
     else:
         position_value = sum(
             qty * prices[ticker].loc[date, "close"]
@@ -148,15 +148,19 @@ def allocate_equity_to_children(
             child.equity = child.cash
             child.cash = 0.0
 
-    # Step 2: Total available capital
-    total_equity = sum(c.equity for c in portfolio.children)  # type: ignore[union-attr]
+    # Step 2: Total available capital (children equity + parent's unallocated cash)
+    total_equity = portfolio.cash + sum(c.equity for c in portfolio.children)  # type: ignore[union-attr]
+    portfolio.cash = 0.0  # all capital now distributed to children
 
     # Step 3: Redistribute to selected children
     for child in context.selected:
         if not isinstance(child, Portfolio):
             continue
         fraction = context.weights.get(child.name, 0.0)
-        child.equity = total_equity * fraction
+        target = total_equity * fraction
+        # Adjust cash by the difference between target and current equity
+        child.cash += target - child.equity
+        child.equity = target
 
     # Step 4: Zero deselected children
     for child in portfolio.children:  # type: ignore[union-attr]
@@ -262,9 +266,9 @@ def _evaluate_node(
     is_parent = _is_parent(portfolio)
 
     context.selected = list(portfolio.children or [])
-    portfolio.algo_queue(context)
+    fired = portfolio.algo_queue(context)
 
-    if is_parent:
+    if is_parent and fired:
         for child in context.selected:
             if not isinstance(child, Portfolio):
                 continue

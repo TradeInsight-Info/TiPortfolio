@@ -77,7 +77,7 @@ class TestParentInit:
         child_b = Portfolio("b", [], ["QQQ"])
         parent = Portfolio("parent", [], [child_a, child_b])
         _init_portfolio(parent, 10000.0)
-        assert parent.cash == 0.0
+        assert parent.cash == 10000.0  # parent holds capital until first allocation
         assert parent.equity == 10000.0
         assert parent.positions == {}
         assert child_a.cash == 0.0
