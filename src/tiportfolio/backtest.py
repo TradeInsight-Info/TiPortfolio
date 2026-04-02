@@ -344,6 +344,7 @@ def _run_single(backtest: Backtest) -> _SingleResult:
         weight_history=weight_history,
         total_fee=total_fee,
         rebalance_count=rebalance_count,
+        prices=prices,
     )
 
 
