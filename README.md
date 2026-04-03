@@ -2,56 +2,62 @@
 
 A portfolio management tool with built-in state-of-the-art portfolio optimization algorithms, with extensibility for different use cases for both institutes and retail traders.
 
-## Quick start (fetch by symbols)
+## Installation
 
-Data is fetched automatically from Alpaca (if API keys are set) or Yahoo Finance:
+```bash
+pip install tiportfolio
+
+# For interactive Plotly charts:
+pip install tiportfolio[interactive]
+
+# For Equal Risk Contribution (ERC) weighting:
+pip install tiportfolio[erc]
+```
+
+## Quick Start
 
 ```python
 import tiportfolio as ti
 
-tickers = ["QQQ", "BIL", "GLD"]
+# 1. Fetch data (Yahoo Finance by default, or Alpaca if API keys are set)
+data = ti.fetch_data(["QQQ", "BIL", "GLD"], start="2019-01-01", end="2024-12-31")
 
-# fetch data
-data = ti.fetch_data(tickers, start="2019-01-01", end="2024-12-31") # this will return a dict of dataframe, key is ticker, value is dataframe with date as index and columns like open, close, high, low, volume
-
-# built strategy to rebalance monthly with fix ratio allocation among QQQ, BIL and GLD
+# 2. Define strategy using the algo stack: Signal → Select → Weigh → Action
 portfolio = ti.Portfolio(
-    'monthly_rebalance',
+    "monthly_equal_weight",
     [
-        # Order matters
-        ti.algo.ScheduleMonthly(), # When
-        ti.algo.Select(), # What
-        ti.algo.Weigh(), # How much
-        ti.algo.Rebalance() # Action
+        ti.Signal.Monthly(),    # WHEN to rebalance
+        ti.Select.All(),        # WHAT to include
+        ti.Weigh.Equally(),     # HOW MUCH to allocate
+        ti.Action.Rebalance(),  # EXECUTE trades
     ],
-    tickers # match tickers
+    ["QQQ", "BIL", "GLD"],
 )
 
-test = ti.Backtest(portfolio, data, fee_per_share=0.0035)
-result = ti.run_backtest(test)
+# 3. Run backtest
+result = ti.run(ti.Backtest(portfolio, data))
+
+# 4. View results
+result.summary()       # key metrics: Sharpe, CAGR, max drawdown, etc.
+result.plot()          # equity curve + drawdown chart
 ```
 
-
 - More [examples](examples/README.md)
-
 
 ## Requirements
 
 - Python 3.10+
-- pandas, numpy
-- matplotlib (optional, for report charts)
+- pandas, numpy, matplotlib
 
-Data fetching uses Yahoo Finance by default. For Alpaca, set `ALPACA_API_KEY` and `ALPACA_API_SECRET` in your environment (see `.env.example`). If fetch fails for any reason, the library raises an error with message "Failed to fetch data: ...".
+Data fetching uses Yahoo Finance by default. For Alpaca, set `ALPACA_API_KEY` and `ALPACA_API_SECRET` in your environment (see `.env.example`).
 
-## Installation
+## Development
 
 ```bash
 uv sync
+uv run python -m pytest
 ```
 
 ## License
 
 Apache 2.0
-
-
-
