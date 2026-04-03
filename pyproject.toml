@@ -7,7 +7,7 @@ name = "tiportfolio"
 version = "1.0.0"
 description = "A portfolio management tool with built-in state-of-the-art portfolio optimization algorithms, with extensibility for different use cases for both institutes and retail traders."
 readme = "README.md"
-authors = [{ name = "tim-hub" }]
+authors = [{ name = "tim-hub" },{ name = "TradeInsight.info" }]
 requires-python = ">=3.10, <=3.14"
 license = { text = "Apache-2.0" }
 keywords = [
