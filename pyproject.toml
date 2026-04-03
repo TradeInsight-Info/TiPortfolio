@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tiportfolio"
-version = "0.1.0"
+version = "1.0.0"
 description = "A portfolio management tool with built-in state-of-the-art portfolio optimization algorithms, with extensibility for different use cases for both institutes and retail traders."
 readme = "README.md"
 authors = [{ name = "tim-hub" }]
