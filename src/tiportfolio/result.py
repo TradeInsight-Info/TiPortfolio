@@ -21,6 +21,20 @@ def _round_values(data: dict[str, Any], decimals: int = 3) -> dict[str, Any]:
     return out
 
 
+def _plot_weights_bar(ax: Any, pivot: pd.DataFrame) -> None:
+    """Bar chart for weight history when short (negative) weights are present."""
+    n_dates = len(pivot)
+    n_tickers = len(pivot.columns)
+    width = 0.8 / max(n_tickers, 1)
+    x = np.arange(n_dates)
+    for i, col in enumerate(pivot.columns):
+        offset = (i - (n_tickers - 1) / 2) * width
+        ax.bar(x + offset, pivot[col].values, width=width, label=col)
+    ax.set_xticks(x)
+    ax.set_xticklabels([d.strftime("%Y-%m") for d in pivot.index], rotation=45, ha="right")
+    ax.axhline(0, color="grey", linewidth=0.5)
+
+
 class Trades:
     """Wraps a DataFrame of trade records with delegation and sample()."""
 
@@ -436,7 +450,11 @@ class _SingleResult:
         return fig
 
     def plot_security_weights(self) -> Any:
-        """Render stacked area chart of portfolio weights over time."""
+        """Render portfolio weights over time.
+
+        Uses a stacked area chart for long-only portfolios, or a bar chart
+        when negative (short) weights are present.
+        """
         if not self._weight_history:
             fig, ax = plt.subplots(figsize=(16, 4))
             ax.set_title(f"{self.name} — Security Weights (no rebalance data)")
@@ -447,8 +465,12 @@ class _SingleResult:
         pivot = pivot.sort_index()
 
         fig, ax = plt.subplots(figsize=(16, 4))
-        ax.stackplot(pivot.index, *[pivot[col].values for col in pivot.columns],
-                     labels=pivot.columns)
+        has_short = (pivot.values < 0).any()
+        if has_short:
+            _plot_weights_bar(ax, pivot)
+        else:
+            ax.stackplot(pivot.index, *[pivot[col].values for col in pivot.columns],
+                         labels=pivot.columns)
         ax.set_ylabel("Weight")
         ax.set_title(f"{self.name} — Security Weights")
         ax.legend(loc="upper left")
@@ -735,7 +757,11 @@ class BacktestResult:
             if r._weight_history:
                 df = pd.DataFrame(r._weight_history)
                 pivot = df.pivot_table(index="date", columns="ticker", values="weight", fill_value=0.0).sort_index()
-                ax.stackplot(pivot.index, *[pivot[col].values for col in pivot.columns], labels=pivot.columns)
+                has_short = (pivot.values < 0).any()
+                if has_short:
+                    _plot_weights_bar(ax, pivot)
+                else:
+                    ax.stackplot(pivot.index, *[pivot[col].values for col in pivot.columns], labels=pivot.columns)
                 ax.legend(loc="upper left")
             ax.set_title(f"{r.name} — Security Weights")
             ax.set_ylabel("Weight")
