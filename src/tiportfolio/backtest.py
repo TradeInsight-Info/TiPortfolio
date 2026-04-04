@@ -352,7 +352,52 @@ def _run_single(backtest: Backtest) -> _SingleResult:
     )
 
 
-def run(*tests: Backtest) -> BacktestResult:
-    """Run one or more backtests and return a BacktestResult."""
-    results = [_run_single(bt) for bt in tests]
+def _apply_leverage(
+    result: _SingleResult, factor: float, config: TiConfig
+) -> _SingleResult:
+    """Scale equity curve by leverage factor with borrowing cost deduction."""
+    if factor == 1.0:
+        return result
+    eq = result.equity_curve
+    returns = eq.pct_change().fillna(0.0)
+    daily_borrow_cost = (factor - 1) * config.loan_rate / config.bars_per_year
+    leveraged_returns = returns * factor - daily_borrow_cost
+    leveraged_eq = eq.iloc[0] * (1 + leveraged_returns).cumprod()
+    leveraged_eq.iloc[0] = eq.iloc[0]
+    name = f"{result.name} ({factor}x)"
+    return _SingleResult(
+        name=name,
+        equity_curve=leveraged_eq,
+        config=config,
+        trade_records=result._trade_records,
+        weight_history=result._weight_history,
+        total_fee=result._total_fee,
+        rebalance_count=result._rebalance_count,
+        prices=result._prices,
+        leverage=factor,
+    )
+
+
+def run(*tests: Backtest, leverage: float | list[float] = 1.0) -> BacktestResult:
+    """Run one or more backtests and return a BacktestResult.
+
+    Args:
+        tests: One or more Backtest objects.
+        leverage: Leverage multiplier. A single float applies to all backtests;
+            a list applies per-backtest (must match length). Default 1.0.
+    """
+    if isinstance(leverage, list):
+        if len(leverage) != len(tests):
+            raise ValueError(
+                f"leverage list length ({len(leverage)}) does not match "
+                f"number of backtests ({len(tests)}): mismatch"
+            )
+        factors = leverage
+    else:
+        factors = [leverage] * len(tests)
+
+    results = [
+        _apply_leverage(_run_single(bt), factor, bt.config)
+        for bt, factor in zip(tests, factors)
+    ]
     return BacktestResult(results)

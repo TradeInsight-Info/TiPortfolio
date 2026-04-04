@@ -40,7 +40,7 @@ class TestSingleResult:
         expected = {
             "sharpe", "calmar", "sortino", "max_drawdown", "cagr",
             "risk_free_rate", "total_return", "kelly", "final_value",
-            "total_fee", "rebalance_count",
+            "total_fee", "rebalance_count", "leverage",
         }
         assert set(metrics) == expected
 
