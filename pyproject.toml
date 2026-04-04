@@ -37,6 +37,7 @@ dependencies = [
     "progressbar>=2.5",
     "tqdm>=4.67.1",
     "yfinance>=0.2.66",
+    "click>=8.0",
 ]
 
 [project.optional-dependencies]
@@ -58,7 +59,7 @@ dev = [
 ]
 
 [project.scripts]
-tiportfolio = "tiportfolio.main:main"
+tiportfolio = "tiportfolio.cli:cli"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/tiportfolio"]

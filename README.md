@@ -44,6 +44,26 @@ result.plot()          # equity curve + drawdown chart
 
 - More [examples](examples/README.md)
 
+## CLI
+
+Run backtests directly from the terminal — no Python script needed.
+
+```bash
+# Monthly rebalance QQQ/BIL/GLD at 70/20/10
+tiportfolio monthly --tickers QQQ,BIL,GLD --start 2019-01-01 --end 2024-12-31 --ratio 0.7,0.2,0.1
+
+# Quarterly equal-weight rebalance
+tiportfolio quarterly --tickers QQQ,BIL,GLD --start 2019-01-01 --end 2024-12-31 --ratio equal
+
+# Compare at 1x, 1.5x, 2x leverage (includes borrowing cost)
+tiportfolio monthly --tickers QQQ,BIL,GLD --start 2019-01-01 --end 2024-12-31 --ratio 0.7,0.2,0.1 --leverage 1.0,1.5,2.0
+
+# Save equity curve chart
+tiportfolio monthly --tickers QQQ,BIL,GLD --start 2019-01-01 --end 2024-12-31 --ratio equal --plot chart.png
+```
+
+See [docs/cli.md](docs/cli.md) for the full CLI reference with all subcommands and options.
+
 ## Requirements
 
 - Python 3.10+
