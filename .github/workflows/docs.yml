@@ -7,7 +7,8 @@
 #      - CLOUDFLARE_API_TOKEN: API token with "Cloudflare Pages:Edit" permission
 #      - CLOUDFLARE_ACCOUNT_ID: Your Cloudflare account ID
 #
-# Docs will be available at: https://tiportfolio-docs.pages.dev
+# Docs will be available at: https://tiportfolio-docs.aws.pages.dev
+# Docs will be available at: https://tiportfolio.tradeinsight.info/
 
 name: Deploy Docs
 
