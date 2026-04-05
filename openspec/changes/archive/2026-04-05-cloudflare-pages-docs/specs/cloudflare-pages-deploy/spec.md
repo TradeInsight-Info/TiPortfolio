@@ -1,10 +1,4 @@
-# Spec: docs-deployment
-
-## Purpose
-
-Automate deployment of MkDocs documentation to Cloudflare Pages via a GitHub Actions workflow triggered on pushes to master.
-
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Docs deploy to Cloudflare Pages
 The GitHub Actions workflow SHALL build mkdocs and deploy the `site/` directory to Cloudflare Pages.
@@ -17,6 +11,8 @@ The GitHub Actions workflow SHALL build mkdocs and deploy the `site/` directory 
 - **WHEN** the workflow runs
 - **THEN** it SHALL use `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from GitHub secrets
 
-#### Scenario: Workflow uses uv and Python 3.12
-- **WHEN** the workflow runs
-- **THEN** it SHALL use `actions/setup-python@v5` with Python 3.12 and `astral-sh/setup-uv@v4` for dependency management
+## REMOVED Requirements
+
+### Requirement: GitHub Pages deployment
+**Reason**: Replaced by Cloudflare Pages (free tier, no GitHub plan needed)
+**Migration**: Set up Cloudflare Pages project + add GitHub secrets

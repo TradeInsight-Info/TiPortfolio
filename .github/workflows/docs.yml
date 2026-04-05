@@ -1,12 +1,20 @@
+# Deploy docs to Cloudflare Pages on push to master.
+#
+# Prerequisites:
+#   1. Create a Cloudflare Pages project named "tiportfolio-docs"
+#      (via dashboard or: npx wrangler pages project create tiportfolio-docs)
+#   2. Add these GitHub repo secrets:
+#      - CLOUDFLARE_API_TOKEN: API token with "Cloudflare Pages:Edit" permission
+#      - CLOUDFLARE_ACCOUNT_ID: Your Cloudflare account ID
+#
+# Docs will be available at: https://tiportfolio-docs.pages.dev
+
 name: Deploy Docs
 
 on:
   push:
     branches:
       - master
-
-permissions:
-  contents: write
 
 jobs:
   deploy:
@@ -29,5 +37,13 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      - name: Deploy docs to GitHub Pages
-        run: uv run python -m mkdocs gh-deploy --force
+      - name: Build docs
+        run: uv run python -m mkdocs build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: tiportfolio-docs
+          directory: site
