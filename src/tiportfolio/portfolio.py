@@ -6,7 +6,13 @@ from tiportfolio.algo import Algo, AlgoQueue
 
 
 class Portfolio:
-    """Tree node holding mutable simulation state."""
+    """Tree node holding mutable simulation state.
+
+    Args:
+        name: Display name for this portfolio node.
+        algos: Ordered list of algos forming the strategy pipeline.
+        children: Leaf tickers (list of str) or child Portfolio nodes.
+    """
 
     def __init__(
         self,

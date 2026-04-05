@@ -2,18 +2,24 @@ site_name: TiPortfolio Docs
 repo_url: https://github.com/TradeInsight-Info/TiPortfolio
 
 theme:
-  # name: readthedocs
   name: material
   features:
     - search.highlight
     - search.suggest
     - navigation.footer
 
-
 plugins:
-  - mkdocstrings
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            members_order: source
   - search
-  - offline
 
 extra:
   version:
@@ -31,11 +37,10 @@ markdown_extensions:
         - name: mermaid
           class: mermaid
 
-
-
 nav:
   - Home: index.md
-  - Built in Strategies:
+  - CLI: cli.md
+  - Built-in Strategies:
     - guides/fix-time-rebalance.md
     - guides/market-volatility-rebalance.md
     - guides/allocation-strategies.md
@@ -44,13 +49,14 @@ nav:
     - Usage: guides/usage.md
     - guides/key-data-types.md
     - guides/comparing-results.md
-
+    - guides/extra-data.md
   - Why TiPortfolio:
     - about.md
     - thoughts.md
-    - api/structure.md
   - API:
-    - api/index.md
-  - Reference:
+    - Overview: api/index.md
+    - Project Structure: api/structure.md
+    - Reference: api/reference.md
+  - Others:
     - Researching: papers.md
-  - Changelog: https://github.com/TradeInsight-Info/TiPortfolio/releases
+    - Changelog: https://github.com/TradeInsight-Info/TiPortfolio/releases

@@ -39,6 +39,7 @@ ti.fetch_data(
     start: str,                      # "YYYY-MM-DD"
     end: str,                        # "YYYY-MM-DD"
     source: str = "yfinance",        # "yfinance" | "alpaca"
+    csv: str | dict[str, str] | None = None,
 ) -> dict[str, pd.DataFrame]
 ```
 
@@ -111,21 +112,26 @@ Signal algos fall into two sub-types:
 
 | Algo | Equivalent `Signal.Schedule` configuration |
 |---|---|
-| `Signal.Monthly(day="end", next_trading_day=True)` | `Signal.Schedule(day="end", next_trading_day=True)` |
-| `Signal.Monthly(day=15, next_trading_day=True)` | `Signal.Schedule(day=15, next_trading_day=True)` |
+| `Signal.Monthly(day="end", closest_trading_day=True)` | `Signal.Schedule(day="end", closest_trading_day=True)` |
+| `Signal.Monthly(day=15, closest_trading_day=True)` | `Signal.Schedule(day=15, closest_trading_day=True)` |
 | `Signal.Quarterly(months=[2,5,8,11], day="end")` | `Or(Signal.Schedule(month=2), ..., Signal.Schedule(month=11))` |
 
 | Algo | Signature | Description |
 |---|---|---|
-| `Signal.Schedule` | `(month=None, day="end", next_trading_day=True)` | Base — fires on `day` of `month` (or every month if `month=None`) |
-| `Signal.Monthly` | `(day="end", next_trading_day=True)` | Proxy: monthly rebalance preset |
-| `Signal.Quarterly` | `(months=[2,5,8,11], day="end")` | Proxy: `Or`-wrapped quarterly rebalance preset |
+| `Signal.Schedule` | `(month=None, day="end", closest_trading_day=True)` | Base — fires on `day` of `month` (or every month if `month=None`) |
+| `Signal.Monthly` | `(day="end", closest_trading_day=True)` | Proxy: monthly rebalance preset |
+| `Signal.Quarterly` | `(months=[1,4,7,10], day="end")` | Proxy: `Or`-wrapped quarterly rebalance preset |
 
 **Market-based signals** — fire based on market data; used in parent portfolios to route capital to child portfolios:
 
 | Algo | Signature | Description |
 |---|---|---|
 | `Signal.VIX` | `(high: float, low: float, data: dict[str, pd.DataFrame])` | Writes the active child portfolio to `context.selected` and `{child.name: 1.0}` to `context.weights` based on VIX regime. `data` must contain `"^VIX"`. **Children ordering:** `children[0]` = low-vol regime (VIX < `low`), `children[1]` = high-vol regime (VIX > `high`). Between thresholds, previous regime persists (hysteresis). |
+| `Signal.Weekly` | `(day: str = "end", closest_trading_day: bool = True)` | Fires once per ISO week on the configured day |
+| `Signal.Yearly` | `(day: int \| str = "end", month: int \| None = None)` | Fires once per year in the target month |
+| `Signal.Once` | `()` | Fires exactly once (first call), then always False. For buy-and-hold. |
+| `Signal.EveryNPeriods` | `(n: int, period: str, day: str = "end")` | Fires every N-th period boundary. `period`: "day", "week", "month", "year". |
+| `Signal.Indicator` | `(ticker: str, condition: Callable, lookback: pd.DateOffset, cross: str = "up")` | Fires on technical indicator state transitions. `cross`: "up", "down", or "both". |
 
 #### Select Algos
 
@@ -246,8 +252,10 @@ Bundles a portfolio strategy with price data and configuration.
 ### `run`
 
 ```python
-result = ti.run(*tests: Backtest) -> BacktestResult
+result = ti.run(*tests: Backtest, leverage: float | list[float] = 1.0) -> BacktestResult
 ```
+
+The `leverage` parameter applies post-simulation leverage with borrowing cost deduction. A single float applies to all backtests; a list applies per-backtest for side-by-side comparison.
 
 Runs one or more backtests and returns a `BacktestResult` that is always collection-aware.
 
@@ -274,6 +282,8 @@ When called with multiple backtests, all `BacktestResult` methods adapt automati
 
 `result[0]` and `result["name"]` work for **single-backtest results too**, so you can always write `result[0]` and add more backtests later without changing the rest of your code.
 
+> **CLI available:** TiPortfolio also provides a `tiportfolio` command-line tool. See [CLI Reference](../cli.md) for details.
+
 ---
 
 ## 4. Analyzing Results
@@ -293,8 +303,6 @@ Both always return a `pd.DataFrame` — rows are metric names, columns are portf
 
 | Key | Description |
 |---|---|
-| `start` | Backtest start date |
-| `end` | Backtest end date |
 | `risk_free_rate` | Risk-free rate used |
 | `total_return` | Total return over the full period |
 | `cagr` | Compound Annual Growth Rate |
@@ -306,6 +314,7 @@ Both always return a `pd.DataFrame` — rows are metric names, columns are portf
 | `final_value` | Final portfolio value |
 | `total_fee` | Total fees paid |
 | `rebalance_count` | Number of rebalances executed |
+| `leverage` | Leverage factor applied (1.0 if none) |
 
 **`full_summary()`** — Complete performance report. Includes all `summary()` fields plus:
 
@@ -376,9 +385,9 @@ Both always return a `pd.DataFrame` — rows are metric names, columns are portf
 #### Charts
 
 ```python
-result.plot(interactive: bool = True) -> None
-result.plot_histogram(interactive: bool = True) -> None
-result.plot_security_weights(interactive: bool = True) -> None
+result.plot(interactive: bool = False) -> Figure
+result.plot_histogram() -> Figure
+result.plot_security_weights() -> Figure
 ```
 
 **`plot(interactive=True)`**
@@ -407,27 +416,30 @@ When `interactive=True`, hover to see exact weights on any date; click a ticker 
 #### Trade Records
 
 ```python
-result.trades  # Trades — a pd.DataFrame wrapper
+result[0].trades  # Trades — a pd.DataFrame wrapper
 ```
 
-One row per rebalance event. Negative `qty` values indicate short positions.
+Access via `result[0].trades` or `result["portfolio_name"].trades` (not directly on `BacktestResult`).
+
+One row per trade per ticker per rebalance event. Negative `qty` values indicate short positions.
 
 | Column | Description |
 |---|---|
 | `date` | Rebalance date |
-| `equity_before` | Portfolio value before trades |
-| `equity_after` | Portfolio value after trades |
-| `fee_paid` | Total fee for this rebalance |
-| `{TICKER}_price` | Price at execution |
-| `{TICKER}_qty_before` | Shares held before (negative = short) |
-| `{TICKER}_trade_qty` | Shares bought (+) or sold/shorted (−) |
-| `{TICKER}_qty_after` | Shares held after (negative = short) |
-| `{TICKER}_value_after` | Position value after (negative for short) |
+| `portfolio` | Portfolio name |
+| `ticker` | Ticker symbol |
+| `qty_before` | Shares held before trade |
+| `qty_after` | Shares held after trade |
+| `delta` | Shares traded (+ bought, - sold) |
+| `price` | Execution price |
+| `fee` | Fee for this trade |
+| `equity_before` | Portfolio equity before trades |
+| `equity_after` | Portfolio equity after trades |
 
-`result.trades` supports all standard `pd.DataFrame` operations and adds one method:
+`result[0].trades` supports all standard `pd.DataFrame` operations and adds one method:
 
 ```python
-result.trades.sample(n: int) -> pd.DataFrame
+result[0].trades.sample(n: int) -> pd.DataFrame
 ```
 
 Returns the top `n` and bottom `n` rebalances ranked by equity return (`equity_after / equity_before - 1`). Useful for spotting the best and worst rebalance decisions during debugging. Returns at most `2n` rows; gracefully returns fewer if fewer than `n` rebalances exist.

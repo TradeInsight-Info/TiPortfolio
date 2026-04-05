@@ -15,7 +15,15 @@ def validate_data(
     data: dict[str, pd.DataFrame],
     extra: dict[str, pd.DataFrame] | None = None,
 ) -> None:
-    """Check all DataFrames share identical DatetimeIndex. Raises ValueError if not."""
+    """Check all DataFrames share identical DatetimeIndex.
+
+    Args:
+        data: Dict mapping ticker symbols to OHLCV DataFrames.
+        extra: Optional additional DataFrames to validate (e.g., VIX data).
+
+    Raises:
+        ValueError: If any DataFrame has a different DatetimeIndex.
+    """
     if not data:
         return
 

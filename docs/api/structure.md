@@ -4,16 +4,15 @@
 src/tiportfolio/
 ├── __init__.py             # Public API exports
 ├── config.py               # TiConfig — global backtest defaults
-├── algo.py                 # Algo ABC, AlgoQueue, Context, Or, Not
-├── branching.py            # Re-export shim: exposes Or/And/Not directly as ti.Or / ti.And / ti.Not
+├── algo.py                 # Algo ABC, AlgoQueue, Context, Or, And, Not
 ├── algos/                  # Concrete algo implementations
-│   ├── __init__.py         # Re-exports all algos → accessible as ti.algo.*
+│   ├── __init__.py         # Re-exports all algos → accessible as ti.Signal.*, ti.Select.*, ti.Weigh.*, ti.Action.*
 │   ├── signal.py           # All signal algos: time-based (Schedule*) + market-based (VixSignal)
 │   ├── select.py           # Universe selection algos
 │   ├── weigh.py            # Weight calculation algos
 │   └── rebalance.py        # Trade execution + debug algos
 ├── portfolio.py            # Portfolio tree node
-├── backtest.py             # Backtest, BacktestResult, run_backtest()
+├── backtest.py             # Backtest, run(), _apply_leverage(), simulation engine
 └── helpers/                # Data layer (YFinance, Alpaca, cache, logging)
     ├── __init__.py
     ├── cache.py            # Disk cache for data fetches
@@ -76,7 +75,7 @@ Contains the stable interface layer. Should not import from `algos/`.
 
 | Symbol | Role |
 |---|---|
-| `Context` | Dataclass passed to every algo — holds `portfolio`, `prices`, `date`, `config` (read-only) and `selected`, `weights`, `selected_child` (mutable, inter-algo communication) |
+| `Context` | Dataclass passed to every algo — holds `portfolio`, `prices`, `date`, `config` (read-only) and `selected`, `weights` (mutable), `_execute_leaf`, `_allocate_children` (callbacks) |
 | `Algo` | Abstract base class; one method: `__call__(context) -> bool` |
 | `AlgoQueue` | Runs algos sequentially; stops on first `False` (logical AND) |
 | `Or` | `Or(*algos)` — runs branches until one returns `True` (logical OR) |
@@ -89,7 +88,6 @@ Contains the stable interface layer. Should not import from `algos/`.
 |---|---|---|
 | `selected: list[str]` | Select algos | Weigh algos, Rebalance |
 | `weights: dict[str, float]` | Weigh algos | Rebalance |
-| `selected_child: Portfolio \| None` | Signal algos (VixSignal) | engine (routes capital to selected child automatically) |
 
 ---
 
@@ -99,7 +97,7 @@ All concrete algos. Internal files are organized by the *role* each algo plays i
 
 | File | Role in stack | Algos |
 |---|---|---|
-| `signal.py` | **When / which branch** — time-based and market-based signals | `Signal` namespace: `Signal.Schedule` (base), `Signal.Monthly`, `Signal.Quarterly`; `Signal.VIX` |
+| `signal.py` | **When / which branch** — time-based and market-based signals | `Signal` namespace: `Signal.Schedule` (base), `Signal.Monthly`, `Signal.Quarterly`, `Signal.Weekly`, `Signal.Yearly`, `Signal.Once`, `Signal.EveryNPeriods`, `Signal.VIX`, `Signal.Indicator` |
 | `select.py` | **What** to include | `Select` namespace: `Select.All`, `Select.Momentum` |
 | `weigh.py` | **How much** to allocate | `Weigh` namespace: `Weigh.Equally`, `Weigh.Ratio`, `Weigh.BasedOnHV`, `Weigh.BasedOnBeta`, `Weigh.ERC` |
 | `rebalance.py` | **Action** — execute trades | `Action` namespace: `Action.Rebalance`, `Action.PrintInfo` |
@@ -134,15 +132,15 @@ The engine detects node type at runtime. A parent uses signal algos to select on
 | Symbol | Role |
 |---|---|
 | `Backtest` | Bundles `Portfolio` + `data` + `TiConfig` |
-| `BacktestResult` | Holds `trades: pd.DataFrame`; provides `summary()`, `plot()`, `plot_histogram()`, `plot_security_weights()` |
-| `run_backtest(test)` | Entry point — iterates trading days, evaluates portfolio tree, records trades |
+| `BacktestResult` | Holds equity curves; provides `summary()`, `full_summary()`, `plot()`, `plot_histogram()`, `plot_security_weights()`. Access individual results via `result[0]` or `result["name"]`. Trade records are on individual results: `result[0].trades`. |
+| `run(*tests, leverage=1.0)` | Entry point; accepts multiple backtests for comparison |
 
 The simulation loop:
 1. For each trading day in `data`
 2. Evaluate the `Portfolio` tree (root first, depth-first)
 3. Each node runs its `AlgoQueue` with a `Context` scoped to that node's `tickers`
 4. For a **leaf** node: if the stack returns `True`, execute trades toward `context.weights`; record the event in `trades`
-5. For a **parent** node: a signal algo sets `context.selected_child`; if the stack returns `True`, the engine automatically forks a new `Context` for the selected child and evaluates it recursively
+5. For a **parent** node: a signal algo sets `context.selected`; if the stack returns `True`, the engine automatically forks a new `Context` for the selected child and evaluates it recursively
 6. If any node's stack returns `False`, the entire subtree is skipped
 
 ---

@@ -92,7 +92,7 @@ def monthly_portfolio(name, weigh_algo):
 result = ti.run(
     monthly_portfolio("equal_weight",    ti.Weigh.Equally()),
     monthly_portfolio("fixed_ratio",     ti.Weigh.Ratio(weights={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1})),
-    monthly_portfolio("vol_target",      ti.Weigh.BasedOnHV(initial_ratio={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1}, target_hv=60, lookback=pd.DateOffset(months=1))),
+    monthly_portfolio("vol_target",      ti.Weigh.BasedOnHV(initial_ratio={"QQQ": 0.7, "BIL": 0.2, "GLD": 0.1}, target_hv=0.60, lookback=pd.DateOffset(months=1))),
     monthly_portfolio("erc",             ti.Weigh.ERC(lookback=pd.DateOffset(months=3))),
 )
 

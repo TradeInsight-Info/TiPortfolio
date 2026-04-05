@@ -707,21 +707,38 @@ class BacktestResult:
         return len(self._results)
 
     def summary(self) -> pd.DataFrame:
-        """Summary across all backtests. For single result, delegates directly."""
+        """Summary across all backtests. For single result, delegates directly.
+
+        Returns:
+            DataFrame with key metrics. Single backtest: one 'value' column.
+            Multiple backtests: one column per portfolio name.
+        """
         if len(self._results) == 1:
             return self._results[0].summary()
         frames = {r.name: r.summary()["value"] for r in self._results}
         return pd.DataFrame(frames)
 
     def full_summary(self) -> pd.DataFrame:
-        """Full summary across all backtests."""
+        """Full summary across all backtests.
+
+        Returns:
+            DataFrame with extended metrics including period returns,
+            daily/monthly/yearly stats, and drawdown analysis.
+        """
         if len(self._results) == 1:
             return self._results[0].full_summary()
         frames = {r.name: r.full_summary()["value"] for r in self._results}
         return pd.DataFrame(frames)
 
     def plot(self, interactive: bool = False) -> Any:
-        """Plot all backtest equity curves."""
+        """Plot all backtest equity curves.
+
+        Args:
+            interactive: Use Plotly instead of matplotlib. Requires plotly extra.
+
+        Returns:
+            matplotlib Figure or plotly Figure object.
+        """
         if len(self._results) == 1:
             return self._results[0].plot(interactive=interactive)
         if interactive:

@@ -10,7 +10,13 @@ from tiportfolio.result import BacktestResult, _SingleResult
 
 
 class Backtest:
-    """Configures a backtest run. Validates data at construction time."""
+    """Configures a backtest run. Validates data at construction time.
+
+    Args:
+        portfolio: Root portfolio node defining the strategy.
+        data: Dict mapping ticker symbols to OHLCV DataFrames.
+        config: Simulation parameters. Uses defaults if not provided.
+    """
 
     def __init__(
         self,

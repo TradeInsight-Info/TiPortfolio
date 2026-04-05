@@ -89,7 +89,7 @@ result = ti.run(ti.Backtest(dollar_neutral_portfolio, data))
 
 
 
-### Voaltility Targeting
+### Volatility Targeting
 
 A volatility targeting strategy is a different animal from dollar-neutral or beta-neutral — instead of balancing longs vs. shorts, it dynamically sizes your entire position based on the portfolio's realized volatility, scaling up when markets are calm and scaling down when they get choppy. 
 

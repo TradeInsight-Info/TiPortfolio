@@ -18,3 +18,4 @@ htmlcov/
 .ruff_cache/
 *.py.swp
 examples/*.png
+site/

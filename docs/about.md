@@ -4,7 +4,7 @@ TiPortfolio is a portfolio management tool with built-in state-of-the-art portfo
 
 - Simple and Easy To Use
 - Library first, but with CLI support
-- Flexible and Extensible, it can be configured easily to backtest different combination between different [rebalancing triggers](./dimensions/dimension 1 trigger of rebalance.md) and  different [allocation strategies](./dimensions/dimension 2 allocation strategies.md), and extensible for users to customised and built their own rebalancing triggers and allocation strategies.
+- Flexible and Extensible, it can be configured easily to backtest different combination between different [rebalancing triggers](guides/fix-time-rebalance.md) and  different [allocation strategies](guides/allocation-strategies.md), and extensible for users to customised and built their own rebalancing triggers and allocation strategies.
 - Rebalance decisions table with interactive chart in the end report, whether to buy more, or sell more or hold the same amount with reason
 - Support portfolio performance metrics in the end report
 
