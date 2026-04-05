@@ -25,7 +25,7 @@ classifiers = [
     "Topic :: Office/Business :: Financial :: Investment",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-urls = { homepage = "https://github.com/TradeInsight-Info/TiPortfolio" }
+urls = { homepage = "https://github.com/TradeInsight-Info/TiPortfolio", documentation = "https://tiportfolio.tradeinsight.info/" }
 dependencies = [
     "alpaca-py>=0.43.2",
     "diskcache>=5.6.3",

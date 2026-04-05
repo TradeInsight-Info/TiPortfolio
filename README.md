@@ -2,6 +2,8 @@
 
 A portfolio management tool with built-in state-of-the-art portfolio optimization algorithms, with extensibility for different use cases for both institutes and retail traders.
 
+**[Documentation](https://tiportfolio.tradeinsight.info/)** | **[PyPI](https://pypi.org/project/tiportfolio/)** | **[GitHub](https://github.com/TradeInsight-Info/TiPortfolio)**
+
 ## Installation
 
 ```bash
