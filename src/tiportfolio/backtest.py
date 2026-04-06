@@ -289,7 +289,9 @@ def _evaluate_node(
             _evaluate_node(child, child_context)
 
 
-def _run_single(backtest: Backtest) -> _SingleResult:
+def _run_single(
+    backtest: Backtest, monthly_aip_amount: float = 0.0
+) -> _SingleResult:
     """Execute a single backtest and return its result."""
     portfolio = backtest.portfolio
     prices = backtest.data
@@ -307,6 +309,8 @@ def _run_single(backtest: Backtest) -> _SingleResult:
     equity_curve: list[tuple[pd.Timestamp, float]] = []
     all_trade_records: list[dict[str, object]] = []
     weight_history: list[dict[str, object]] = []
+    contribution_total = 0.0
+    contribution_count = 0
 
     # Wrapper to capture trade records from execute_leaf_trades
     def _recording_execute_leaf(port: Portfolio, ctx: Context) -> None:
@@ -316,17 +320,26 @@ def _run_single(backtest: Backtest) -> _SingleResult:
         for ticker, w in ctx.weights.items():
             weight_history.append({"date": ctx.date, "ticker": ticker, "weight": w})
 
-    for date in trading_days:
+    for i, date in enumerate(trading_days):
         # 1. Mark-to-market
         mark_to_market(portfolio, prices, date)
 
         # 2. Daily carry costs
         deduct_daily_carry_costs(portfolio, prices, date, config)
 
-        # 3. Record equity
+        # 3. AIP cash injection on last trading day of each month
+        if monthly_aip_amount > 0 and i > 0:
+            next_date = trading_days[i + 1] if i + 1 < len(trading_days) else None
+            if next_date is None or date.month != next_date.month:
+                portfolio.cash += monthly_aip_amount
+                portfolio.equity += monthly_aip_amount
+                contribution_total += monthly_aip_amount
+                contribution_count += 1
+
+        # 4. Record equity
         equity_curve.append((date, portfolio.equity))
 
-        # 4. Evaluate algo queue
+        # 5. Evaluate algo queue
         context = Context(
             portfolio=portfolio,
             prices=prices,
@@ -355,6 +368,8 @@ def _run_single(backtest: Backtest) -> _SingleResult:
         total_fee=total_fee,
         rebalance_count=rebalance_count,
         prices=prices,
+        total_contributions=contribution_total,
+        contribution_count=contribution_count,
     )
 
 
@@ -382,6 +397,38 @@ def _apply_leverage(
         prices=result._prices,
         leverage=factor,
     )
+
+
+def run_aip(
+    *tests: Backtest,
+    monthly_aip_amount: float,
+    leverage: float | list[float] = 1.0,
+) -> BacktestResult:
+    """Run one or more backtests with monthly auto investment plan (AIP).
+
+    Each month-end, ``monthly_aip_amount`` is added to the portfolio before
+    the algo stack evaluates.  Otherwise identical to :func:`run`.
+
+    Args:
+        tests: One or more Backtest objects.
+        monthly_aip_amount: Cash to inject on the last trading day of each month.
+        leverage: Leverage multiplier (same semantics as ``run``).
+    """
+    if isinstance(leverage, list):
+        if len(leverage) != len(tests):
+            raise ValueError(
+                f"leverage list length ({len(leverage)}) does not match "
+                f"number of backtests ({len(tests)}): mismatch"
+            )
+        factors = leverage
+    else:
+        factors = [leverage] * len(tests)
+
+    results = [
+        _apply_leverage(_run_single(bt, monthly_aip_amount), factor, bt.config)
+        for bt, factor in zip(tests, factors)
+    ]
+    return BacktestResult(results)
 
 
 def run(*tests: Backtest, leverage: float | list[float] = 1.0) -> BacktestResult:

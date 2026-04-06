@@ -2,7 +2,7 @@
 
 from tiportfolio.algo import And, Not, Or
 from tiportfolio.algos import Action, Select, Signal, Weigh
-from tiportfolio.backtest import Backtest, run
+from tiportfolio.backtest import Backtest, run, run_aip
 from tiportfolio.config import TiConfig
 from tiportfolio.data import fetch_data, validate_data
 from tiportfolio.portfolio import Portfolio
@@ -20,5 +20,6 @@ __all__ = [
     "Weigh",
     "fetch_data",
     "run",
+    "run_aip",
     "validate_data",
 ]

@@ -81,6 +81,8 @@ class _SingleResult:
         rebalance_count: int = 0,
         prices: dict[str, pd.DataFrame] | None = None,
         leverage: float = 1.0,
+        total_contributions: float = 0.0,
+        contribution_count: int = 0,
     ) -> None:
         self.name = name
         self.equity_curve = equity_curve
@@ -91,6 +93,8 @@ class _SingleResult:
         self._rebalance_count = rebalance_count
         self._prices = prices or {}
         self._leverage = leverage
+        self._total_contributions = total_contributions
+        self._contribution_count = contribution_count
 
     @property
     def trades(self) -> Trades:
@@ -160,6 +164,9 @@ class _SingleResult:
             "rebalance_count": self._rebalance_count,
             "leverage": self._leverage,
         }
+        if self._total_contributions > 0:
+            data["total_contributions"] = self._total_contributions
+            data["contribution_count"] = self._contribution_count
         data = _round_values(data)
         return pd.DataFrame(
             {"value": data.values()},
