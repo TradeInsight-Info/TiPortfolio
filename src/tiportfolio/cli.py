@@ -113,6 +113,7 @@ def _run_backtest(
     top_n: int | None,
     lookback: str | None,
     target_hv: float | None,
+    aip: float | None,
     **_extra: Any,
 ) -> None:
     """Shared backtest runner for all subcommands."""
@@ -135,16 +136,19 @@ def _run_backtest(
 
     # Handle leverage list: create multiple identical backtests
     # Names stay as "portfolio" — _apply_leverage adds the suffix
+    run_fn = ti.run_aip if aip and aip > 0 else ti.run
+    aip_kwargs: dict[str, Any] = {"monthly_aip_amount": aip} if aip and aip > 0 else {}
+
     if isinstance(lev, list):
         backtests = []
         for _factor in lev:
             p = ti.Portfolio("portfolio", list(algos), list(ticker_list))
             backtests.append(ti.Backtest(p, data, config=config))
-        result = ti.run(*backtests, leverage=lev)
+        result = run_fn(*backtests, leverage=lev, **aip_kwargs)
     else:
         portfolio = ti.Portfolio("portfolio", algos, ticker_list)
         bt = ti.Backtest(portfolio, data, config=config)
-        result = ti.run(bt, leverage=lev)
+        result = run_fn(bt, leverage=lev, **aip_kwargs)
 
     # Output
     if full:
@@ -181,6 +185,7 @@ def shared_options(f: Any) -> Any:
     @click.option("--top-n", default=None, type=int, help="Top-N for momentum selection")
     @click.option("--lookback", default=None, help="Lookback period: Nd, Nm, Ny (e.g. 90d, 6m)")
     @click.option("--target-hv", default=None, type=float, help="Target historical volatility for --ratio hv")
+    @click.option("--aip", default=None, type=float, help="Monthly AIP amount — auto investment plan (cash added each month-end)")
     @functools.wraps(f)
     def wrapper(**kwargs: Any) -> Any:
         return f(**kwargs)

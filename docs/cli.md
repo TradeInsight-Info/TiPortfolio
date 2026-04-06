@@ -118,6 +118,23 @@ tiportfolio monthly --tickers QQQ,BIL,GLD --start 2019-01-01 --end 2024-12-31 --
 tiportfolio monthly --tickers QQQ,BIL,GLD,AAPL --start 2019-01-01 --end 2024-12-31 --select momentum --top-n 2 --lookback 90d --ratio equal
 ```
 
+## Auto Investment Plan (--aip)
+
+Simulate dollar-cost averaging by injecting a fixed cash amount on the last trading day of each month.
+
+```bash
+# Monthly $1,000 AIP into equal-weight QQQ/BIL/GLD
+tiportfolio monthly --tickers QQQ,BIL,GLD --start 2019-01-01 --end 2024-12-31 --ratio equal --aip 1000
+
+# AIP works with any rebalance frequency — cash is always injected monthly
+tiportfolio quarterly --tickers QQQ,BIL,GLD --start 2019-01-01 --end 2024-12-31 --ratio equal --aip 500
+
+# Combine AIP with leverage
+tiportfolio monthly --tickers QQQ,BIL,GLD --start 2019-01-01 --end 2024-12-31 --ratio equal --aip 1000 --leverage 1.5
+```
+
+The summary output includes `total_contributions` (total cash injected) and `contribution_count` (number of monthly injections).
+
 ## Leverage (--leverage)
 
 Apply post-simulation leverage with borrowing cost deduction.

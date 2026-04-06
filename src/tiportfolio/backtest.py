@@ -396,6 +396,8 @@ def _apply_leverage(
         rebalance_count=result._rebalance_count,
         prices=result._prices,
         leverage=factor,
+        total_contributions=result._total_contributions,
+        contribution_count=result._contribution_count,
     )
 
 
