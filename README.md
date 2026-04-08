@@ -4,7 +4,9 @@ A portfolio management tool with built-in state-of-the-art portfolio optimizatio
 
 **[Documentation](https://tiportfolio.tradeinsight.info/)** | **[PyPI](https://pypi.org/project/tiportfolio/)** | **[GitHub](https://github.com/TradeInsight-Info/TiPortfolio)**
 
-## Installation
+
+## Quick Start
+
 
 ```bash
 pip install tiportfolio
@@ -15,8 +17,6 @@ pip install tiportfolio[interactive]
 # For Equal Risk Contribution (ERC) weighting:
 pip install tiportfolio[erc]
 ```
-
-## Quick Start
 
 ```python
 import tiportfolio as ti
@@ -50,6 +50,12 @@ result.plot()          # equity curve + drawdown chart
 
 Run backtests directly from the terminal — no Python script needed.
 
+
+Use `pipx install tiportfolio --python python3.12` to install the CLI tool globally without affecting your Python environment. 
+
+Or use uvx to run the CLI without installing: `uvx run tiportfolio -- [options]` instead of `tiportfolio [options]`.
+
+
 ```bash
 # Monthly rebalance QQQ/BIL/GLD at 70/20/10
 tiportfolio monthly --tickers QQQ,BIL,GLD --start 2019-01-01 --end 2024-12-31 --ratio 0.7,0.2,0.1
@@ -65,6 +71,32 @@ tiportfolio monthly --tickers QQQ,BIL,GLD --start 2019-01-01 --end 2024-12-31 --
 ```
 
 See [docs/cli.md](docs/cli.md) for the full CLI reference with all subcommands and options.
+
+## Agent Skill
+
+TiPortfolio includes an agent skill that lets you backtest strategies using natural language — no CLI flags to remember.
+
+**Install the skill** for any agent that supports the [Skills](https://github.com/vercel-labs/skills) standard:
+
+```bash
+npx skills add https://github.com/TradeInsight-Info/TiPortfolio
+```
+
+For [Claude Code](https://docs.anthropic.com/en/docs/claude-code) specifically:
+
+```bash
+claude plugin add https://github.com/TradeInsight-Info/TiPortfolio
+```
+
+**Then just ask your agent:**
+
+> "Backtest QQQ BIL GLD equal weight monthly from 2019 to 2024"
+
+> "Monthly $1000 DCA into QQQ BIL GLD"
+
+> "Compare 1x vs 1.5x vs 2x leverage on quarterly QQQ BIL GLD"
+
+The skill maps your request to `uvx tiportfolio` CLI commands, runs the backtest, and presents the results. Requires [uv](https://docs.astral.sh/uv/) to be installed.
 
 ## Requirements
 
