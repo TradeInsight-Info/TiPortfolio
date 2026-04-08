@@ -1,7 +1,5 @@
 # Contributing to TIPortfolio Project
 
-- notebook dependency is not included in the pyproject.toml, please install it manually if you want to run the notebook examples.
-
 
 ## Commands
 
@@ -44,3 +42,9 @@ we have established some guidelines for contributions,
 - Know what you want to achieve before using AI tools.
 - Always test and review AI-generated code thoroughly.
 - Follow existing coding styles and project conventions.
+
+
+
+## About Agent AI Contributions
+- We don't reject Agent AI contributions, but we want to make sure they are high quality and align with our project goals. OpenSpec is recommended for AI contributions to ensure they meet our standards.
+- New skills should be located either in `.agents` or `.claude`, please do not create a new folder for the skill. 
