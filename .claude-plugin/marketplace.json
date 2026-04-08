@@ -1,0 +1,27 @@
+{
+    "name": "tiportfolio-marketplace",
+  "description": "Skills for backtesting and analyzing investment portfolios, including calculating Kelly leverage.",
+  "owner": {
+    "name": "TradeInsight.info"
+  },
+  "repository": "https://github.com/TradeInsight-info/tiportfolio",
+  "version": "1.0.0",
+  "metadata": {},
+  "plugins": [
+    {
+      "name": "tiportfolio",
+      "source": ["./agent-plugins"],
+      "skills": [
+        "./agent-plugins/skills/backtest"
+      ],
+      "version": "0.0.2",
+      "category": "finance",
+      "strict": false,
+      "author": {
+        "name": "TradeInsight.info"
+      },
+      "keywords": ["investing", "sentiment", "news", "reddit", "stocktwits", "stocks", "finance", "backtesting", "portfolio analysis", "kelly leverage", "quantitative investing", "algorithmic trading", "risk management", "asset allocation", "financial modeling", "investment strategies", "trading algorithms", "data analysis", "machine learning in finance"],
+      "tags": ["investing", "sentiment", "news", "reddit", "stocktwits", "stocks", "finance", "backtesting", "portfolio analysis", "kelly leverage", "quantitative investing", "algorithmic trading", "risk management", "asset allocation", "financial modeling", "investment strategies", "trading algorithms", "data analysis", "machine learning in finance"]
+    }
+  ]
+}
