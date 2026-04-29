@@ -6,7 +6,24 @@ All notable changes to TiPortfolio are recorded here, derived from completed ope
 
 ## [Unreleased]
 
-See [PLANS.md](PLANS.md) for upcoming work.
+---
+
+## [1.3.1] - 2026-04-29
+
+### Added
+
+#### 1. Harness Project Management Setup
+
+**Before**: Planning history lived in `openspec/changes/archive/` (25 date-prefixed proposal directories) and capability specs lived in `openspec/specs/` (43 named spec directories). No unified changelog or forward plan. No AI-readable memory for architectural decisions and patterns.
+
+**After**: Migrated to harness-style project management:
+- `CHANGELOG.md` — all 25 completed changes consolidated from `openspec/changes/archive/`, organized chronologically
+- `PLANS.md` — 20 planned capabilities from `openspec/specs/`, grouped by category (analytics, signals, weighting, data, docs, notebooks, plugins)
+- `.claude/memory/decisions.md` — 7 architectural decisions (algo stack pipeline, ABC over Protocol, parent-child engine, AIP constraints, CLI design, offline testing, spec-driven dev)
+- `.claude/memory/patterns.md` — 7 coding conventions (type annotations, imports, docstrings, ABC strategy pattern, test structure, error handling, DataFrame normalization)
+- `.claude/memory/MEMORY.md` — memory index
+- `.claude/settings.json` — Claude Code permissions scaffold
+- `.gitignore` — harness-managed block (force-tracks `.claude/memory/`, ignores sessions/logs/state)
 
 ---
 
