@@ -79,7 +79,7 @@ TiPortfolio includes an agent skill that lets you backtest strategies using natu
 **Install the skill** for any agent that supports the [Skills](https://github.com/vercel-labs/skills) standard:
 
 ```bash
-npx skills add https://github.com/TradeInsight-Info/TiPortfolio
+npx skills add https://github.com/TradeInsight-Info/TiPortfolio/tree/master/agent-plugins
 ```
 
 For [Claude Code](https://docs.anthropic.com/en/docs/claude-code) specifically:
