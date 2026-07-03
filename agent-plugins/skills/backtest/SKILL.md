@@ -1,12 +1,11 @@
 ---
 name: backtest
 description: >
-  This skill should be used when the user wants to backtest, simulate, or evaluate
-  a portfolio strategy, asset allocation, rebalancing plan, or dollar-cost averaging
-  (DCA/AIP) using the tiportfolio CLI. Triggers on phrases like "backtest QQQ BIL GLD",
-  "how would a 60/40 portfolio perform", "monthly DCA $1000 into SPY", "risk parity
-  backtest", "buy and hold AAPL", "compare 1x vs 2x leverage",
-  or when the user mentions tickers with allocation ratios and a time period.
+  Backtest, simulate, or evaluate a portfolio strategy, allocation, rebalancing
+  plan, or DCA/AIP using the tiportfolio CLI. Triggers on "backtest QQQ BIL GLD",
+  "60/40 portfolio", "monthly DCA $1000 into SPY", "risk parity backtest",
+  "buy and hold AAPL", "compare 1x vs 2x leverage", or tickers named with
+  allocation ratios and a time period.
 ---
 
 # Backtest — Portfolio Strategy Simulator
@@ -48,15 +47,13 @@ Parse the user's message and map to CLI flags using this table:
 | **Lookback** | `--lookback 90d` | — | "90 day lookback" — only applies with `--select momentum` |
 | **CSV data** | `--csv /path/to/dir` | — | "use local CSV data" or "offline mode" |
 
-### Ratio conversion rules
+### Ratio normalization
 
-- Percentages: "60/40" → `0.6,0.4` — "70/20/10" → `0.7,0.2,0.1`
-- Named: "equal weight" → `equal` — "risk parity" → `erc`
-- If ratios don't sum to 1.0, normalize them
+- If custom ratios don't sum to 1.0, normalize them before passing to `--ratio`.
 
 ## Step 3: Build and show the command
 
-Construct the full CLI command. **Always show it to the user before running**, so they can verify:
+Construct the full CLI command. Substitute real computed dates for `<5y-ago>`/`<today>` — never pass the placeholders literally. **Always show it to the user before running**, so they can verify:
 
 > Running: `uvx tiportfolio monthly --tickers QQQ,BIL,GLD --start <5y-ago> --end <today> --ratio equal`
 
@@ -89,13 +86,7 @@ If the command fails:
 
 ## Examples
 
-### Basic equal-weight backtest
-**User**: "Backtest QQQ BIL GLD equal weight monthly from 2019 to 2024"
-**Command**: `uvx tiportfolio monthly --tickers QQQ,BIL,GLD --start 2019-01-01 --end 2024-12-31 --ratio equal`
-
-### Custom ratio
-**User**: "70/20/10 allocation of QQQ BIL GLD quarterly"
-**Command**: `uvx tiportfolio quarterly --tickers QQQ,BIL,GLD --start <5y-ago> --end <today> --ratio 0.7,0.2,0.1`
+Non-obvious combinations whose syntax isn't guessable from the table above. Basic cases (equal weight, custom ratio, buy-and-hold via `once`) map directly from the table.
 
 ### Dollar-cost averaging
 **User**: "Monthly $1000 DCA into QQQ BIL GLD equal weight"
@@ -105,14 +96,6 @@ If the command fails:
 **User**: "Compare 1x vs 1.5x vs 2x leverage on monthly QQQ BIL GLD"
 **Command**: `uvx tiportfolio monthly --tickers QQQ,BIL,GLD --start <5y-ago> --end <today> --ratio equal --leverage 1.0,1.5,2.0`
 
-### Buy and hold
-**User**: "Buy and hold AAPL from 2020 to 2024"
-**Command**: `uvx tiportfolio once --tickers AAPL --start 2020-01-01 --end 2024-12-31 --ratio equal`
-
-### Risk parity with full summary
-**User**: "Risk parity QQQ BIL GLD monthly, show me the full details"
-**Command**: `uvx tiportfolio monthly --tickers QQQ,BIL,GLD --start <5y-ago> --end <today> --ratio erc --full`
-
 ### Momentum top-N selection
 **User**: "Top 3 by momentum from QQQ BIL GLD AAPL, 90 day lookback, monthly"
 **Command**: `uvx tiportfolio monthly --tickers QQQ,BIL,GLD,AAPL --start <5y-ago> --end <today> --ratio equal --select momentum --top-n 3 --lookback 90d`
@@ -120,7 +103,3 @@ If the command fails:
 ### Offline with local CSV data
 **User**: "Backtest QQQ BIL GLD using local CSV files in ./data"
 **Command**: `uvx tiportfolio monthly --tickers QQQ,BIL,GLD --start <5y-ago> --end <today> --ratio equal --csv ./data`
-
-### Minimal request (use all defaults)
-**User**: "Backtest QQQ and BIL"
-**Command**: `uvx tiportfolio monthly --tickers QQQ,BIL --start <5y-ago> --end <today> --ratio equal`
