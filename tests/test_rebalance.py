@@ -11,34 +11,34 @@ from tiportfolio.config import TiConfig
 from tiportfolio.portfolio import Portfolio
 
 
-def _make_leaf_context(callback: object | None = None) -> Context:
+def _make_leaf_context(engine: object | None = None) -> Context:
     portfolio = Portfolio("test", [], ["QQQ", "BIL"])
     return Context(
         portfolio=portfolio,
         prices={},
         date=pd.Timestamp("2024-01-02", tz="UTC"),
         config=TiConfig(),
-        _execute_leaf=callback,  # type: ignore[arg-type]
+        engine=engine,
     )
 
 
 class TestActionRebalance:
-    def test_calls_execute_leaf_for_leaf(self) -> None:
-        cb = MagicMock()
-        ctx = _make_leaf_context(callback=cb)
+    def test_delegates_to_engine(self) -> None:
+        engine = MagicMock()
+        ctx = _make_leaf_context(engine=engine)
         algo = Action.Rebalance()
         result = algo(ctx)
         assert result is True
-        cb.assert_called_once_with(ctx.portfolio, ctx)
+        engine.rebalance.assert_called_once_with(ctx.portfolio, ctx)
 
-    def test_raises_if_callback_none(self) -> None:
-        ctx = _make_leaf_context(callback=None)
-        with pytest.raises(RuntimeError, match="callback"):
+    def test_raises_if_engine_none(self) -> None:
+        ctx = _make_leaf_context(engine=None)
+        with pytest.raises(RuntimeError, match="engine"):
             Action.Rebalance()(ctx)
 
     def test_returns_true(self) -> None:
-        cb = MagicMock()
-        ctx = _make_leaf_context(callback=cb)
+        engine = MagicMock()
+        ctx = _make_leaf_context(engine=engine)
         assert Action.Rebalance()(ctx) is True
 
 

@@ -5,6 +5,7 @@ from collections.abc import Callable
 import pandas as pd
 
 from tiportfolio.algo import Algo, Context
+from tiportfolio.algos._common import lookback_window
 
 
 class Select:
@@ -23,7 +24,8 @@ class Select:
         Args:
             n: Number of tickers to select.
             lookback: Length of the return lookback window.
-            lag: Offset from current date to avoid look-ahead bias.
+            lag: Offset from current date to avoid look-ahead bias. Use
+                ``pd.DateOffset(0)`` for no lag (window ends on the current bar).
             sort_descending: True for top performers, False for worst.
         """
 
@@ -34,14 +36,17 @@ class Select:
             lag: pd.DateOffset = pd.DateOffset(days=1),
             sort_descending: bool = True,
         ) -> None:
+            if lag is None:
+                raise ValueError(
+                    "lag must be a pd.DateOffset; use pd.DateOffset(0) for no lag"
+                )
             self._n = n
             self._lookback = lookback
             self._lag = lag
             self._sort_descending = sort_descending
 
         def __call__(self, context: Context) -> bool:
-            end = context.date - self._lag
-            start = end - self._lookback
+            start, end = lookback_window(context.date, self._lookback, self._lag)
             scores: dict[str, float] = {}
             for item in context.selected:
                 if not isinstance(item, str):

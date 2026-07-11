@@ -59,10 +59,9 @@ class TestContext:
         ctx = self._make_context()
         assert ctx.weights == {}
 
-    def test_callbacks_default_none(self) -> None:
+    def test_engine_defaults_none(self) -> None:
         ctx = self._make_context()
-        assert ctx._execute_leaf is None
-        assert ctx._allocate_children is None
+        assert ctx.engine is None
 
     def test_mutable_selected(self) -> None:
         ctx = self._make_context()

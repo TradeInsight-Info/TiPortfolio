@@ -264,6 +264,30 @@ def execute_leaf_trades(
     return trade_records
 
 
+class Engine:
+    """Executes trades for a single run and records what it did.
+
+    Owns the leaf-vs-parent dispatch and the trade/weight bookkeeping that
+    ``Action.Rebalance`` used to reach for through Context callbacks.
+    """
+
+    def __init__(self) -> None:
+        self.trade_records: list[dict[str, object]] = []
+        self.weight_history: list[dict[str, object]] = []
+
+    def rebalance(self, node: Portfolio, context: Context) -> None:
+        """Rebalance a node: allocate to children, or trade leaf positions."""
+        if _is_parent(node):
+            allocate_equity_to_children(node, context)
+            return
+        records = execute_leaf_trades(node, context)
+        self.trade_records.extend(records)
+        for ticker, weight in context.weights.items():
+            self.weight_history.append(
+                {"date": context.date, "ticker": ticker, "weight": weight}
+            )
+
+
 def _evaluate_node(
     portfolio: Portfolio,
     context: Context,
@@ -283,8 +307,7 @@ def _evaluate_node(
                 prices=context.prices,
                 date=context.date,
                 config=context.config,
-                _execute_leaf=context._execute_leaf,
-                _allocate_children=context._allocate_children,
+                engine=context.engine,
             )
             _evaluate_node(child, child_context)
 
@@ -307,18 +330,9 @@ def _run_single(
     trading_days = sorted(all_dates)
 
     equity_curve: list[tuple[pd.Timestamp, float]] = []
-    all_trade_records: list[dict[str, object]] = []
-    weight_history: list[dict[str, object]] = []
+    engine = Engine()
     contribution_total = 0.0
     contribution_count = 0
-
-    # Wrapper to capture trade records from execute_leaf_trades
-    def _recording_execute_leaf(port: Portfolio, ctx: Context) -> None:
-        records = execute_leaf_trades(port, ctx)
-        all_trade_records.extend(records)
-        # Record weights at each rebalance
-        for ticker, w in ctx.weights.items():
-            weight_history.append({"date": ctx.date, "ticker": ticker, "weight": w})
 
     for i, date in enumerate(trading_days):
         # 1. Mark-to-market
@@ -345,8 +359,7 @@ def _run_single(
             prices=prices,
             date=date,
             config=config,
-            _execute_leaf=_recording_execute_leaf,
-            _allocate_children=allocate_equity_to_children,
+            engine=engine,
         )
         _evaluate_node(portfolio, context)
 
@@ -355,16 +368,16 @@ def _run_single(
     equity_series = pd.Series(values, index=pd.DatetimeIndex(dates), name="equity")
 
     # Compute aggregate stats from trade records
-    total_fee = sum(float(rec.get("fee", 0)) for rec in all_trade_records)
-    rebalance_dates = {rec["date"] for rec in all_trade_records}
+    total_fee = sum(float(rec.get("fee", 0)) for rec in engine.trade_records)
+    rebalance_dates = {rec["date"] for rec in engine.trade_records}
     rebalance_count = len(rebalance_dates)
 
     return _SingleResult(
         name=portfolio.name,
         equity_curve=equity_series,
         config=config,
-        trade_records=all_trade_records,
-        weight_history=weight_history,
+        trade_records=engine.trade_records,
+        weight_history=engine.weight_history,
         total_fee=total_fee,
         rebalance_count=rebalance_count,
         prices=prices,
@@ -401,20 +414,19 @@ def _apply_leverage(
     )
 
 
-def run_aip(
+def run(
     *tests: Backtest,
-    monthly_aip_amount: float,
     leverage: float | list[float] = 1.0,
+    monthly_aip_amount: float = 0.0,
 ) -> BacktestResult:
-    """Run one or more backtests with monthly auto investment plan (AIP).
-
-    Each month-end, ``monthly_aip_amount`` is added to the portfolio before
-    the algo stack evaluates.  Otherwise identical to :func:`run`.
+    """Run one or more backtests and return a BacktestResult.
 
     Args:
         tests: One or more Backtest objects.
-        monthly_aip_amount: Cash to inject on the last trading day of each month.
-        leverage: Leverage multiplier (same semantics as ``run``).
+        leverage: Leverage multiplier. A single float applies to all backtests;
+            a list applies per-backtest (must match length). Default 1.0.
+        monthly_aip_amount: Cash injected on the last trading day of each month
+            (auto investment plan). Default 0.0 disables injection.
     """
     if isinstance(leverage, list):
         if len(leverage) != len(tests):
@@ -433,26 +445,22 @@ def run_aip(
     return BacktestResult(results)
 
 
-def run(*tests: Backtest, leverage: float | list[float] = 1.0) -> BacktestResult:
-    """Run one or more backtests and return a BacktestResult.
+def run_aip(
+    *tests: Backtest,
+    monthly_aip_amount: float,
+    leverage: float | list[float] = 1.0,
+) -> BacktestResult:
+    """Run backtests with a monthly auto investment plan (AIP).
+
+    Thin convenience wrapper over :func:`run` that makes ``monthly_aip_amount``
+    a required argument. Each month-end, ``monthly_aip_amount`` is added to the
+    portfolio before the algo stack evaluates.
 
     Args:
         tests: One or more Backtest objects.
-        leverage: Leverage multiplier. A single float applies to all backtests;
-            a list applies per-backtest (must match length). Default 1.0.
+        monthly_aip_amount: Cash to inject on the last trading day of each month.
+        leverage: Leverage multiplier (same semantics as ``run``).
     """
-    if isinstance(leverage, list):
-        if len(leverage) != len(tests):
-            raise ValueError(
-                f"leverage list length ({len(leverage)}) does not match "
-                f"number of backtests ({len(tests)}): mismatch"
-            )
-        factors = leverage
-    else:
-        factors = [leverage] * len(tests)
-
-    results = [
-        _apply_leverage(_run_single(bt), factor, bt.config)
-        for bt, factor in zip(tests, factors)
-    ]
-    return BacktestResult(results)
+    return run(
+        *tests, leverage=leverage, monthly_aip_amount=monthly_aip_amount
+    )

@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from tiportfolio.algo import Algo, Context
+from tiportfolio.algos._common import lookback_window, selected_keys
 
 
 class Weigh:
@@ -18,14 +19,12 @@ class Weigh:
             self._short = short
 
         def __call__(self, context: Context) -> bool:
-            n = len(context.selected)
+            keys = selected_keys(context)
+            n = len(keys)
             if n == 0:
                 return True
             sign = -1.0 if self._short else 1.0
-            context.weights = {
-                (item if isinstance(item, str) else item.name): sign / n
-                for item in context.selected
-            }
+            context.weights = {k: sign / n for k in keys}
             return True
 
     class Ratio(Algo):
@@ -40,10 +39,7 @@ class Weigh:
             self._weights = weights
 
         def __call__(self, context: Context) -> bool:
-            keys = [
-                (item if isinstance(item, str) else item.name)
-                for item in context.selected
-            ]
+            keys = selected_keys(context)
             raw = {k: self._weights[k] for k in keys if k in self._weights}
             total = sum(abs(v) for v in raw.values()) or 1.0
             context.weights = {k: v / total for k, v in raw.items()}
@@ -72,14 +68,10 @@ class Weigh:
             self._lookback = lookback
 
         def __call__(self, context: Context) -> bool:
-            start = context.date - self._lookback
-            end = context.date
+            start, end = lookback_window(context.date, self._lookback)
             bars_per_year = context.config.bars_per_year
 
-            keys = [
-                (item if isinstance(item, str) else item.name)
-                for item in context.selected
-            ]
+            keys = selected_keys(context)
 
             hv: dict[str, float] = {}
             for ticker in keys:
@@ -152,8 +144,7 @@ class Weigh:
             return float(cov_matrix[0, 1] / var_bench)
 
         def __call__(self, context: Context) -> bool:
-            start = context.date - self._lookback
-            end = context.date
+            start, end = lookback_window(context.date, self._lookback)
 
             # Validate benchmark data coverage
             bench_data = self._base_data.loc[start:end]
@@ -165,10 +156,7 @@ class Weigh:
 
             bench_returns = bench_data["close"].pct_change().dropna()
 
-            keys = [
-                (item if isinstance(item, str) else item.name)
-                for item in context.selected
-            ]
+            keys = selected_keys(context)
 
             # Compute per-asset betas
             betas: dict[str, float] = {}
@@ -242,13 +230,9 @@ class Weigh:
         def __call__(self, context: Context) -> bool:
             import riskfolio
 
-            start = context.date - self._lookback
-            end = context.date
+            start, end = lookback_window(context.date, self._lookback)
 
-            keys = [
-                (item if isinstance(item, str) else item.name)
-                for item in context.selected
-            ]
+            keys = selected_keys(context)
 
             # Build returns DataFrame over lookback window
             returns_dict: dict[str, pd.Series] = {}  # type: ignore[type-arg]

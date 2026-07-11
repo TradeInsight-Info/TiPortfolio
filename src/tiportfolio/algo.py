@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -24,9 +23,8 @@ class Context:
     selected: list[Any] = field(default_factory=list)  # list[str | Portfolio]
     weights: dict[str, float] = field(default_factory=dict)
 
-    # engine callbacks — set by engine before calling algo_queue
-    _execute_leaf: Callable[..., None] | None = field(default=None, repr=False)
-    _allocate_children: Callable[..., None] | None = field(default=None, repr=False)
+    # engine that executes trades — set before calling algo_queue
+    engine: Any = field(default=None, repr=False)  # Engine (Any to avoid cycle)
 
 
 class Algo(ABC):
