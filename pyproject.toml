@@ -65,6 +65,16 @@ tiportfolio = "tiportfolio.cli:cli"
 [tool.hatch.build.targets.wheel]
 packages = ["src/tiportfolio"]
 
+[tool.hatch.build.targets.sdist]
+# Keep dev-only agent tooling out of the source distribution. `.claude/skills`
+# are absolute symlinks that break sdist packing ("external symlinks are not
+# allowed"); none of these dirs belong in the distributed package.
+exclude = [
+    ".agents/**",
+    ".claude/**",
+    ".claude-plugin/**",
+]
+
 [tool.uv]
 package = true
 
