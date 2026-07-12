@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Callable
 from pathlib import Path
 
 import pandas as pd
 
-from tiportfolio.helpers.data import Alpaca, YFinance
+from tiportfolio.helpers.data import Alpaca, TiData, YFinance
 
 logger = logging.getLogger(__name__)
 
@@ -68,11 +69,51 @@ def _query_alpaca(
     return source.query(tickers, start, end, timeframe="1d")
 
 
+def _query_tidata(
+    tickers: list[str],
+    start: str,
+    end: str,
+) -> pd.DataFrame:
+    """Fetch raw flat DataFrame from the TradeInsight Trading Data Service."""
+    api_key = os.environ.get("TRADEINSIGHT_API_KEY", "")
+    if not api_key:
+        raise RuntimeError("TRADEINSIGHT_API_KEY must be set")
+    source = TiData(api_key=api_key)
+    return source.query(tickers, start, end)
+
+
+def _tidata_available() -> bool:
+    """True when a TradeInsight API key is configured."""
+    return bool(os.environ.get("TRADEINSIGHT_API_KEY"))
+
+
+def _alpaca_available() -> bool:
+    """True when both Alpaca credentials are configured."""
+    return bool(
+        os.environ.get("ALPACA_API_KEY") and os.environ.get("ALPACA_API_SECRET")
+    )
+
+
+# Data providers in priority order: (name, is_available). yfinance has no
+# availability gate — it is the always-reachable floor. The query function for
+# each is `_query_<name>`, resolved from module globals at call time so tests
+# can patch it.
+_PROVIDERS: list[tuple[str, Callable[[], bool]]] = [
+    ("tidata", _tidata_available),
+    ("alpaca", _alpaca_available),
+    ("yfinance", lambda: True),
+]
+
+
+def _query_fn(name: str) -> Callable[..., pd.DataFrame]:
+    return globals()[f"_query_{name}"]
+
+
 def fetch_data(
     tickers: list[str],
     start: str,
     end: str,
-    source: str = "yfinance",
+    source: str = "auto",
     csv: str | dict[str, str] | None = None,
 ) -> dict[str, pd.DataFrame]:
     """Fetch OHLCV data. Returns dict keyed by ticker, each with UTC DatetimeIndex.
@@ -81,32 +122,47 @@ def fetch_data(
         tickers: List of ticker symbols.
         start: Start date string (e.g. "2019-01-01").
         end: End date string (e.g. "2024-12-31").
-        source: Data source — "yfinance" or "alpaca".
+        source: Data source. ``"auto"`` (default) selects by available
+            credentials in priority order — ``tidata`` (``TRADEINSIGHT_API_KEY``),
+            then ``alpaca`` (``ALPACA_API_KEY``/``ALPACA_API_SECRET``), then
+            ``yfinance`` — falling through to the next provider on failure.
+            Pass ``"tidata"``, ``"alpaca"``, or ``"yfinance"`` to force one.
         csv: Optional CSV source for offline loading. Either:
             - A directory path (str) — auto-discovers ``<ticker>.csv`` files
               (case-insensitive lookup).
             - A dict mapping ticker to CSV file path.
             Each CSV must have a ``date`` index and ``open,high,low,close,volume`` columns.
 
-    Falls back to the other source once on failure.
+    Raises:
+        ValueError: If ``source`` is not "auto" or a known provider name.
     """
     if csv is not None:
         return _load_from_csv(tickers, csv)
 
-    primary, fallback = (
-        (_query_yfinance, _query_alpaca)
-        if source == "yfinance"
-        else (_query_alpaca, _query_yfinance)
-    )
-    fallback_name = "alpaca" if source == "yfinance" else "yfinance"
+    if source == "auto":
+        names = [name for name, avail in _PROVIDERS if avail()]
+    else:
+        names = [name for name, _ in _PROVIDERS if name == source]
+        if not names:
+            raise ValueError(
+                f"Unknown source: {source!r}. Use 'auto', 'tidata', "
+                f"'alpaca', or 'yfinance'."
+            )
 
-    try:
-        flat_df = primary(tickers, start, end)
-    except Exception as e:
-        logger.warning("%s failed (%s), falling back to %s", source, e, fallback_name)
-        flat_df = fallback(tickers, start, end)
+    last_exc: Exception | None = None
+    for name in names:
+        try:
+            return _split_flat_to_dict(_query_fn(name)(tickers, start, end))
+        except Exception as e:
+            logger.warning("data source %s failed (%s), trying next", name, e)
+            last_exc = e
 
-    return _split_flat_to_dict(flat_df)
+    # Every candidate errored ('auto' always has the yfinance floor, so this is
+    # reached only when all providers failed; an explicit source re-raises its
+    # own error).
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError(f"No data source available for source={source!r}")
 
 
 def _load_from_csv(
@@ -178,6 +234,30 @@ def _normalize_ticker_df(
     return df
 
 
+def _align_indices(data: dict[str, pd.DataFrame]) -> None:
+    """Restrict all tickers to their common (intersection) dates, in place.
+
+    Providers that fetch per symbol (e.g. tidata) can return different date
+    coverage per ticker, and the engine requires a shared DatetimeIndex. Align
+    to the intersection so downstream ``validate_data`` passes and no NaN prices
+    leak into the simulation. A no-op when every ticker already shares the same
+    dates; drops (with a warning) only the non-overlapping dates otherwise.
+    """
+    if len(data) < 2:
+        return
+    indices = [df.index for df in data.values()]
+    common = indices[0]
+    for idx in indices[1:]:
+        common = common.intersection(idx)
+    for ticker, df in data.items():
+        if len(df) != len(common):
+            logger.warning(
+                "%s: dropped %d date(s) not shared by all tickers",
+                ticker, len(df) - len(common),
+            )
+            data[ticker] = df.loc[common]
+
+
 def _split_flat_to_dict(flat_df: pd.DataFrame) -> dict[str, pd.DataFrame]:
     """Convert flat DataFrame with 'symbol' column to per-ticker dict."""
     result: dict[str, pd.DataFrame] = {}
@@ -185,4 +265,5 @@ def _split_flat_to_dict(flat_df: pd.DataFrame) -> dict[str, pd.DataFrame]:
         df = group.drop(columns=["symbol"]).copy()
         df = df.set_index("date")
         result[str(symbol)] = _normalize_ticker_df(df, default_tz="US/Eastern", ticker=str(symbol))
+    _align_indices(result)
     return result

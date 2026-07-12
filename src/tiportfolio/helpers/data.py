@@ -24,6 +24,7 @@ import yfinance
 from alpaca.data.enums import Adjustment
 from alpaca.data.requests import CryptoBarsRequest, StockBarsRequest
 from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
+from tidata.tifinance import Ticker
 
 
 class DataCol(Enum):
@@ -424,3 +425,60 @@ class YFinance(DataSource):
                     sym_df[self.ADJ_CLOSE] = df[("Adj Close", sym)].values
                 result = pd.concat((result, sym_df))
         return result
+
+
+class TiData(DataSource):
+    """Retrieves data from the TradeInsight Trading Data Service.
+
+    Uses the ``tidata`` client (``tidata.tifinance.Ticker``). Daily bars only.
+
+    Args:
+        api_key: TradeInsight API key, sent as a bearer token by the client.
+    """
+
+    def __init__(self, api_key: str):
+        self._api_key = api_key
+
+    def _fetch_data(
+        self,
+        symbols: frozenset[str],
+        start_date: datetime,
+        end_date: datetime,
+        timeframe: Optional[str],
+        adjust: Optional[Any],
+    ) -> pd.DataFrame:
+        start = start_date.strftime("%Y-%m-%d")
+        end = end_date.strftime("%Y-%m-%d")
+        frames = []
+        for sym in symbols:
+            # raise_errors=True so auth/network failures propagate (and let the
+            # provider chain fall through) instead of yielding an empty frame.
+            hist = Ticker(sym, api_key=self._api_key).history(
+                start=start,
+                end=end,
+                interval="1d",
+                auto_adjust=True,
+                actions=False,
+                raise_errors=True,
+            )
+            if hist.empty:
+                continue
+            hist = hist.reset_index()  # 'Date' column, tz-naive
+            frames.append(
+                pd.DataFrame(
+                    {
+                        DataCol.DATE.value: hist["Date"],
+                        DataCol.SYMBOL.value: sym,
+                        DataCol.OPEN.value: hist["Open"],
+                        DataCol.HIGH.value: hist["High"],
+                        DataCol.LOW.value: hist["Low"],
+                        DataCol.CLOSE.value: hist["Close"],
+                        DataCol.VOLUME.value: hist["Volume"],
+                    }
+                )
+            )
+        if not frames:
+            return pd.DataFrame(
+                columns=[c.value for c in DataCol if c is not DataCol.VWAP]
+            )
+        return pd.concat(frames, ignore_index=True)
