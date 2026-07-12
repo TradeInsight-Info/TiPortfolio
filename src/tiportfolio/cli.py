@@ -174,7 +174,12 @@ def shared_options(f: Any) -> Any:
     @click.option("--end", required=True, help="End date YYYY-MM-DD")
     @click.option("--ratio", default="equal", help="Weighting: equal, 0.7,0.2,0.1, erc, hv")
     @click.option("--select", "select_", default="all", help="Selection: all, momentum")
-    @click.option("--source", default="auto", help="Data source: auto, tidata, alpaca, yfinance")
+    @click.option(
+        "--source",
+        default="auto",
+        type=click.Choice(["auto", "tidata", "alpaca", "yfinance"]),
+        help="Data source (default: auto)",
+    )
     @click.option("--csv", default=None, help="CSV directory for offline data")
     @click.option("--capital", default=10_000.0, type=float, help="Initial capital")
     @click.option("--fee", default=0.0035, type=float, help="Fee per share")
